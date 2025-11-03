@@ -1,0 +1,40 @@
+name: Feature Request
+description: Suggest a new idea or improvement
+title: "[Feature]: "
+labels: [enhancement]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Please describe clearly what you'd like to see improved or added :
+
+  - type: input
+    id: summary
+    attributes:
+      label: Summary
+      description: Brief description of your idea
+      placeholder: Add dark mode support
+    validations:
+      required: true
+
+  - type: textarea
+    id: motivation
+    attributes:
+      label: Motivation
+      description: Why would this feature be useful?
+      placeholder: This would make it easier to use the app at night.
+
+  - type: textarea
+    id: proposed-solution
+    attributes:
+      label: Proposed Solution
+      description: If you have an idea of how it could be implemented, share it here.
+      placeholder: Add a theme toggle in the settings menu.
+
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Checklist
+      options:
+        - label: I have searched for existing issues to avoid duplicates
+          required: true
