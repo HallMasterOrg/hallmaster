@@ -1,0 +1,17 @@
+services:
+  backend:
+    image: backend
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: backend
+    ports:
+      - "3000:3000"
+    env_file:
+      - .env
+    networks:
+      - backend-network
+    restart: unless-stopped
+
+networks:
+  backend-network:
