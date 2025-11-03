@@ -1,5 +1,7 @@
 generator client {
-    provider = "prisma-client-js"
+    provider     = "prisma-client"
+    output       = "../src/prisma/generated"
+    moduleFormat = "esm"
 }
 
 datasource db {
@@ -7,16 +9,37 @@ datasource db {
     url      = env("DATASOURCE_URL")
 }
 
-model User {
-    iss        String
-    sub        String
-    email      String    @unique
-    givenName  String    @map("given_name")
-    familyName String    @map("family_name")
-    picture    String?
-    createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
-    updatedAt  DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
-    deletedAt  DateTime? @map("deleted_at")
+enum Hypervisor {
+    DOCKER
+    RAW
+}
 
-    @@map("user")
+model Bot {
+    id            String     @id
+    clusterNumber Int
+    shards        Int
+    sourceCode    String?
+    hypervisor    Hypervisor
+    clusters      Cluster[]
+}
+
+enum ClusterStatus {
+    STARTING
+    RUNNING
+    STOPPED
+    ERROR
+}
+
+model Cluster {
+    id    String @id @default(uuid())
+    botId String
+
+    /// Either a Process ID (PID) or a Docker container ID
+    handleId String?
+
+    status ClusterStatus
+
+    shardIds Int[]
+
+    bot Bot @relation(fields: [botId], references: [id], onDelete: Cascade)
 }
