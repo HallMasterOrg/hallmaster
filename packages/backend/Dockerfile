@@ -4,13 +4,19 @@ WORKDIR /app
 
 RUN corepack enable
 
-COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY ./package.json ./pnpm-lock.yaml ./pnpm-workspace.yaml ./
 
 RUN pnpm install --frozen-lock
 
+COPY ./nest-cli.json ./nest-cli.json
+
 COPY src/ ./src/
 
+COPY prisma/ ./prisma/
+
 COPY tsconfig.build.json tsconfig.json ./
+
+RUN pnpm prisma:generate
 
 RUN pnpm build
 
@@ -24,14 +30,10 @@ COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 
 RUN pnpm install --frozen-lockfile --prod
 
-COPY prisma/ ./prisma/
-
-RUN pnpm prisma:generate
-
 COPY --from=build /app/dist /app/dist
 
 ENV NODE_ENV=production
 
 EXPOSE 3000
 
-ENTRYPOINT [ "node", "dist/main.js" ]
+ENTRYPOINT [ "pnpm", "start:prod" ]
