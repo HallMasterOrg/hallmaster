@@ -14,7 +14,7 @@ Explain **why** this change is needed:
 
 ---
 
-## 🔍 Related Links
+## Related Links
 
 <!-- Related Issue: #123
 - Related Docs: (optional link)
