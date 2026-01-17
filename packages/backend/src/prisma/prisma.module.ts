@@ -9,8 +9,7 @@ import { PrismaService } from './prisma.service.js';
       provide: PrismaService,
       inject: [ConfigService],
       useFactory(configService: ConfigService) {
-        const datasourceUrl =
-          configService.getOrThrow<string>('DATASOURCE_URL');
+        const datasourceUrl = configService.getOrThrow<string>('DATABASE_URL');
 
         return new PrismaService(datasourceUrl);
       },

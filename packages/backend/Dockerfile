@@ -1,4 +1,4 @@
-FROM node:22-alpine3.22 AS build
+FROM node:24.13.0-alpine3.23 AS build
 
 WORKDIR /app
 
@@ -20,7 +20,7 @@ RUN pnpm prisma:generate
 
 RUN pnpm build
 
-FROM node:22-alpine3.22 AS server
+FROM node:24.13.0-alpine3.23 AS server
 
 WORKDIR /app
 
@@ -35,5 +35,7 @@ COPY --from=build /app/dist /app/dist
 ENV NODE_ENV=production
 
 EXPOSE 3000
+
+RUN apk add --no-cache docker-cli
 
 ENTRYPOINT [ "pnpm", "start:prod" ]
