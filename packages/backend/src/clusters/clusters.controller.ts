@@ -1,4 +1,4 @@
-import { UUID } from 'node:crypto';
+import type { UUID } from 'node:crypto';
 import {
   Controller,
   Get,

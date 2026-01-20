@@ -1,6 +1,6 @@
+import type { UUID } from 'node:crypto';
 import { ApiProperty } from '@nestjs/swagger';
 import { IsArray, IsEnum, IsUUID } from 'class-validator';
-import { UUID } from 'node:crypto';
 import { ClusterStatus } from '../../prisma/generated/enums.js';
 
 export class Cluster {

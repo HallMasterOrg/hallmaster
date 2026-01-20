@@ -1,7 +1,7 @@
 import path from 'node:path';
 import { tmpdir } from 'node:os';
 import { UUID } from 'node:crypto';
-import { mkdir, mkdtemp, rm } from 'node:fs/promises';
+import { mkdir, mkdtemp } from 'node:fs/promises';
 import { Extract } from 'unzipper';
 import {
   ConflictException,
@@ -11,7 +11,7 @@ import {
 } from '@nestjs/common';
 import { MemoryStoredFile } from 'nestjs-form-data';
 import { ConfigService } from '@nestjs/config';
-import { Cluster, Hypervisor, Prisma } from '../prisma/generated/client.js';
+import { Cluster, Prisma } from '../prisma/generated/client.js';
 import { CreateBotDto } from './dto/create-bot.dto.js';
 import { UpdateBotDto } from './dto/update-bot.dto.js';
 import { PrismaService } from '../prisma/prisma.service.js';
@@ -81,10 +81,6 @@ export class BotService {
   async create(createBotDto: CreateBotDto): Promise<Bot> {
     const botId = this.getBotId();
 
-    const sourceCode = await this.handleSourceCodeUpload(
-      createBotDto.sourceCode as unknown as MemoryStoredFile | undefined,
-    );
-
     const shards = await this.computeRecommendedShards(createBotDto.shards);
 
     const clusterNumber = createBotDto.clusters;
@@ -104,8 +100,6 @@ export class BotService {
           id: botId,
           clusterNumber: createBotDto.clusters,
           shards: shards,
-          sourceCode: sourceCode,
-          hypervisor: sourceCode ? 'RAW' : 'DOCKER',
           clusters: {
             createMany: {
               data: newClusters.map((clusterShardIds) => ({
@@ -119,7 +113,6 @@ export class BotService {
           id: true,
           clusterNumber: true,
           shards: true,
-          hypervisor: true,
         },
       });
 
@@ -127,7 +120,6 @@ export class BotService {
         id: createdResource.id,
         clusters: createdResource.clusterNumber,
         shards: createdResource.shards,
-        hypervisor: createdResource.hypervisor,
       };
     } catch (e) {
       if (
@@ -146,7 +138,6 @@ export class BotService {
         id: true,
         clusterNumber: true,
         shards: true,
-        hypervisor: true,
       },
     });
 
@@ -157,7 +148,6 @@ export class BotService {
       id: resource.id,
       clusters: resource.clusterNumber,
       shards: resource.shards,
-      hypervisor: resource.hypervisor,
     };
   }
 
@@ -167,17 +157,6 @@ export class BotService {
     const currentResource = await this.prismaService.bot.findFirst();
     if (null === currentResource) {
       throw new NotFoundException();
-    }
-
-    if (undefined !== updateBotDto.sourceCode) {
-      if (null !== currentResource.sourceCode) {
-        await rm(currentResource.sourceCode, { force: true, recursive: true });
-      }
-
-      const sourceCode = await this.handleSourceCodeUpload(
-        updateBotDto.sourceCode as unknown as MemoryStoredFile | undefined,
-      );
-      currentResource.sourceCode = sourceCode ?? null;
     }
 
     const currentClusters = await this.prismaService.cluster.findMany({
@@ -208,7 +187,6 @@ export class BotService {
       data: {
         clusterNumber: clusterNumber,
         shards: shards,
-        hypervisor: undefined === updateBotDto.sourceCode ? 'DOCKER' : 'RAW',
         clusters: {
           createMany: {
             data: newClusters.map((clusterShardIds, index) => ({
@@ -224,10 +202,8 @@ export class BotService {
       select: {
         id: true,
         shards: true,
-        sourceCode: true,
         clusterNumber: true,
         clusters: true,
-        hypervisor: true,
       },
     });
 
@@ -242,10 +218,8 @@ export class BotService {
       select: {
         id: true,
         shards: true,
-        sourceCode: true,
         clusterNumber: true,
         clusters: true,
-        hypervisor: true,
       },
     });
 
@@ -265,7 +239,6 @@ export class BotService {
       id: newResource.id,
       clusters: newResource.clusterNumber,
       shards: newResource.shards,
-      hypervisor: newResource.hypervisor,
     };
   }
 
@@ -274,8 +247,6 @@ export class BotService {
       id: string;
       clusterNumber: number;
       shards: number;
-      sourceCode: string | null;
-      hypervisor: Hypervisor;
       clusters: Cluster[];
     };
 
@@ -288,8 +259,6 @@ export class BotService {
           id: true,
           clusterNumber: true,
           shards: true,
-          hypervisor: true,
-          sourceCode: true,
           clusters: true,
         },
       });
@@ -311,7 +280,6 @@ export class BotService {
       id: deletedResource.id,
       clusters: deletedResource.clusterNumber,
       shards: deletedResource.shards,
-      hypervisor: deletedResource.hypervisor,
     };
   }
 }
