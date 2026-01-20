@@ -1,12 +1,11 @@
 import { spawn } from 'node:child_process';
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { HallmasterHypervisor } from './hypervisor.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { Bot, Cluster } from '../prisma/generated/client.js';
 
 @Injectable()
-export class DockerHypervisorService implements HallmasterHypervisor {
+export class DockerService {
   constructor(
     private readonly configService: ConfigService,
     private readonly prismaService: PrismaService,
@@ -52,7 +51,7 @@ export class DockerHypervisorService implements HallmasterHypervisor {
 
   private async stopDockerContainer(cluster: Cluster) {
     return new Promise<void>((resolve, reject) => {
-      const dockerPullProcess = spawn(`docker stop ${cluster.handleId}`, {
+      const dockerPullProcess = spawn(`docker stop ${cluster.containerId}`, {
         shell: true,
         stdio: [null, 1, 2],
       });
@@ -156,7 +155,7 @@ export class DockerHypervisorService implements HallmasterHypervisor {
   }
 
   async start(bot: Bot, cluster: Cluster) {
-    if (null !== cluster.handleId) {
+    if (null !== cluster.containerId) {
       return;
     }
 
@@ -169,13 +168,9 @@ export class DockerHypervisorService implements HallmasterHypervisor {
       },
     });
 
-    if (null !== bot.sourceCode) {
-      throw new BadRequestException();
-    }
-
     await this.pullDockerImage(cluster);
 
-    const handleId = await this.getHandleId(
+    const containerId = await this.getHandleId(
       bot.id,
       bot.shards,
       cluster.shardIds,
@@ -183,7 +178,7 @@ export class DockerHypervisorService implements HallmasterHypervisor {
 
     await this.prismaService.cluster.update({
       data: {
-        handleId: handleId,
+        containerId: containerId,
         status: 'RUNNING',
       },
       where: {
@@ -193,7 +188,7 @@ export class DockerHypervisorService implements HallmasterHypervisor {
   }
 
   async stop(_bot: Bot, cluster: Cluster) {
-    if (null === cluster.handleId) {
+    if (null === cluster.containerId) {
       return;
     }
 
@@ -201,7 +196,7 @@ export class DockerHypervisorService implements HallmasterHypervisor {
 
     await this.prismaService.cluster.update({
       data: {
-        handleId: null,
+        containerId: null,
         status: 'STOPPED',
       },
       where: {

@@ -1,12 +1,15 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { ClustersController } from './clusters.controller.js';
 import { ClustersService } from './clusters.service.js';
+import { PrismaModule } from '../prisma/prisma.module.js';
+import { DockerModule } from '../docker/docker.module.js';
 
 describe('ClustersController', () => {
   let controller: ClustersController;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
+      imports: [PrismaModule, DockerModule],
       controllers: [ClustersController],
       providers: [ClustersService],
     }).compile();

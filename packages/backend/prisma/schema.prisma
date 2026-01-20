@@ -8,17 +8,10 @@ datasource db {
     provider = "postgresql"
 }
 
-enum Hypervisor {
-    DOCKER
-    RAW
-}
-
 model Bot {
     id            String     @id
     clusterNumber Int
     shards        Int
-    sourceCode    String?
-    hypervisor    Hypervisor
     clusters      Cluster[]
 }
 
@@ -33,8 +26,7 @@ model Cluster {
     id    String @id @default(uuid())
     botId String
 
-    /// Either a Process ID (PID) or a Docker container ID
-    handleId String?
+    containerId String?
 
     status ClusterStatus
 

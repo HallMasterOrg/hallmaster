@@ -1,6 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsEnum, IsNumber, IsPositive, IsString } from 'class-validator';
-import { Hypervisor } from '../../prisma/generated/enums.js';
+import { IsNumber, IsPositive, IsString } from 'class-validator';
 
 export class Bot {
   @ApiProperty({
@@ -22,11 +21,4 @@ export class Bot {
   @IsNumber()
   @IsPositive()
   readonly shards: number;
-
-  @ApiProperty({
-    description: "The hypervisor used to manage the bot's clusters.",
-    enum: Hypervisor,
-  })
-  @IsEnum(Hypervisor)
-  readonly hypervisor: Hypervisor;
 }
