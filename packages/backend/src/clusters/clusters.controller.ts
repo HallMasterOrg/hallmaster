@@ -15,7 +15,7 @@ import {
   ApiOkResponse,
   ApiTags,
 } from '@nestjs/swagger';
-import { Cluster } from './entities/cluster.entity.js';
+import { GetClusterDto } from '../../../shared/src/index.js';
 
 @ApiTags('Clusters')
 @Controller('clusters')
@@ -25,7 +25,7 @@ export class ClustersController {
   @Get()
   @ApiOkResponse({
     description: 'The list of clusters.',
-    type: Cluster,
+    type: GetClusterDto,
     isArray: true,
   })
   findAll() {
@@ -35,7 +35,7 @@ export class ClustersController {
   @Get(':id')
   @ApiOkResponse({
     description: 'The cluster based on the given ID.',
-    type: Cluster,
+    type: GetClusterDto,
   })
   @ApiNotFoundResponse({
     description: 'The ID points to an unresolved cluster.',

@@ -9,8 +9,6 @@ import {
   HttpStatus,
 } from '@nestjs/common';
 import { BotService } from './bot.service.js';
-import { CreateBotDto } from './dto/create-bot.dto.js';
-import { UpdateBotDto } from './dto/update-bot.dto.js';
 import {
   ApiAcceptedResponse,
   ApiConflictResponse,
@@ -22,7 +20,11 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import { FormDataRequest, MemoryStoredFile } from 'nestjs-form-data';
-import { Bot } from './entities/bot.entity.js';
+import {
+  CreateBotDto,
+  UpdateBotDto,
+  GetBotDto,
+} from '../../../shared/src/index.js';
 
 @ApiTags('Bot')
 @Controller('bot')
@@ -36,7 +38,7 @@ export class BotController {
   @ApiCreatedResponse({
     description:
       'The bot informations have been retrieve correctly and it has been created in database successfully.',
-    type: Bot,
+    type: GetBotDto,
   })
   @ApiConflictResponse({
     description: 'The bot is already created.',
@@ -48,7 +50,7 @@ export class BotController {
   @Get()
   @ApiOkResponse({
     description: 'The registered bot.',
-    type: Bot,
+    type: GetBotDto,
   })
   @ApiNotFoundResponse({
     description: 'No bot created beforehand.',
@@ -63,7 +65,7 @@ export class BotController {
   @ApiConsumes('multipart/form-data')
   @ApiAcceptedResponse({
     description: 'Updated bot information.',
-    type: Bot,
+    type: GetBotDto,
   })
   @ApiNotFoundResponse({
     description: 'No bot to update.',

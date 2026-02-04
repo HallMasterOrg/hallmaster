@@ -12,11 +12,13 @@ import {
 import { MemoryStoredFile } from 'nestjs-form-data';
 import { ConfigService } from '@nestjs/config';
 import { Cluster, Prisma } from '../prisma/generated/client.js';
-import { CreateBotDto } from './dto/create-bot.dto.js';
-import { UpdateBotDto } from './dto/update-bot.dto.js';
+import {
+  CreateBotDto,
+  UpdateBotDto,
+  GetBotDto,
+} from '../../../shared/src/index.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { ClustersService } from '../clusters/clusters.service.js';
-import { Bot } from './entities/bot.entity.js';
 
 @Injectable()
 export class BotService {
@@ -78,7 +80,7 @@ export class BotService {
     return newClusters;
   }
 
-  async create(createBotDto: CreateBotDto): Promise<Bot> {
+  async create(createBotDto: CreateBotDto): Promise<GetBotDto> {
     const botId = this.getBotId();
 
     const shards = await this.computeRecommendedShards(createBotDto.shards);
@@ -89,7 +91,7 @@ export class BotService {
       this.configService.getOrThrow<number>('SHARDS_PER_CLUSTER');
 
     const newClusters = this.computeClusters(
-      clusterNumber,
+      clusterNumber ?? 1,
       shards,
       shardsPerCluster,
     );
@@ -98,7 +100,7 @@ export class BotService {
       const createdResource = await this.prismaService.bot.create({
         data: {
           id: botId,
-          clusterNumber: createBotDto.clusters,
+          clusterNumber: createBotDto.clusters ?? 1,
           shards: shards,
           clusters: {
             createMany: {
@@ -132,7 +134,7 @@ export class BotService {
     }
   }
 
-  async findOne(): Promise<Bot> {
+  async findOne(): Promise<GetBotDto> {
     const resource = await this.prismaService.bot.findFirst({
       select: {
         id: true,
@@ -151,7 +153,7 @@ export class BotService {
     };
   }
 
-  async update(updateBotDto: UpdateBotDto): Promise<Bot> {
+  async update(updateBotDto: UpdateBotDto): Promise<GetBotDto> {
     const botId = this.getBotId();
 
     const currentResource = await this.prismaService.bot.findFirst();
@@ -242,7 +244,7 @@ export class BotService {
     };
   }
 
-  async remove(): Promise<Bot> {
+  async remove(): Promise<GetBotDto> {
     let deletedResource: {
       id: string;
       clusterNumber: number;
