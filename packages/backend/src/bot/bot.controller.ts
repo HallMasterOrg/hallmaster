@@ -12,14 +12,12 @@ import { BotService } from './bot.service.js';
 import {
   ApiAcceptedResponse,
   ApiConflictResponse,
-  ApiConsumes,
   ApiCreatedResponse,
   ApiNoContentResponse,
   ApiNotFoundResponse,
   ApiOkResponse,
   ApiTags,
 } from '@nestjs/swagger';
-import { FormDataRequest, MemoryStoredFile } from 'nestjs-form-data';
 import {
   CreateBotDto,
   UpdateBotDto,
@@ -33,8 +31,6 @@ export class BotController {
 
   @Post()
   @HttpCode(HttpStatus.CREATED)
-  @FormDataRequest({ storage: MemoryStoredFile })
-  @ApiConsumes('multipart/form-data')
   @ApiCreatedResponse({
     description:
       'The bot informations have been retrieve correctly and it has been created in database successfully.',
@@ -61,8 +57,6 @@ export class BotController {
 
   @Patch()
   @HttpCode(HttpStatus.ACCEPTED)
-  @FormDataRequest({ storage: MemoryStoredFile })
-  @ApiConsumes('multipart/form-data')
   @ApiAcceptedResponse({
     description: 'Updated bot information.',
     type: GetBotDto,

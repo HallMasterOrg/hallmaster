@@ -1,9 +1,10 @@
 import { constants } from 'node:zlib';
+import { cleanupOpenApiDoc, ZodValidationPipe } from 'nestjs-zod';
 import {
   FastifyAdapter,
   NestFastifyApplication,
 } from '@nestjs/platform-fastify';
-import { Logger, ValidationPipe } from '@nestjs/common';
+import { Logger } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module.js';
 import { LoggerService } from './logger/logger.service.js';
@@ -43,13 +44,7 @@ async function bootstrap() {
   app.useLogger(loggerService);
   Logger.overrideLogger(loggerService);
 
-  app.useGlobalPipes(
-    new ValidationPipe({
-      transform: true,
-      whitelist: true,
-      forbidNonWhitelisted: true,
-    }),
-  );
+  app.useGlobalPipes(new ZodValidationPipe());
 
   app.enableCors({
     origin: '*',
@@ -65,6 +60,7 @@ async function bootstrap() {
     app,
     swaggerDocumentationConfig,
   );
+  cleanupOpenApiDoc(document);
   const theme = new SwaggerTheme();
   const swaggerConfig: SwaggerCustomOptions = {
     explorer: true,
