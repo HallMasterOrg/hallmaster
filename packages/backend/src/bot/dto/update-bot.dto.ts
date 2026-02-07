@@ -1,4 +1,8 @@
-import { PartialType } from '@nestjs/swagger';
-import { CreateBotDto } from './create-bot.dto.js';
+import { createZodDto } from 'nestjs-zod';
+import { CreateBotSchema } from './create-bot.dto.js';
 
-export class UpdateBotDto extends PartialType(CreateBotDto) {}
+export const UpdateBotSchema = CreateBotSchema.partial();
+
+export class UpdateBotZodDto extends createZodDto(UpdateBotSchema) {}
+
+export type UpdateBotDto = Partial<typeof UpdateBotSchema>;

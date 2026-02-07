@@ -1,21 +1,21 @@
-import type { UUID } from 'node:crypto';
 import {
   Controller,
-  Get,
-  Param,
   Delete,
-  HttpStatus,
+  Get,
   HttpCode,
+  HttpStatus,
+  Param,
   Post,
 } from '@nestjs/common';
-import { ClustersService } from './clusters.service.js';
 import {
   ApiNoContentResponse,
   ApiNotFoundResponse,
   ApiOkResponse,
   ApiTags,
 } from '@nestjs/swagger';
-import { Cluster } from './entities/cluster.entity.js';
+import type { UUID } from 'node:crypto';
+import { ClustersService } from './clusters.service.js';
+import { GetClusterZodDto } from './dto/get-cluster.dto.js';
 
 @ApiTags('Clusters')
 @Controller('clusters')
@@ -25,7 +25,7 @@ export class ClustersController {
   @Get()
   @ApiOkResponse({
     description: 'The list of clusters.',
-    type: Cluster,
+    type: GetClusterZodDto,
     isArray: true,
   })
   findAll() {
@@ -35,7 +35,7 @@ export class ClustersController {
   @Get(':id')
   @ApiOkResponse({
     description: 'The cluster based on the given ID.',
-    type: Cluster,
+    type: GetClusterZodDto,
   })
   @ApiNotFoundResponse({
     description: 'The ID points to an unresolved cluster.',

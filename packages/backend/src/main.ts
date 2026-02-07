@@ -1,9 +1,10 @@
 import { constants } from 'node:zlib';
+import { cleanupOpenApiDoc, ZodValidationPipe } from 'nestjs-zod';
 import {
   FastifyAdapter,
   NestFastifyApplication,
 } from '@nestjs/platform-fastify';
-import { Logger, ValidationPipe } from '@nestjs/common';
+import { Logger } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module.js';
 import { LoggerService } from './logger/logger.service.js';
@@ -15,7 +16,6 @@ import {
 } from '@nestjs/swagger';
 import { SwaggerTheme, SwaggerThemeNameEnum } from 'swagger-themes';
 import fastifyCompress from '@fastify/compress';
-import multipart from '@fastify/multipart';
 
 const getSwaggerDocumentConfig = (): Omit<OpenAPIObject, 'paths'> =>
   new DocumentBuilder()
@@ -44,13 +44,7 @@ async function bootstrap() {
   app.useLogger(loggerService);
   Logger.overrideLogger(loggerService);
 
-  app.useGlobalPipes(
-    new ValidationPipe({
-      transform: true,
-      whitelist: true,
-      forbidNonWhitelisted: true,
-    }),
-  );
+  app.useGlobalPipes(new ZodValidationPipe());
 
   app.enableCors({
     origin: '*',
@@ -61,13 +55,12 @@ async function bootstrap() {
     brotliOptions: { params: { [constants.BROTLI_PARAM_QUALITY]: 1 } },
   });
 
-  await app.register(multipart);
-
   const swaggerDocumentationConfig = getSwaggerDocumentConfig();
   const document = SwaggerModule.createDocument(
     app,
     swaggerDocumentationConfig,
   );
+  cleanupOpenApiDoc(document);
   const theme = new SwaggerTheme();
   const swaggerConfig: SwaggerCustomOptions = {
     explorer: true,

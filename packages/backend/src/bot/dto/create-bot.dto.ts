@@ -1,44 +1,15 @@
-import { IsNumber, IsOptional, IsPositive } from 'class-validator';
-import {
-  FileSystemStoredFile,
-  HasMimeType,
-  IsFile,
-  MaxFileSize,
-} from 'nestjs-form-data';
-import { Transform } from 'class-transformer';
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { createZodDto } from 'nestjs-zod';
+import z from 'zod';
 
-export class CreateBotDto {
-  @ApiProperty({
+export const CreateBotSchema = z.object({
+  clusters: z.number().positive().default(1).optional().meta({
     description: 'The number of clusters allocated for the bot.',
-    default: 1,
-  })
-  @Transform(({ value }) => parseInt(value as string, 10))
-  @IsNumber()
-  @IsPositive()
-  readonly clusters: number;
-
-  @ApiPropertyOptional({
+  }),
+  shards: z.number().positive().default(1).optional().meta({
     description: 'The total number of shards for the bot.',
-    default: 1,
-  })
-  @Transform(({ value }) =>
-    value === null || value === '0' ? undefined : parseInt(value as string, 10),
-  )
-  @IsOptional()
-  @IsNumber()
-  @IsPositive()
-  readonly shards?: number;
+  }),
+});
 
-  @ApiPropertyOptional({
-    description:
-      'The source code of the bot, contained in a zip file. If omitted, the Docker image from the given registry will be used instead.',
-    type: String,
-    format: 'binary',
-  })
-  @IsOptional()
-  @IsFile()
-  @MaxFileSize(10_000_000) // 10mb
-  @HasMimeType(['application/zip'])
-  readonly sourceCode?: FileSystemStoredFile;
-}
+export class CreateBotZodDto extends createZodDto(CreateBotSchema) {}
+
+export type CreateBotDto = z.infer<typeof CreateBotSchema>;
