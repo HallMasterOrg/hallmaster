@@ -15,7 +15,7 @@ import {
 } from '@nestjs/swagger';
 import type { UUID } from 'node:crypto';
 import { ClustersService } from './clusters.service.js';
-import { GetClusterDto } from './dto/get-cluster.dto.js';
+import { GetClusterZodDto } from './dto/get-cluster.dto.js';
 
 @ApiTags('Clusters')
 @Controller('clusters')
@@ -25,7 +25,7 @@ export class ClustersController {
   @Get()
   @ApiOkResponse({
     description: 'The list of clusters.',
-    type: GetClusterDto,
+    type: GetClusterZodDto,
     isArray: true,
   })
   findAll() {
@@ -35,7 +35,7 @@ export class ClustersController {
   @Get(':id')
   @ApiOkResponse({
     description: 'The cluster based on the given ID.',
-    type: GetClusterDto,
+    type: GetClusterZodDto,
   })
   @ApiNotFoundResponse({
     description: 'The ID points to an unresolved cluster.',

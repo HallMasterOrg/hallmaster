@@ -1,7 +1,7 @@
 import { createZodDto } from 'nestjs-zod';
 import z from 'zod';
 
-const GetBotSchema = z.object({
+export const GetBotSchema = z.object({
   id: z.string().meta({
     description: 'The bot ID.',
   }),
@@ -13,4 +13,6 @@ const GetBotSchema = z.object({
   }),
 });
 
-export class GetBotDto extends createZodDto(GetBotSchema) {}
+export class GetBotZodDto extends createZodDto(GetBotSchema) {}
+
+export type GetBotDto = z.infer<typeof GetBotSchema>;

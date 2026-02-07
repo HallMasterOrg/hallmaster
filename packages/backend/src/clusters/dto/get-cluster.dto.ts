@@ -1,7 +1,7 @@
 import { createZodDto } from 'nestjs-zod';
 import z from 'zod';
 
-const GetClusterSchema = z.object({
+export const GetClusterSchema = z.object({
   id: z.uuid().meta({
     description: 'The cluster ID.',
   }),
@@ -13,4 +13,6 @@ const GetClusterSchema = z.object({
   }),
 });
 
-export class GetClusterDto extends createZodDto(GetClusterSchema) {}
+export class GetClusterZodDto extends createZodDto(GetClusterSchema) {}
+
+export type GetClusterDto = z.infer<typeof GetClusterSchema>;

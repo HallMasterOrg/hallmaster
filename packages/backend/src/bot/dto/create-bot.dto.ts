@@ -10,4 +10,6 @@ export const CreateBotSchema = z.object({
   }),
 });
 
-export class CreateBotDto extends createZodDto(CreateBotSchema) {}
+export class CreateBotZodDto extends createZodDto(CreateBotSchema) {}
+
+export type CreateBotDto = z.infer<typeof CreateBotSchema>;
