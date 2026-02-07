@@ -1,4 +1,10 @@
 packages:
-  - 'packages/*'
+  - packages/*
+
 onlyBuiltDependencies:
+  - '@nestjs/core'
+  - '@prisma/engines'
+  - '@scarf/scarf'
+  - '@swc/core'
   - esbuild
+  - prisma

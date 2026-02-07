@@ -1,22 +1,17 @@
-import path from 'node:path';
-import { tmpdir } from 'node:os';
-import { UUID } from 'node:crypto';
-import { mkdir, mkdtemp } from 'node:fs/promises';
-import { Extract } from 'unzipper';
 import {
   ConflictException,
   Injectable,
   NotFoundException,
   NotImplementedException,
 } from '@nestjs/common';
-import { MemoryStoredFile } from 'nestjs-form-data';
 import { ConfigService } from '@nestjs/config';
-import { Cluster, Prisma } from '../prisma/generated/client.js';
-import { CreateBotDto } from './dto/create-bot.dto.js';
-import { UpdateBotDto } from './dto/update-bot.dto.js';
-import { PrismaService } from '../prisma/prisma.service.js';
+import { UUID } from 'node:crypto';
 import { ClustersService } from '../clusters/clusters.service.js';
-import { Bot } from './entities/bot.entity.js';
+import { Cluster, Prisma } from '../prisma/generated/client.js';
+import { PrismaService } from '../prisma/prisma.service.js';
+import { CreateBotZodDto } from './dto/create-bot.dto.js';
+import { GetBotZodDto } from './dto/get-bot.dto.js';
+import { UpdateBotZodDto } from './dto/update-bot.dto.js';
 
 @Injectable()
 export class BotService {
@@ -32,21 +27,6 @@ export class BotService {
       'ascii',
     );
     return botId;
-  }
-
-  private async handleSourceCodeUpload(
-    sourceCode?: MemoryStoredFile,
-  ): Promise<string | undefined> {
-    if (undefined === sourceCode) return undefined;
-
-    const botPath = await mkdtemp(path.join(tmpdir(), 'hallmaster-bot-'));
-    await mkdir(botPath, { mode: 0o600, recursive: true });
-
-    const stream = Extract({ path: botPath });
-    stream.write(sourceCode.buffer);
-    stream.end();
-    await stream.promise();
-    return botPath;
   }
 
   private async computeRecommendedShards(shards?: number): Promise<number> {
@@ -78,7 +58,7 @@ export class BotService {
     return newClusters;
   }
 
-  async create(createBotDto: CreateBotDto): Promise<Bot> {
+  async create(createBotDto: CreateBotZodDto): Promise<GetBotZodDto> {
     const botId = this.getBotId();
 
     const shards = await this.computeRecommendedShards(createBotDto.shards);
@@ -89,7 +69,7 @@ export class BotService {
       this.configService.getOrThrow<number>('SHARDS_PER_CLUSTER');
 
     const newClusters = this.computeClusters(
-      clusterNumber,
+      clusterNumber ?? 1,
       shards,
       shardsPerCluster,
     );
@@ -98,7 +78,7 @@ export class BotService {
       const createdResource = await this.prismaService.bot.create({
         data: {
           id: botId,
-          clusterNumber: createBotDto.clusters,
+          clusterNumber: createBotDto.clusters ?? 1,
           shards: shards,
           clusters: {
             createMany: {
@@ -132,7 +112,7 @@ export class BotService {
     }
   }
 
-  async findOne(): Promise<Bot> {
+  async findOne(): Promise<GetBotZodDto> {
     const resource = await this.prismaService.bot.findFirst({
       select: {
         id: true,
@@ -151,7 +131,7 @@ export class BotService {
     };
   }
 
-  async update(updateBotDto: UpdateBotDto): Promise<Bot> {
+  async update(updateBotDto: UpdateBotZodDto): Promise<GetBotZodDto> {
     const botId = this.getBotId();
 
     const currentResource = await this.prismaService.bot.findFirst();
@@ -242,7 +222,7 @@ export class BotService {
     };
   }
 
-  async remove(): Promise<Bot> {
+  async remove(): Promise<GetBotZodDto> {
     let deletedResource: {
       id: string;
       clusterNumber: number;
