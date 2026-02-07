@@ -5,6 +5,9 @@
   "private": true,
   "license": "UNLICENSED",
   "type": "module",
+  "exports": {
+    "./dto": "./src/index.dto.ts"
+  },
   "scripts": {
     "build": "nest build",
     "start": "dotenv -e .env -- nest start",

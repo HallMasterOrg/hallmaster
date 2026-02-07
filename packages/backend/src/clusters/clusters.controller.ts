@@ -1,21 +1,21 @@
-import type { UUID } from 'node:crypto';
 import {
   Controller,
-  Get,
-  Param,
   Delete,
-  HttpStatus,
+  Get,
   HttpCode,
+  HttpStatus,
+  Param,
   Post,
 } from '@nestjs/common';
-import { ClustersService } from './clusters.service.js';
 import {
   ApiNoContentResponse,
   ApiNotFoundResponse,
   ApiOkResponse,
   ApiTags,
 } from '@nestjs/swagger';
-import { GetClusterDto } from '../../../shared/src/index.js';
+import type { UUID } from 'node:crypto';
+import { ClustersService } from './clusters.service.js';
+import { GetClusterDto } from './dto/get-cluster.dto.js';
 
 @ApiTags('Clusters')
 @Controller('clusters')

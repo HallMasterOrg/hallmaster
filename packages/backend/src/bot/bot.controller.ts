@@ -1,14 +1,13 @@
 import {
-  Controller,
-  Get,
-  Post,
   Body,
-  Patch,
+  Controller,
   Delete,
+  Get,
   HttpCode,
   HttpStatus,
+  Patch,
+  Post,
 } from '@nestjs/common';
-import { BotService } from './bot.service.js';
 import {
   ApiAcceptedResponse,
   ApiConflictResponse,
@@ -18,11 +17,10 @@ import {
   ApiOkResponse,
   ApiTags,
 } from '@nestjs/swagger';
-import {
-  CreateBotDto,
-  UpdateBotDto,
-  GetBotDto,
-} from '../../../shared/src/index.js';
+import { BotService } from './bot.service.js';
+import { CreateBotDto } from './dto/create-bot.dto.js';
+import { GetBotDto } from './dto/get-bot.dto.js';
+import { UpdateBotDto } from './dto/update-bot.dto.js';
 
 @ApiTags('Bot')
 @Controller('bot')

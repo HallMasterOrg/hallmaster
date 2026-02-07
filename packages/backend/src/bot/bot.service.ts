@@ -1,24 +1,22 @@
-import path from 'node:path';
-import { tmpdir } from 'node:os';
-import { UUID } from 'node:crypto';
-import { mkdir, mkdtemp } from 'node:fs/promises';
-import { Extract } from 'unzipper';
 import {
   ConflictException,
   Injectable,
   NotFoundException,
   NotImplementedException,
 } from '@nestjs/common';
-import { MemoryStoredFile } from 'nestjs-form-data';
 import { ConfigService } from '@nestjs/config';
-import { Cluster, Prisma } from '../prisma/generated/client.js';
-import {
-  CreateBotDto,
-  UpdateBotDto,
-  GetBotDto,
-} from '../../../shared/src/index.js';
-import { PrismaService } from '../prisma/prisma.service.js';
+import { MemoryStoredFile } from 'nestjs-form-data';
+import { UUID } from 'node:crypto';
+import { mkdir, mkdtemp } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
+import { Extract } from 'unzipper';
 import { ClustersService } from '../clusters/clusters.service.js';
+import { Cluster, Prisma } from '../prisma/generated/client.js';
+import { PrismaService } from '../prisma/prisma.service.js';
+import { CreateBotDto } from './dto/create-bot.dto.js';
+import { GetBotDto } from './dto/get-bot.dto.js';
+import { UpdateBotDto } from './dto/update-bot.dto.js';
 
 @Injectable()
 export class BotService {
