@@ -1,5 +1,13 @@
-import { spawn } from 'node:child_process';
-import { BadRequestException, Injectable } from '@nestjs/common';
+import {
+  DockerContainersAPI,
+  DockerImagesAPI,
+  DockerSocket,
+} from '@hallmaster/docker.js';
+import {
+  BadRequestException,
+  Injectable,
+  InternalServerErrorException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { Bot, Cluster } from '../prisma/generated/client.js';
@@ -9,6 +17,7 @@ export class DockerService {
   constructor(
     private readonly configService: ConfigService,
     private readonly prismaService: PrismaService,
+    private readonly dockerSocket: DockerSocket,
   ) {}
 
   private async pullDockerImage(cluster: Cluster) {
@@ -16,83 +25,36 @@ export class DockerService {
       'DOCKER_REGISTRY_IMAGE',
     );
 
-    return new Promise<void>((resolve, reject) => {
-      const dockerPullProcess = spawn(`docker pull ${dockerRegistryImage}`, {
-        shell: true,
-        stdio: [null, 1, 2],
+    const dockerImagesAPI = new DockerImagesAPI(this.dockerSocket);
+
+    try {
+      await dockerImagesAPI.create({
+        fromImage: dockerRegistryImage,
+      });
+    } catch (e) {
+      await this.prismaService.cluster.updateMany({
+        where: {
+          id: cluster.id,
+        },
+        data: {
+          status: 'ERROR',
+        },
       });
 
-      dockerPullProcess.once('error', (err) => {
-        this.prismaService.cluster
-          .updateMany({
-            where: {
-              id: cluster.id,
-            },
-            data: {
-              status: 'ERROR',
-            },
-          })
-          .catch(console.error) // TODO: replace with the logger.
-          .finally(() => {
-            return reject(
-              new BadRequestException('Unable to pull the Docker image.', {
-                description: `An error occured while pulling the bot's Docker image from ${dockerRegistryImage}: ${err}`,
-                cause: err,
-              }),
-            );
-          });
+      throw new BadRequestException('Unable to pull the Docker image.', {
+        description: `An error occured while pulling the bot's Docker image from ${dockerRegistryImage}: ${e}`,
+        cause: e,
       });
-
-      dockerPullProcess.once('close', resolve);
-
-      dockerPullProcess.unref();
-    });
+    }
   }
 
-  private async stopDockerContainer(cluster: Cluster) {
-    return new Promise<void>((resolve, reject) => {
-      const dockerPullProcess = spawn(`docker stop ${cluster.containerId}`, {
-        shell: true,
-        stdio: [null, 1, 2],
-      });
-
-      dockerPullProcess.once('error', (err) => {
-        this.prismaService.cluster
-          .updateMany({
-            where: {
-              id: cluster.id,
-            },
-            data: {
-              status: 'ERROR',
-            },
-          })
-          .catch(console.error) // TODO: replace with the logger.
-          .finally(() => {
-            return reject(
-              new BadRequestException('Unable to stop the cluster', {
-                description: `An error occured while removing the Docker container: ${err}`,
-                cause: err,
-              }),
-            );
-          });
-      });
-
-      dockerPullProcess.once('close', resolve);
-
-      dockerPullProcess.unref();
-    });
-  }
-
-  private async getHandleId(
-    botId: string,
-    totalShards: number,
-    shardIds: number[],
-  ) {
+  async start(bot: Bot, cluster: Cluster) {
     const dockerRegistryImage = this.configService.getOrThrow<string>(
       'DOCKER_REGISTRY_IMAGE',
     );
     const discordBotToken =
       this.configService.getOrThrow<string>('DISCORD_BOT_TOKEN');
+
     const discordBotTokenEnvName = this.configService.getOrThrow<string>(
       'DISCORD_BOT_TOKEN_ENV_NAME',
     );
@@ -105,60 +67,6 @@ export class DockerService {
       'SHARD_ID_LIST_ENV_NAME',
     );
 
-    return new Promise<string>((resolve, reject) => {
-      const dockerRunProcess = spawn('docker', [
-        'run',
-        '--rm',
-        '-e',
-        `${discordBotTokenEnvName}=${discordBotToken}`,
-        '-e',
-        `${totalShardsEnvName}=${totalShards}`,
-        '-e',
-        `${shardIdListEnvName}=${shardIds.join(',')}`,
-        '-d',
-        dockerRegistryImage,
-      ]);
-
-      let containerId: string = '';
-
-      dockerRunProcess.stdout?.once('data', (chunk) => {
-        containerId += Buffer.from(chunk).toString('ascii');
-      });
-
-      dockerRunProcess.once('error', (err) => {
-        this.prismaService.cluster
-          .updateMany({
-            where: {
-              botId,
-            },
-            data: {
-              status: 'ERROR',
-            },
-          })
-          .catch(console.error) // TODO: replace with the logger.
-          .finally(() => {
-            return reject(
-              new BadRequestException('Unable to create the cluster', {
-                description: `An error occured while starting the Docker container project: ${err}`,
-                cause: err,
-              }),
-            );
-          });
-      });
-
-      dockerRunProcess.once('close', () => {
-        resolve(containerId);
-      });
-
-      dockerRunProcess.unref();
-    });
-  }
-
-  async start(bot: Bot, cluster: Cluster) {
-    if (null !== cluster.containerId) {
-      return;
-    }
-
     await this.prismaService.cluster.update({
       data: {
         status: 'STARTING',
@@ -168,23 +76,75 @@ export class DockerService {
       },
     });
 
-    await this.pullDockerImage(cluster);
+    const dockerContainersAPI = new DockerContainersAPI(this.dockerSocket);
+    let containerId: null | string = cluster.containerId;
 
-    const containerId = await this.getHandleId(
-      bot.id,
-      bot.shards,
-      cluster.shardIds,
-    );
+    if (null === containerId) {
+      await this.pullDockerImage(cluster);
+      try {
+        const container = await dockerContainersAPI.create({
+          Env: [
+            `${discordBotTokenEnvName}=${discordBotToken}`,
+            `${totalShardsEnvName}=${bot.shards}`,
+            `${shardIdListEnvName}=${cluster.shardIds.join(',')}`,
+          ],
+          Image: dockerRegistryImage,
+        });
 
-    await this.prismaService.cluster.update({
-      data: {
-        containerId: containerId,
-        status: 'RUNNING',
-      },
-      where: {
-        id: cluster.id,
-      },
-    });
+        containerId = container.Id;
+      } catch (e) {
+        await this.prismaService.cluster.update({
+          where: {
+            botId: bot.id,
+            id: cluster.id,
+          },
+          data: {
+            status: 'ERROR',
+          },
+        });
+
+        throw new BadRequestException('Unable to create the cluster', {
+          description: `An error occured while starting the Docker container project: ${e}`,
+          cause: e,
+        });
+      }
+    }
+
+    if (null === containerId) {
+      throw new InternalServerErrorException();
+    }
+
+    try {
+      await dockerContainersAPI.start(containerId);
+
+      await this.prismaService.cluster.update({
+        where: {
+          botId: bot.id,
+          id: cluster.id,
+        },
+        data: {
+          status: 'RUNNING',
+          containerId: containerId,
+        },
+      });
+
+      return containerId;
+    } catch (e) {
+      await this.prismaService.cluster.update({
+        where: {
+          botId: bot.id,
+          id: cluster.id,
+        },
+        data: {
+          status: 'ERROR',
+        },
+      });
+
+      throw new BadRequestException('Unable to create the cluster', {
+        description: `An error occured while starting the Docker container project: ${e}`,
+        cause: e,
+      });
+    }
   }
 
   async stop(_bot: Bot, cluster: Cluster) {
@@ -192,17 +152,38 @@ export class DockerService {
       return;
     }
 
-    await this.stopDockerContainer(cluster);
+    const dockerContainersAPI = new DockerContainersAPI(this.dockerSocket);
 
-    await this.prismaService.cluster.update({
-      data: {
-        containerId: null,
-        status: 'STOPPED',
-      },
-      where: {
-        id: cluster.id,
-      },
-    });
+    if (null === cluster.containerId) {
+      return;
+    }
+
+    try {
+      await dockerContainersAPI.stop(cluster.containerId);
+
+      await this.prismaService.cluster.update({
+        where: {
+          id: cluster.id,
+        },
+        data: {
+          status: 'STOPPED',
+        },
+      });
+    } catch (e) {
+      await this.prismaService.cluster.update({
+        where: {
+          id: cluster.id,
+        },
+        data: {
+          status: 'ERROR',
+        },
+      });
+
+      throw new BadRequestException('Unable to stop the cluster', {
+        description: `An error occured while removing the Docker container: ${e}`,
+        cause: e,
+      });
+    }
   }
 
   async restart(bot: Bot, cluster: Cluster): Promise<void> {

@@ -14,17 +14,19 @@ services:
       - hallmaster-network
 
   backend:
-    image: backend
+    image: hallmaster-backend
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: backend
+    container_name: hallmaster-backend
     ports:
       - "3000:3000"
     env_file:
       - .env
     networks:
       - hallmaster-network
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:rw
     restart: unless-stopped
 
 networks:
