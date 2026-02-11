@@ -82,14 +82,17 @@ export class DockerService {
     if (null === containerId) {
       await this.pullDockerImage(cluster);
       try {
-        const container = await dockerContainersAPI.create({
-          Env: [
-            `${discordBotTokenEnvName}=${discordBotToken}`,
-            `${totalShardsEnvName}=${bot.shards}`,
-            `${shardIdListEnvName}=${cluster.shardIds.join(',')}`,
-          ],
-          Image: dockerRegistryImage,
-        });
+        const container = await dockerContainersAPI.create(
+          {
+            Env: [
+              `${discordBotTokenEnvName}=${discordBotToken}`,
+              `${totalShardsEnvName}=${bot.shards}`,
+              `${shardIdListEnvName}=${cluster.shardIds.join(',')}`,
+            ],
+            Image: dockerRegistryImage,
+          },
+          `${bot.id}-${cluster.id}`,
+        );
 
         containerId = container.Id;
       } catch (e) {
