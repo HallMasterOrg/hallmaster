@@ -18,6 +18,7 @@ export class DockerService {
     private readonly configService: ConfigService,
     private readonly prismaService: PrismaService,
     private readonly dockerSocket: DockerSocket,
+    private readonly dockerToken?: string,
   ) {}
 
   private async pullDockerImage(cluster: Cluster) {
@@ -26,10 +27,15 @@ export class DockerService {
     );
 
     const dockerImagesAPI = new DockerImagesAPI(this.dockerSocket);
-
+    console.log(this.dockerToken);
     try {
       await dockerImagesAPI.create({
         fromImage: dockerRegistryImage,
+        auth: this.dockerToken
+          ? {
+              identitytoken: this.dockerToken,
+            }
+          : undefined,
       });
     } catch (e) {
       await this.prismaService.cluster.updateMany({
@@ -181,8 +187,35 @@ export class DockerService {
           status: 'ERROR',
         },
       });
-
+      console.error(e);
       throw new BadRequestException('Unable to stop the cluster', {
+        description: `An error occured while removing the Docker container: ${e}`,
+        cause: e,
+      });
+    }
+  }
+
+  async remove(bot: Bot, cluster: Cluster) {
+    if (null === cluster.containerId) {
+      return;
+    }
+
+    if (cluster.status !== 'STOPPED' && cluster.status != 'ERROR') {
+      await this.stop(bot, cluster);
+    }
+
+    const dockerContainersAPI = new DockerContainersAPI(this.dockerSocket);
+
+    try {
+      await dockerContainersAPI.remove(cluster.containerId);
+
+      await this.prismaService.cluster.delete({
+        where: {
+          id: cluster.id,
+        },
+      });
+    } catch (e) {
+      throw new BadRequestException('Unable to remove the cluster', {
         description: `An error occured while removing the Docker container: ${e}`,
         cause: e,
       });

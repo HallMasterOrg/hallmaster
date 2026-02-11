@@ -18,7 +18,28 @@ import { PrismaService } from '../prisma/prisma.service.js';
         const dockerSocket = new DockerSocket();
         await dockerSocket.init();
 
-        return new DockerService(configService, prismaService, dockerSocket);
+        const host = configService.get<string>('DOCKER_REGISTRY_HOST');
+        const username = configService.get<string>('DOCKER_REGISTRY_USERNAME');
+        const password = configService.get<string>('DOCKER_REGISTRY_PASSWORD');
+        let dockerToken: string | undefined = undefined;
+        if (
+          host !== undefined &&
+          username !== undefined &&
+          password !== undefined
+        ) {
+          dockerToken = await dockerSocket.authenticate({
+            serveraddress: host,
+            username: username,
+            password: password,
+          });
+        }
+
+        return new DockerService(
+          configService,
+          prismaService,
+          dockerSocket,
+          dockerToken,
+        );
       },
     },
   ],

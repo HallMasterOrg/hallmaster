@@ -211,7 +211,7 @@ export class BotService {
       const currentCluster = currentClusters[clusterIndex];
       if (currentCluster?.status !== 'STOPPED') {
         const cluster = newResource.clusters[clusterIndex];
-        await this.clustersService.start(newResource, cluster);
+        await this.clustersService.start(cluster.id as UUID);
       }
     }
 
@@ -253,7 +253,7 @@ export class BotService {
     }
 
     for (const cluster of deletedResource.clusters) {
-      await this.clustersService.stop(deletedResource, cluster);
+      await this.clustersService.stop(cluster.id as UUID);
     }
 
     return {

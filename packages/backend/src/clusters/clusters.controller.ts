@@ -68,7 +68,7 @@ export class ClustersController {
     description: 'The ID points to an unresolved cluster.',
   })
   async start(@Param('id') id: UUID) {
-    await this.clustersService.startById(id);
+    await this.clustersService.start(id);
   }
 
   @Post(':id/stop')
@@ -80,7 +80,7 @@ export class ClustersController {
     description: 'The ID points to an unresolved cluster.',
   })
   async stop(@Param('id') id: UUID) {
-    await this.clustersService.stopById(id);
+    await this.clustersService.stop(id);
   }
 
   @Post(':id/restart')
@@ -92,7 +92,7 @@ export class ClustersController {
     description: 'The ID points to an unresolved cluster.',
   })
   async restart(@Param('id') id: UUID) {
-    await this.clustersService.restartById(id);
+    await this.clustersService.restart(id);
   }
 
   @Get(':id/logs')
@@ -105,7 +105,7 @@ export class ClustersController {
     description: 'The ID points to an unresolved cluster.',
   })
   async getLogs(@Param('id') id: UUID, @Query() query: GetClusterLogsZodDto) {
-    return await this.clustersService.getLogs(
+    return await this.clustersService.logs(
       id,
       query.since ? new Date(query.since) : undefined,
       query.until ? new Date(query.until) : undefined,
