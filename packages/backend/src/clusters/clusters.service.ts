@@ -1,5 +1,9 @@
 import { UUID } from 'node:crypto';
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { Bot, Cluster, Prisma } from '../prisma/generated/client.js';
 import { DockerService } from '../docker/docker.service.js';
 import { PrismaService } from '../prisma/prisma.service.js';
@@ -160,5 +164,31 @@ export class ClustersService {
       shardIds: resource.shardIds,
       status: resource.status,
     });
+  }
+
+  async getLogs(id: UUID, since?: Date, until?: Date, tail?: number | 'all') {
+    const resource = await this.prismaService.cluster.findUnique({
+      select: {
+        containerId: true,
+      },
+      where: {
+        id,
+      },
+    });
+
+    if (null === resource) {
+      throw new NotFoundException();
+    }
+
+    if (null === resource.containerId) {
+      throw new BadRequestException('The cluster has no container ID.');
+    }
+
+    return await this.dockerService.getContainerLogs(
+      resource.containerId,
+      since,
+      until,
+      tail,
+    );
   }
 }

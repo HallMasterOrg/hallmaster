@@ -193,4 +193,26 @@ export class DockerService {
 
     await this.start(bot, cluster);
   }
+
+  async getContainerLogs(
+    containerId: string,
+    since?: Date,
+    until?: Date,
+    tail?: number | 'all',
+  ): Promise<string> {
+    const dockerContainersAPI = new DockerContainersAPI(this.dockerSocket);
+
+    const sinceTimestamp = since ? since.getTime() / 1000 : undefined;
+    const untilTimestamp = until ? until.getTime() / 1000 : undefined;
+
+    return await dockerContainersAPI.logs(containerId, {
+      stdout: true,
+      stderr: true,
+      timestamps: true,
+      follow: false,
+      since: sinceTimestamp,
+      until: untilTimestamp,
+      tail: tail,
+    });
+  }
 }

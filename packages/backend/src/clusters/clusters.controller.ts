@@ -6,16 +6,19 @@ import {
   HttpStatus,
   Param,
   Post,
+  Query,
 } from '@nestjs/common';
 import {
   ApiNoContentResponse,
   ApiNotFoundResponse,
   ApiOkResponse,
+  ApiProduces,
   ApiTags,
 } from '@nestjs/swagger';
 import type { UUID } from 'node:crypto';
 import { ClustersService } from './clusters.service.js';
 import { GetClusterZodDto } from './dto/get-cluster.dto.js';
+import { GetClusterLogsZodDto } from './dto/get-cluster-logs.dto.js';
 
 @ApiTags('Clusters')
 @Controller('clusters')
@@ -90,5 +93,23 @@ export class ClustersController {
   })
   async restart(@Param('id') id: UUID) {
     await this.clustersService.restartById(id);
+  }
+
+  @Get(':id/logs')
+  @ApiProduces('text/plain')
+  @ApiOkResponse({
+    type: String,
+    description: 'The logs of the cluster.',
+  })
+  @ApiNotFoundResponse({
+    description: 'The ID points to an unresolved cluster.',
+  })
+  async getLogs(@Param('id') id: UUID, @Query() query: GetClusterLogsZodDto) {
+    return await this.clustersService.getLogs(
+      id,
+      query.since ? new Date(query.since) : undefined,
+      query.until ? new Date(query.until) : undefined,
+      query.tail,
+    );
   }
 }
