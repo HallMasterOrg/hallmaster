@@ -128,4 +128,14 @@ export class ClustersService {
       tail,
     );
   }
+
+  async stats(id: UUID) {
+    const resource = await this.getFullResource(id);
+
+    if (null === resource.containerId) {
+      throw new BadRequestException('The cluster has no container ID.');
+    }
+
+    return await this.dockerService.getContainerStats(resource.containerId);
+  }
 }

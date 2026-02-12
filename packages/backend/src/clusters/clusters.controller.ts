@@ -19,6 +19,7 @@ import type { UUID } from 'node:crypto';
 import { ClustersService } from './clusters.service.js';
 import { GetClusterZodDto } from './dto/get-cluster.dto.js';
 import { GetClusterLogsZodDto } from './dto/get-cluster-logs.dto.js';
+import { GetClusterStatsZodDto } from './dto/get-cluster-stats.dto.js';
 
 @ApiTags('Clusters')
 @Controller('clusters')
@@ -111,5 +112,17 @@ export class ClustersController {
       query.until ? new Date(query.until) : undefined,
       query.tail,
     );
+  }
+
+  @Get(':id/stats')
+  @ApiOkResponse({
+    type: GetClusterStatsZodDto,
+    description: 'The logs of the cluster.',
+  })
+  @ApiNotFoundResponse({
+    description: 'The ID points to an unresolved cluster.',
+  })
+  async getStats(@Param('id') id: UUID) {
+    return await this.clustersService.stats(id);
   }
 }

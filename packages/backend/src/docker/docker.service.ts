@@ -11,6 +11,7 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { Bot, Cluster } from '../prisma/generated/client.js';
+import { GetClusterStatsZodDto } from '../clusters/dto/get-cluster-stats.dto.js';
 
 @Injectable()
 export class DockerService {
@@ -250,5 +251,66 @@ export class DockerService {
       until: untilTimestamp,
       tail: tail,
     });
+  }
+
+  async getContainerStats(id: string): Promise<GetClusterStatsZodDto> {
+    const dockerContainersAPI = new DockerContainersAPI(this.dockerSocket);
+
+    const stats = await dockerContainersAPI.stats(id, {
+      oneShot: false,
+      stream: false,
+    });
+
+    const cpuDelta =
+      stats.cpu_stats.cpu_usage.total_usage -
+      stats.precpu_stats.cpu_usage.total_usage;
+    const systemDelta =
+      stats.cpu_stats.system_cpu_usage - stats.precpu_stats.system_cpu_usage;
+    const cpuPercentage =
+      (cpuDelta / systemDelta) *
+      (stats.cpu_stats.online_cpus ?? stats.precpu_stats.cpu_usage) *
+      100;
+
+    const processesUsage = stats.pids_stats.current;
+    const processesPercentage = (processesUsage / stats.pids_stats.limit) * 100;
+
+    const memoryUsage =
+      stats.memory_stats.usage -
+      stats.memory_stats.stats.inactive_file -
+      stats.memory_stats.stats.slab_reclaimable;
+
+    const memoryPercentage = (memoryUsage / stats.memory_stats.limit) * 100;
+
+    const diskRead = stats.blkio_stats.io_service_bytes_recursive
+      ?.filter((service) => service.op === 'read')
+      ?.reduce((acc, cur) => acc + cur.value, 0);
+    const diskWrite = stats.blkio_stats.io_service_bytes_recursive
+      ?.filter((service) => service.op === 'write')
+      ?.reduce((acc, cur) => acc + cur.value, 0);
+
+    const networks = Object.entries(stats.networks).map(
+      ([interfaceName, data]) => ({
+        interface: interfaceName,
+        transmitted: data.tx_bytes,
+        received: data.rx_bytes,
+      }),
+    );
+
+    return {
+      cpuPercentage: cpuPercentage,
+      processes: {
+        usage: processesUsage,
+        percentage: processesPercentage,
+      },
+      memory: {
+        usage: memoryUsage,
+        percentage: memoryPercentage,
+      },
+      disk: {
+        read: diskRead ?? null,
+        write: diskWrite ?? null,
+      },
+      networks: networks,
+    };
   }
 }
