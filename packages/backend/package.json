@@ -25,7 +25,7 @@
     "test:debug": "NODE_OPTIONS=--experimental-vm-modules node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
     "prisma:reset": "dotenv -e .env.development.local -- prisma migrate reset",
     "prisma:migrate": "dotenv -e .env.development.local -- prisma migrate dev",
-    "prisma:generate": "dotenv -e .env.development.local -- prisma generate",
+    "prisma:generate": "DATABASE_URL=postgres://null:null@null:5432/null prisma generate",
     "prisma:deploy": "dotenv -e .env.development.local -- prisma migrate deploy",
     "prisma:studio": "dotenv -e .env.development.local -- prisma studio"
   },
