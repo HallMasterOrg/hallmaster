@@ -31,7 +31,7 @@
   },
   "dependencies": {
     "@fastify/compress": "^8.3.1",
-    "@hallmaster/docker.js": "^0.0.15",
+    "@hallmaster/docker.js": "^0.0.17",
     "@nestjs/common": "^11.1.13",
     "@nestjs/config": "^4.0.3",
     "@nestjs/core": "^11.1.13",
@@ -39,7 +39,7 @@
     "@nestjs/swagger": "^11.2.6",
     "@prisma/adapter-pg": "^7.4.0",
     "@prisma/client": "^7.4.0",
-    "dotenv": "^17.2.4",
+    "dotenv": "^17.3.1",
     "fastify": "5.6.1",
     "nest-winston": "^1.10.2",
     "nestjs-zod": "^5.1.1",
