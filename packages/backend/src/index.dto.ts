@@ -13,7 +13,9 @@ export {
   type GetClusterDto,
 } from './clusters/dto/get-cluster.dto.js';
 export {
+  GetClusterLogsQuerySchema,
   GetClusterLogsSchema,
+  type GetClusterLogsQueryDto,
   type GetClusterLogsDto,
 } from './clusters/dto/get-cluster-logs.dto.js';
 export {

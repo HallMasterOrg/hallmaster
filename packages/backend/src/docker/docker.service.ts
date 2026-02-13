@@ -246,7 +246,7 @@ export class DockerService {
     since?: Date,
     until?: Date,
     tail?: number | 'all',
-  ): Promise<string> {
+  ) {
     const dockerContainersAPI = new DockerContainersAPI(this.dockerSocket);
 
     const sinceTimestamp = since ? since.getTime() / 1000 : undefined;
