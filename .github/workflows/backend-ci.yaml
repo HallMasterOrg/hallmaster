@@ -1,0 +1,105 @@
+name: Backend CI
+
+on:
+  push:
+    branches:
+      - dev
+    paths:
+      - "packages/backend/**"
+  pull_request:
+    paths:
+      - "packages/backend/**"
+
+concurrency:
+  group: docker-build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check-lint-and-format:
+    name: Check lint and format
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: 24
+
+      - name: Install dependencies
+        working-directory: ./packages/backend
+        run: pnpm install --frozen-lockfile
+
+      - name: Run lint
+        working-directory: ./packages/backend
+        run: pnpm run lint
+
+      - name: Run format check
+        working-directory: ./packages/backend
+        run: pnpm run format:check
+
+  build-and-push:
+    name: Build and Push Images
+    runs-on: ubuntu-latest
+
+    if: github.event_name == 'push'
+
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Install trusted certificat
+        run: |
+          sudo mkdir -p /usr/local/share/ca-certificates/
+
+          echo "${{ secrets.REGISTRY_CA_CERT }}" > public-key.crt
+          sudo cp public-key.crt /usr/local/share/ca-certificates/ca.crt
+          sudo update-ca-certificates
+
+          # Install into Docker trust directory
+          sudo mkdir -p /etc/docker/certs.d/${{ secrets.REGISTRY_HOST }}
+          sudo cp public-key.crt /etc/docker/certs.d/${{ secrets.REGISTRY_HOST }}/ca.crt
+
+      - name: Log in to private Docker image registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ secrets.REGISTRY_HOST }}
+          username: ${{ secrets.REGISTRY_USERNAME }}
+          password: ${{ secrets.REGISTRY_PASSWORD }}
+
+      - name: Extract Docker metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ secrets.REGISTRY_HOST }}/hallmaster/backend
+          tags: |
+            type=raw,value=latest,enable=${{ github.ref == format('refs/heads/{0}', github.event.repository.default_branch) }}
+            type=sha,format=short
+
+      - name: Build and push image (backend)
+        uses: docker/build-push-action@v5
+        with:
+          context: ./packages/backend
+          file: ./packages/backend/Dockerfile
+          push: true
+          platforms: linux/amd64,linux/arm64
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Deploy backend via HTTP
+        run: |
+          curl --insecure -X POST "http://${{ secrets.REGISTRY_HOST }}:9090/deploy" \
+              -H "Authorization: Bearer ${{ secrets.REGISTRY_USERNAME }}:${{ secrets.REGISTRY_PASSWORD }}" \
+              --data '' -iL
