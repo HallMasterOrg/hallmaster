@@ -49,10 +49,10 @@ export class BotService {
 
     let clusterIndex = 0;
     for (let i = 0; i < shards; ++i) {
-      newClusters[clusterIndex].push(i);
       if (i % shardsPerCluster === 0 && i > 0) {
         ++clusterIndex;
       }
+      newClusters[clusterIndex].push(i);
     }
 
     return newClusters;
@@ -147,6 +147,10 @@ export class BotService {
       },
     });
 
+    for (const cluster of currentClusters) {
+      await this.clustersService.remove(cluster.id as UUID);
+    }
+
     const clusterNumber =
       updateBotDto.clusters ?? currentResource.clusterNumber;
 
@@ -163,7 +167,7 @@ export class BotService {
       shardsPerCluster,
     );
 
-    await this.prismaService.bot.update({
+    const newResource = await this.prismaService.bot.update({
       data: {
         clusterNumber: clusterNumber,
         shards: shards,
@@ -187,22 +191,6 @@ export class BotService {
       },
     });
 
-    for (const cluster of currentClusters) {
-      await this.clustersService.remove(cluster.id as UUID);
-    }
-
-    const newResource = await this.prismaService.bot.findUniqueOrThrow({
-      where: {
-        id: botId,
-      },
-      select: {
-        id: true,
-        shards: true,
-        clusterNumber: true,
-        clusters: true,
-      },
-    });
-
     for (
       let clusterIndex = 0;
       clusterIndex < newResource.clusters.length;
@@ -211,7 +199,7 @@ export class BotService {
       const currentCluster = currentClusters[clusterIndex];
       if (currentCluster?.status !== 'STOPPED') {
         const cluster = newResource.clusters[clusterIndex];
-        await this.clustersService.start(newResource, cluster);
+        await this.clustersService.start(cluster.id as UUID);
       }
     }
 
@@ -253,7 +241,7 @@ export class BotService {
     }
 
     for (const cluster of deletedResource.clusters) {
-      await this.clustersService.stop(deletedResource, cluster);
+      await this.clustersService.stopByCluster(cluster);
     }
 
     return {

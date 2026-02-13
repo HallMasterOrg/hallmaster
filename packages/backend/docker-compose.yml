@@ -1,11 +1,11 @@
 services:
-  postgres:
+  hallmaster-postgres:
     image: postgres:16.8-alpine3.20
     container_name: hallmaster-postgres
     shm_size: 128mb
     restart: unless-stopped
     env_file:
-      - .env
+      - .env.production.local
     volumes:
       - hallmaster-database:/var/lib/postgresql/data:rw
     ports:
@@ -13,18 +13,22 @@ services:
     networks:
       - hallmaster-network
 
-  backend:
-    image: backend
+  hallmaster-backend:
+    depends_on:
+      - hallmaster-postgres
+    image: hallmaster-backend
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: backend
+    container_name: hallmaster-backend
     ports:
       - "3000:3000"
     env_file:
-      - .env
+      - .env.production.local
     networks:
       - hallmaster-network
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:rw
     restart: unless-stopped
 
 networks:
