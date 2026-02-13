@@ -1,8 +1,12 @@
 import { UUID } from 'node:crypto';
-import { Injectable, NotFoundException } from '@nestjs/common';
-import { Bot, Cluster, Prisma } from '../prisma/generated/client.js';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { DockerService } from '../docker/docker.service.js';
 import { PrismaService } from '../prisma/prisma.service.js';
+import { Cluster } from '../prisma/generated/client.js';
 
 @Injectable()
 export class ClustersService {
@@ -10,6 +14,27 @@ export class ClustersService {
     private readonly prismaService: PrismaService,
     private readonly dockerService: DockerService,
   ) {}
+
+  private async getFullResource(id: UUID) {
+    const resource = await this.prismaService.cluster.findUnique({
+      select: {
+        bot: true,
+        containerId: true,
+        id: true,
+        shardIds: true,
+        status: true,
+      },
+      where: {
+        id,
+      },
+    });
+
+    if (null === resource) {
+      throw new NotFoundException();
+    }
+
+    return resource;
+  }
 
   async findAll() {
     const resources = await this.prismaService.cluster.findMany({
@@ -43,63 +68,9 @@ export class ClustersService {
   }
 
   async remove(id: UUID) {
-    await this.stopById(id);
+    const resource = await this.getFullResource(id);
 
-    try {
-      const removedResource = await this.prismaService.cluster.delete({
-        select: {
-          id: true,
-          shardIds: true,
-          status: true,
-        },
-        where: {
-          id,
-        },
-      });
-
-      return removedResource;
-    } catch (e) {
-      if (
-        e instanceof Prisma.PrismaClientKnownRequestError &&
-        'P2025' == e.code
-      ) {
-        throw new NotFoundException();
-      }
-      throw e;
-    }
-  }
-
-  async start(bot: Bot, cluster: Cluster) {
-    await this.dockerService.start(bot, cluster);
-  }
-
-  async stop(bot: Bot, cluster: Cluster) {
-    await this.dockerService.stop(bot, cluster);
-  }
-
-  async restart(bot: Bot, cluster: Cluster) {
-    await this.dockerService.restart(bot, cluster);
-  }
-
-  async startById(id: UUID) {
-    const resource = await this.prismaService.cluster.findUnique({
-      select: {
-        bot: true,
-        containerId: true,
-        id: true,
-        shardIds: true,
-        status: true,
-      },
-      where: {
-        id,
-      },
-    });
-
-    if (null === resource) {
-      throw new NotFoundException();
-    }
-
-    await this.start(resource.bot, {
+    await this.dockerService.remove({
       id: resource.id,
       containerId: resource.containerId,
       botId: resource.bot.id,
@@ -108,25 +79,10 @@ export class ClustersService {
     });
   }
 
-  async stopById(id: UUID) {
-    const resource = await this.prismaService.cluster.findUnique({
-      select: {
-        bot: true,
-        containerId: true,
-        id: true,
-        shardIds: true,
-        status: true,
-      },
-      where: {
-        id,
-      },
-    });
+  async start(id: UUID) {
+    const resource = await this.getFullResource(id);
 
-    if (null === resource) {
-      throw new NotFoundException();
-    }
-
-    await this.stop(resource.bot, {
+    await this.dockerService.start(resource.bot, {
       id: resource.id,
       containerId: resource.containerId,
       botId: resource.bot.id,
@@ -135,30 +91,56 @@ export class ClustersService {
     });
   }
 
-  async restartById(id: UUID) {
-    const resource = await this.prismaService.cluster.findUnique({
-      select: {
-        bot: true,
-        containerId: true,
-        id: true,
-        shardIds: true,
-        status: true,
-      },
-      where: {
-        id,
-      },
-    });
+  async stop(id: UUID) {
+    const resource = await this.getFullResource(id);
 
-    if (null === resource) {
-      throw new NotFoundException();
-    }
-
-    await this.restart(resource.bot, {
+    await this.dockerService.stop({
       id: resource.id,
       containerId: resource.containerId,
       botId: resource.bot.id,
       shardIds: resource.shardIds,
       status: resource.status,
     });
+  }
+
+  async stopByCluster(cluster: Cluster) {
+    await this.dockerService.stop(cluster);
+  }
+
+  async restart(id: UUID) {
+    const resource = await this.getFullResource(id);
+
+    await this.dockerService.restart(resource.bot, {
+      id: resource.id,
+      containerId: resource.containerId,
+      botId: resource.bot.id,
+      shardIds: resource.shardIds,
+      status: resource.status,
+    });
+  }
+
+  async logs(id: UUID, since?: Date, until?: Date, tail?: number | 'all') {
+    const resource = await this.getFullResource(id);
+
+    if (null === resource.containerId) {
+      throw new BadRequestException('The cluster has no container ID.');
+    }
+
+    return await this.dockerService.getContainerLogs(
+      resource.containerId,
+      since,
+      until,
+      tail,
+    );
+  }
+
+  async stats(id: UUID) {
+    const resource = await this.getFullResource(id);
+
+    if (null === resource.containerId) {
+      throw new BadRequestException('The cluster has no container ID.');
+    }
+
+    return await this.dockerService.getContainerStats(resource.containerId);
   }
 }
