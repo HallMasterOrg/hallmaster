@@ -13,7 +13,7 @@ const GetClusterStatsProcessesUsageSchema = z.object({
 
 const GetClusterStatsMemoryUsageSchema = z.object({
   usage: z.number().meta({
-    description: 'The number of bytes read from disk.',
+    description: 'The number of bytes used in memory.',
   }),
   percentage: z.number().meta({
     description: 'The percentage of the available memory used by the cluster.',

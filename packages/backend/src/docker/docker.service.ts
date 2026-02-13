@@ -49,13 +49,16 @@ export class DockerService {
       });
 
       throw new BadRequestException('Unable to pull the Docker image.', {
-        description: `An error occured while pulling the bot's Docker image from ${dockerRegistryImage}: ${e}`,
+        description: `An error occurred while pulling the bot's Docker image from ${dockerRegistryImage}: ${e}`,
         cause: e,
       });
     }
   }
 
   async start(bot: Bot, cluster: Cluster) {
+    if (cluster.status === 'RUNNING') {
+      return;
+    }
     const dockerRegistryImage = this.configService.getOrThrow<string>(
       'DOCKER_REGISTRY_IMAGE',
     );
@@ -102,6 +105,17 @@ export class DockerService {
         );
 
         containerId = container.Id;
+
+        await this.prismaService.cluster.update({
+          where: {
+            botId: bot.id,
+            id: cluster.id,
+          },
+          data: {
+            status: 'STOPPED',
+            containerId: containerId,
+          },
+        });
       } catch (e) {
         await this.prismaService.cluster.update({
           where: {
@@ -114,7 +128,7 @@ export class DockerService {
         });
 
         throw new BadRequestException('Unable to create the cluster', {
-          description: `An error occured while starting the Docker container project: ${e}`,
+          description: `An error occurred while starting the Docker container project: ${e}`,
           cause: e,
         });
       }
@@ -151,13 +165,13 @@ export class DockerService {
       });
 
       throw new BadRequestException('Unable to create the cluster', {
-        description: `An error occured while starting the Docker container project: ${e}`,
+        description: `An error occurred while starting the Docker container project: ${e}`,
         cause: e,
       });
     }
   }
 
-  async stop(_bot: Bot, cluster: Cluster) {
+  async stop(cluster: Cluster) {
     if (null === cluster.containerId) {
       return;
     }
@@ -186,19 +200,19 @@ export class DockerService {
       });
       console.error(e);
       throw new BadRequestException('Unable to stop the cluster', {
-        description: `An error occured while removing the Docker container: ${e}`,
+        description: `An error occurred while removing the Docker container: ${e}`,
         cause: e,
       });
     }
   }
 
-  async remove(bot: Bot, cluster: Cluster) {
+  async remove(cluster: Cluster) {
     if (null === cluster.containerId) {
       return;
     }
 
     if (cluster.status !== 'STOPPED' && cluster.status !== 'ERROR') {
-      await this.stop(bot, cluster);
+      await this.stop(cluster);
     }
 
     const dockerContainersAPI = new DockerContainersAPI(this.dockerSocket);
@@ -213,7 +227,7 @@ export class DockerService {
       });
     } catch (e) {
       throw new BadRequestException('Unable to remove the cluster', {
-        description: `An error occured while removing the Docker container: ${e}`,
+        description: `An error occurred while removing the Docker container: ${e}`,
         cause: e,
       });
     }
@@ -221,7 +235,7 @@ export class DockerService {
 
   async restart(bot: Bot, cluster: Cluster): Promise<void> {
     if (cluster.status === 'RUNNING') {
-      await this.stop(bot, cluster);
+      await this.stop(cluster);
     }
 
     await this.start(bot, cluster);

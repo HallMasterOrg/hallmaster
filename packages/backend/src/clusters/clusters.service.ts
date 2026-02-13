@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { DockerService } from '../docker/docker.service.js';
 import { PrismaService } from '../prisma/prisma.service.js';
+import { Cluster } from '../prisma/generated/client.js';
 
 @Injectable()
 export class ClustersService {
@@ -69,7 +70,7 @@ export class ClustersService {
   async remove(id: UUID) {
     const resource = await this.getFullResource(id);
 
-    await this.dockerService.remove(resource.bot, {
+    await this.dockerService.remove({
       id: resource.id,
       containerId: resource.containerId,
       botId: resource.bot.id,
@@ -93,13 +94,17 @@ export class ClustersService {
   async stop(id: UUID) {
     const resource = await this.getFullResource(id);
 
-    await this.dockerService.stop(resource.bot, {
+    await this.dockerService.stop({
       id: resource.id,
       containerId: resource.containerId,
       botId: resource.bot.id,
       shardIds: resource.shardIds,
       status: resource.status,
     });
+  }
+
+  async stopByCluster(cluster: Cluster) {
+    await this.dockerService.stop(cluster);
   }
 
   async restart(id: UUID) {
