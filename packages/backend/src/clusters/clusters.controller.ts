@@ -117,7 +117,7 @@ export class ClustersController {
   @Get(':id/stats')
   @ApiOkResponse({
     type: GetClusterStatsZodDto,
-    description: 'The logs of the cluster.',
+    description: 'The stats of the cluster.',
   })
   @ApiNotFoundResponse({
     description: 'The ID points to an unresolved cluster.',

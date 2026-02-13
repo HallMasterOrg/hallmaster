@@ -28,7 +28,7 @@ export class DockerService {
     );
 
     const dockerImagesAPI = new DockerImagesAPI(this.dockerSocket);
-    console.log(this.dockerToken);
+
     try {
       await dockerImagesAPI.create({
         fromImage: dockerRegistryImage,
@@ -164,10 +164,6 @@ export class DockerService {
 
     const dockerContainersAPI = new DockerContainersAPI(this.dockerSocket);
 
-    if (null === cluster.containerId) {
-      return;
-    }
-
     try {
       await dockerContainersAPI.stop(cluster.containerId);
 
@@ -201,7 +197,7 @@ export class DockerService {
       return;
     }
 
-    if (cluster.status !== 'STOPPED' && cluster.status != 'ERROR') {
+    if (cluster.status !== 'STOPPED' && cluster.status !== 'ERROR') {
       await this.stop(bot, cluster);
     }
 
@@ -264,12 +260,17 @@ export class DockerService {
     const cpuDelta =
       stats.cpu_stats.cpu_usage.total_usage -
       stats.precpu_stats.cpu_usage.total_usage;
+
     const systemDelta =
       stats.cpu_stats.system_cpu_usage - stats.precpu_stats.system_cpu_usage;
+
+    const onlineCPUs =
+      stats.cpu_stats.online_cpus ??
+      stats.cpu_stats.cpu_usage.percpu_usage?.length ??
+      1;
+
     const cpuPercentage =
-      (cpuDelta / systemDelta) *
-      (stats.cpu_stats.online_cpus ?? stats.precpu_stats.cpu_usage) *
-      100;
+      systemDelta > 0 ? (cpuDelta / systemDelta) * onlineCPUs * 100 : 0;
 
     const processesUsage = stats.pids_stats.current;
     const processesPercentage = (processesUsage / stats.pids_stats.limit) * 100;
