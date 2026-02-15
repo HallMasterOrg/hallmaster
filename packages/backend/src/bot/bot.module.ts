@@ -4,9 +4,10 @@ import { BotController } from './bot.controller.js';
 import { PrismaModule } from '../prisma/prisma.module.js';
 import { ConfigModule } from '@nestjs/config';
 import { ClustersModule } from '../clusters/clusters.module.js';
+import { AuthModule } from '../auth/auth.module.js';
 
 @Module({
-  imports: [PrismaModule, ConfigModule, ClustersModule],
+  imports: [AuthModule, PrismaModule, ConfigModule, ClustersModule],
   controllers: [BotController],
   providers: [BotService],
 })

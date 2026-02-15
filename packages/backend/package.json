@@ -35,10 +35,12 @@
     "@nestjs/common": "^11.1.13",
     "@nestjs/config": "^4.0.3",
     "@nestjs/core": "^11.1.13",
+    "@nestjs/jwt": "^11.0.2",
     "@nestjs/platform-fastify": "^11.1.13",
     "@nestjs/swagger": "^11.2.6",
     "@prisma/adapter-pg": "^7.4.0",
     "@prisma/client": "^7.4.0",
+    "argon2": "^0.44.0",
     "dotenv": "^17.3.1",
     "fastify": "5.6.1",
     "nest-winston": "^1.10.2",
@@ -85,6 +87,15 @@
   "pnpm": {
     "overrides": {
       "fastify": "5.6.1"
-    }
+    },
+    "onlyBuiltDependencies": [
+      "@nestjs/core",
+      "@prisma/client",
+      "@prisma/engines",
+      "@scarf/scarf",
+      "@swc/core",
+      "argon2",
+      "prisma"
+    ]
   }
 }
