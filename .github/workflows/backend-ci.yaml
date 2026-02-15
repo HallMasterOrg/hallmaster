@@ -47,6 +47,10 @@ jobs:
         working-directory: ./packages/backend
         run: pnpm run format
 
+      - name: Test the build process
+        working-directory: ./packages/backend
+        run: pnpm build
+
   build-and-push:
     name: Build and Push Images
     runs-on: ubuntu-latest
