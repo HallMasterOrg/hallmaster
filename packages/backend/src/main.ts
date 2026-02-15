@@ -23,6 +23,7 @@ const getSwaggerDocumentConfig = (): Omit<OpenAPIObject, 'paths'> =>
     .setDescription(
       'This document indexes all the available routes, along with their params, queries, payloads and responses.',
     )
+    .addTag('Authentication', 'All the endpoints used to authenticate a user.')
     .addTag(
       'Bot',
       "All the endpoints used to manage the bot's configuration (shards, clusters, ...)",
@@ -30,6 +31,14 @@ const getSwaggerDocumentConfig = (): Omit<OpenAPIObject, 'paths'> =>
     .addTag(
       'Clusters',
       'All the endpoints to manage the clusters themselves (start, stop, restart, ...)',
+    )
+    .addBearerAuth(
+      {
+        type: 'http',
+        description: "A JWT returned by the 'login' auth endpoint.",
+        name: 'bearer',
+      },
+      'jwt',
     )
     .setVersion('1.0')
     .build();
