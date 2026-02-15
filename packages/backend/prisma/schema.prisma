@@ -8,6 +8,11 @@ datasource db {
     provider = "postgresql"
 }
 
+model User {
+    username String @unique
+    password String
+}
+
 model Bot {
     id            String     @id
     clusterNumber Int
@@ -25,12 +30,8 @@ enum ClusterStatus {
 model Cluster {
     id    String @id @default(uuid())
     botId String
-
     containerId String?
-
     status ClusterStatus
-
     shardIds Int[]
-
     bot Bot @relation(fields: [botId], references: [id], onDelete: Cascade)
 }
