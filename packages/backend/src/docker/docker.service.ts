@@ -11,8 +11,8 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service.js';
-import { Bot, Cluster } from '../prisma/generated/client.js';
 import { GetClusterStatsZodDto } from '../clusters/dto/get-cluster-stats.dto.js';
+import type { Bot, Cluster } from '@hallmaster/prisma-client';
 
 @Injectable()
 export class DockerService {

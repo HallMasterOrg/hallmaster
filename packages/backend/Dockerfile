@@ -8,39 +8,54 @@ ENV PNPM_HOME="/pnpm"
 ENV PATH="$PNPM_HOME:$PATH"
 RUN corepack enable
 
-COPY ./package.json ./pnpm-lock.yaml ./pnpm-workspace.yaml ./
+COPY package.json \
+    pnpm-lock.yaml \
+    pnpm-workspace.yaml \
+    ./
 
-RUN pnpm install --frozen-lockfile
+# Install packages for Prisma
+COPY packages/prisma-client/package.json \
+    packages/prisma-client/
+RUN pnpm fetch --filter=@hallmaster/prisma-client
+RUN pnpm install --offline --frozen-lockfile
 
-COPY ./tsconfig.build.json ./tsconfig.json ./nest-cli.json ./
+# Install packages for the backend
+COPY packages/backend/package.json packages/backend/
+RUN pnpm fetch --filter=@hallmaster/backend
+RUN pnpm install --offline --frozen-lockfile
 
-COPY ./prisma/ ./prisma/
+# Build Prisma types
+COPY packages/backend/prisma/ packages/backend/prisma/
+COPY packages/backend/prisma.config.ts packages/backend/
+RUN pnpm --filter=@hallmaster/backend prisma:generate
 
-COPY ./src/ ./src/
+# Build NestJS application
+COPY packages/backend/tsconfig.build.json \
+    packages/backend/tsconfig.json \
+    packages/backend/nest-cli.json \
+    packages/backend/
+COPY packages/backend/src/ packages/backend/src/
+RUN pnpm --filter=@hallmaster/backend build
 
-RUN pnpm prisma:generate
+# Cleanup the application
+RUN rm -rf packages/backend/src \
+    packages/backend/tsconfig.json \
+    packages/backend/tsconfig.build.json \
+    packages/backend/nest-cli.json
 
-RUN pnpm build
-
-RUN rm -rf src tsconfig.json tsconfig.build.json nest-cli.json
-
+# Create the application package
 RUN pnpm deploy --filter=@hallmaster/backend --prod --legacy /prod-app
-
-RUN wget https://gobinaries.com/tj/node-prune --output-document - | /bin/sh && \
-    node-prune /prod-app/node_modules
 
 FROM node:24.13.0-alpine3.23 AS server
 
+COPY --from=build /prod-app /app
+
 WORKDIR /app
-
-RUN corepack enable
-
-COPY --from=build /prod-app .
-
-COPY ./prisma.config.ts ./
 
 ENV NODE_ENV=production
 
 EXPOSE 3000
+
+RUN corepack enable
 
 ENTRYPOINT [ "pnpm", "start:prod" ]

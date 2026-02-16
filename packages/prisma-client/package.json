@@ -1,0 +1,21 @@
+{
+  "name": "@hallmaster/prisma-client",
+  "version": "0.0.1",
+  "type": "module",
+  "main": "./generated/client.js",
+  "types": "./generated/client.d.ts",
+  "private": false,
+  "exports": {
+    ".": {
+      "types": "./generated/client.d.ts",
+      "import": "./generated/client.js"
+    }
+  },
+  "files": [
+    "generated",
+    "package.json"
+  ],
+  "dependencies": {
+    "@prisma/client-runtime-utils": "^7.4.0"
+  }
+}
