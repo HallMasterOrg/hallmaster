@@ -1,10 +1,10 @@
 import z from 'zod';
 
 export const loginSchema = z.object({
-  username: z.string().meta({
+  username: z.string().min(1).meta({
     description: "The user's username.",
   }),
-  password: z.string().meta({
+  password: z.string().min(8).meta({
     description: "The user's password.",
   }),
 });

@@ -16,7 +16,6 @@ import { AuthModule } from './auth/auth.module.js';
     ClustersModule,
     DockerModule,
     AuthModule,
-    // PrismaModule,
   ],
 })
 export class AppModule {}
