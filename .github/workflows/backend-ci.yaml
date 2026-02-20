@@ -109,7 +109,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5.10.0
         with:
-          images: ${{ secrets.REGISTRY_HOST }}/hallmaster/backend:latest
+          images: ${{ secrets.REGISTRY_HOST }}/hallmaster/backend
           tags: |
             type=raw,value=latest,enable=${{ github.ref == 'refs/heads/dev' }}
             type=sha,format=short
