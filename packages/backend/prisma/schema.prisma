@@ -24,6 +24,7 @@ enum ClusterStatus {
     STARTING
     RUNNING
     STOPPED
+    UPDATING
     ERROR
 }
 
