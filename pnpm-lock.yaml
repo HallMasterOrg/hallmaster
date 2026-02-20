@@ -14,8 +14,8 @@ importers:
         specifier: 8.3.1
         version: 8.3.1
       '@hallmaster/docker.js':
-        specifier: 0.0.20
-        version: 0.0.20
+        specifier: 0.0.21
+        version: 0.0.21
       '@hallmaster/prisma-client':
         specifier: workspace:*
         version: link:../prisma-client
@@ -772,8 +772,8 @@ packages:
   '@floating-ui/utils@0.2.10':
     resolution: {integrity: sha512-aGTxbpbg8/b5JfU1HXSrbH3wXZuLPJcNEcZQFMxLs3oSzgtVu6nFPkbbGGUvBcUjKV2YyB9Wxxabo+HEH9tcRQ==}
 
-  '@hallmaster/docker.js@0.0.20':
-    resolution: {integrity: sha512-GTi62iWhjkMYoQJbLRHxa1kvawqyRbygMskGkiLvdmAPoGSN+yp33GKAS/M90qCnAlx9Bef6Hp8Oty0C05nVsg==}
+  '@hallmaster/docker.js@0.0.21':
+    resolution: {integrity: sha512-hil9EqSHNJJ7kr9jJG9VFpYyO9VtBRl6sdTnmTGLAK0LLLqS7qrFt+7xd7pAtZSkVTAygyQSwBfJ0Lg0Bxnckg==}
 
   '@hono/node-server@1.19.9':
     resolution: {integrity: sha512-vHL6w3ecZsky+8P5MD+eFfaGTyCeOHUIFYMGpQGbrBTSmNNoxv0if69rEZ5giu36weC5saFuznL411gRX7bJDw==}
@@ -5830,7 +5830,7 @@ snapshots:
 
   '@floating-ui/utils@0.2.10': {}
 
-  '@hallmaster/docker.js@0.0.20': {}
+  '@hallmaster/docker.js@0.0.21': {}
 
   '@hono/node-server@1.19.9(hono@4.11.4)':
     dependencies:
