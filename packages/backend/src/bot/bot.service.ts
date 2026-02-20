@@ -11,7 +11,8 @@ import { PrismaService } from '../prisma/prisma.service.js';
 import { CreateBotZodDto } from './dto/create-bot.dto.js';
 import { GetBotZodDto } from './dto/get-bot.dto.js';
 import { UpdateBotZodDto } from './dto/update-bot.dto.js';
-import { type Cluster, Prisma } from '@hallmaster/prisma-client';
+import { type Cluster } from '@hallmaster/prisma-client';
+import { PrismaClientKnownRequestError } from '@prisma/client/runtime/client';
 
 @Injectable()
 export class BotService {
@@ -43,6 +44,9 @@ export class BotService {
     shardsPerCluster: number,
   ) {
     const newClusters: number[][] = [];
+    if (clusterNumber < shards / shardsPerCluster) {
+      clusterNumber = Math.ceil(shards / shardsPerCluster);
+    }
     for (let i = 0; i < clusterNumber; ++i) {
       newClusters.push([]);
     }
@@ -102,10 +106,7 @@ export class BotService {
         shards: createdResource.shards,
       };
     } catch (e) {
-      if (
-        e instanceof Prisma.PrismaClientKnownRequestError &&
-        'P2002' === e.code
-      ) {
+      if (e instanceof PrismaClientKnownRequestError && 'P2002' === e.code) {
         throw new ConflictException();
       }
       throw e;
@@ -174,7 +175,10 @@ export class BotService {
         clusters: {
           createMany: {
             data: newClusters.map((clusterShardIds, index) => ({
-              status: currentClusters[index]?.status ?? 'STOPPED',
+              status:
+                currentClusters[index]?.status !== 'STOPPED'
+                  ? 'UPDATING'
+                  : 'STOPPED',
               shardIds: clusterShardIds,
             })),
           },
@@ -196,9 +200,8 @@ export class BotService {
       clusterIndex < newResource.clusters.length;
       ++clusterIndex
     ) {
-      const currentCluster = currentClusters[clusterIndex];
-      if (currentCluster?.status !== 'STOPPED') {
-        const cluster = newResource.clusters[clusterIndex];
+      const cluster = newResource.clusters[clusterIndex];
+      if (cluster?.status !== 'STOPPED') {
         await this.clustersService.start(cluster.id as UUID);
       }
     }
@@ -231,10 +234,7 @@ export class BotService {
         },
       });
     } catch (e) {
-      if (
-        e instanceof Prisma.PrismaClientKnownRequestError &&
-        'P2025' === e.code
-      ) {
+      if (e instanceof PrismaClientKnownRequestError && 'P2025' === e.code) {
         throw new NotFoundException();
       }
       throw e;

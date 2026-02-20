@@ -8,3 +8,4 @@ onlyBuiltDependencies:
   - '@swc/core'
   - argon2
   - prisma
+  - esbuild

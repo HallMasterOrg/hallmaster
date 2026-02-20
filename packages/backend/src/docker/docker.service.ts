@@ -101,6 +101,11 @@ export class DockerService {
               `${shardIdListEnvName}=${cluster.shardIds.join(',')}`,
             ],
             Image: dockerRegistryImage,
+            Labels: {
+              kind: 'hallmaster',
+              'cluster-id': cluster.id,
+              'bot-id': bot.id,
+            },
           },
           `${bot.id}-${cluster.id}`,
         );
@@ -215,30 +220,28 @@ export class DockerService {
   }
 
   async remove(cluster: Cluster) {
-    if (null === cluster.containerId) {
-      return;
-    }
-
     if (cluster.status !== 'STOPPED' && cluster.status !== 'ERROR') {
       await this.stop(cluster);
     }
 
-    const dockerContainersAPI = new DockerContainersAPI(this.dockerSocket);
+    if (null !== cluster.containerId) {
+      const dockerContainersAPI = new DockerContainersAPI(this.dockerSocket);
 
-    try {
-      await dockerContainersAPI.remove(cluster.containerId);
-
-      await this.prismaService.cluster.delete({
-        where: {
-          id: cluster.id,
-        },
-      });
-    } catch (e) {
-      throw new BadRequestException('Unable to remove the cluster', {
-        description: `An error occurred while removing the Docker container: ${e}`,
-        cause: e,
-      });
+      try {
+        await dockerContainersAPI.remove(cluster.containerId);
+      } catch (e) {
+        throw new BadRequestException('Unable to remove the cluster', {
+          description: `An error occurred while removing the Docker container: ${e}`,
+          cause: e,
+        });
+      }
     }
+
+    await this.prismaService.cluster.delete({
+      where: {
+        id: cluster.id,
+      },
+    });
   }
 
   async restart(bot: Bot, cluster: Cluster): Promise<void> {
@@ -299,8 +302,8 @@ export class DockerService {
 
     const memoryUsage =
       stats.memory_stats.usage -
-      stats.memory_stats.stats.inactive_file -
-      stats.memory_stats.stats.slab_reclaimable;
+      (stats.memory_stats.stats?.inactive_file ?? 0) -
+      (stats.memory_stats.stats?.slab_reclaimable ?? 0);
 
     const memoryPercentage = (memoryUsage / stats.memory_stats.limit) * 100;
 
