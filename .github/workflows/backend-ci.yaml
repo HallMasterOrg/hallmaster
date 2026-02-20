@@ -33,19 +33,19 @@ jobs:
 
       - name: Install dependencies
         working-directory: ./packages/backend
-        run: pnpm install --frozen-lockfile
+        run: pnpm install --filter=@hallmaster/backend --frozen-lockfile
 
       - name: Generate Prisma types
         working-directory: ./packages/backend
-        run: pnpm prisma:generate
+        run: pnpm --filter=@hallmaster/backend prisma:generate
 
       - name: Run lint
         working-directory: ./packages/backend
-        run: pnpm run lint
+        run: pnpm --filter=@hallmaster/backend lint
 
       - name: Run format check
         working-directory: ./packages/backend
-        run: pnpm run format
+        run: pnpm --filter=@hallmaster/backend format
 
       - name: Test the build process
         working-directory: ./packages/backend
@@ -109,7 +109,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5.10.0
         with:
-          images: ${{ secrets.REGISTRY_HOST }}/hallmaster/backend
+          images: ${{ secrets.REGISTRY_HOST }}/hallmaster/backend:latest
           tags: |
             type=raw,value=latest,enable=${{ github.ref == format('refs/heads/{0}', github.event.repository.default_branch) }}
             type=sha,format=short
@@ -129,5 +129,6 @@ jobs:
       - name: Deploy backend via HTTP
         run: |
           curl --insecure -X POST "http://${{ secrets.REGISTRY_HOST }}:9090/deploy" \
-              -H "Authorization: Bearer ${{ secrets.REGISTRY_USERNAME }}:${{ secrets.REGISTRY_PASSWORD }}" \
+              -H "Authorization: Basic ${{ secrets.REGISTRY_USERNAME }}:${{ secrets.REGISTRY_PASSWORD }}" \
+              -H "X-Registry-Host: ${{ secrets.REGISTRY_HOST }}" \
               --data '' -iL
