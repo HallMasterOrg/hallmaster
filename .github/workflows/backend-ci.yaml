@@ -111,7 +111,7 @@ jobs:
         with:
           images: ${{ secrets.REGISTRY_HOST }}/hallmaster/backend:latest
           tags: |
-            type=raw,value=latest,enable=${{ github.ref == format('refs/heads/{0}', github.event.repository.default_branch) }}
+            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/dev' }}
             type=sha,format=short
 
       - name: Build and push image (backend)
