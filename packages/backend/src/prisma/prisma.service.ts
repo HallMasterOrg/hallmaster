@@ -1,4 +1,4 @@
-import { PrismaClient } from './generated/client.js';
+import { PrismaClient } from '@hallmaster/prisma-client';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { Pool } from 'pg';
 import { Injectable, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
@@ -16,11 +16,11 @@ export class PrismaService
     });
   }
 
-  onModuleInit() {
-    return this.$connect();
+  async onModuleInit() {
+    await this.$connect();
   }
 
-  onModuleDestroy() {
-    return this.$disconnect();
+  async onModuleDestroy() {
+    await this.$disconnect();
   }
 }

@@ -18,8 +18,8 @@ services:
       - hallmaster-postgres
     image: hallmaster-backend
     build:
-      context: .
-      dockerfile: Dockerfile
+      context: ../..
+      dockerfile: packages/backend/Dockerfile
     container_name: hallmaster-backend
     ports:
       - "3000:3000"
@@ -29,7 +29,6 @@ services:
       - hallmaster-network
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:rw
-    restart: unless-stopped
 
 networks:
   hallmaster-network:

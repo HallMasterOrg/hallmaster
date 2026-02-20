@@ -5,6 +5,7 @@ import { PrismaModule } from './prisma/prisma.module.js';
 import { BotModule } from './bot/bot.module.js';
 import { ClustersModule } from './clusters/clusters.module.js';
 import { DockerModule } from './docker/docker.module.js';
+import { AuthModule } from './auth/auth.module.js';
 
 @Module({
   imports: [
@@ -14,7 +15,7 @@ import { DockerModule } from './docker/docker.module.js';
     BotModule,
     ClustersModule,
     DockerModule,
-    // PrismaModule,
+    AuthModule,
   ],
 })
 export class AppModule {}

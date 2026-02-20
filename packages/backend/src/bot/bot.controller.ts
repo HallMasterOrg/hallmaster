@@ -7,23 +7,33 @@ import {
   HttpStatus,
   Patch,
   Post,
+  UseGuards,
 } from '@nestjs/common';
 import {
   ApiAcceptedResponse,
+  ApiBearerAuth,
   ApiConflictResponse,
   ApiCreatedResponse,
   ApiNoContentResponse,
   ApiNotFoundResponse,
   ApiOkResponse,
   ApiTags,
+  ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
 import { BotService } from './bot.service.js';
 import { CreateBotZodDto } from './dto/create-bot.dto.js';
 import { GetBotZodDto } from './dto/get-bot.dto.js';
 import { UpdateBotZodDto } from './dto/update-bot.dto.js';
+import { AuthGuard } from '../auth/guards/jwt.guard.js';
 
 @ApiTags('Bot')
 @Controller('bot')
+@ApiBearerAuth('jwt')
+@UseGuards(AuthGuard)
+@ApiUnauthorizedResponse({
+  description:
+    'This route is protected by an Authorization header that is either not provided or invalid.',
+})
 export class BotController {
   constructor(private readonly botService: BotService) {}
 

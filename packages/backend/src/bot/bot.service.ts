@@ -1,3 +1,4 @@
+import { UUID } from 'node:crypto';
 import {
   ConflictException,
   Injectable,
@@ -5,13 +6,12 @@ import {
   NotImplementedException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { UUID } from 'node:crypto';
 import { ClustersService } from '../clusters/clusters.service.js';
-import { Cluster, Prisma } from '../prisma/generated/client.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { CreateBotZodDto } from './dto/create-bot.dto.js';
 import { GetBotZodDto } from './dto/get-bot.dto.js';
 import { UpdateBotZodDto } from './dto/update-bot.dto.js';
+import { type Cluster, Prisma } from '@hallmaster/prisma-client';
 
 @Injectable()
 export class BotService {
