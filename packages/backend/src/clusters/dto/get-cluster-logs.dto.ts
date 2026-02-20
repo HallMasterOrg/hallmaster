@@ -27,9 +27,17 @@ export class GetClusterLogsQueryZodDto extends createZodDto(
 
 export type GetClusterLogsQueryDto = z.infer<typeof GetClusterLogsQuerySchema>;
 
-export const GetClusterLogsSchema = z.object({
-  stderr: z.string(),
-  stdout: z.string(),
+export const GetClusterLogSchema = z.object({
+  content: z.string().meta({
+    description: 'The content of a log line.',
+  }),
+  stream: z.union([z.literal('STDOUT'), z.literal('STDERR')]).meta({
+    description: 'The stream that the log was published into.',
+  }),
+});
+
+export const GetClusterLogsSchema = z.array(GetClusterLogSchema).meta({
+  description: 'Logs (line by line) of a container.',
 });
 
 export class GetClusterLogsZodDto extends createZodDto(GetClusterLogsSchema) {}
