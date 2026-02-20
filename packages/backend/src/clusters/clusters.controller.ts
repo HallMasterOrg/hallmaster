@@ -7,13 +7,16 @@ import {
   Param,
   Post,
   Query,
+  UseGuards,
 } from '@nestjs/common';
 import {
+  ApiBearerAuth,
   ApiNoContentResponse,
   ApiNotFoundResponse,
   ApiOkResponse,
   ApiProduces,
   ApiTags,
+  ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
 import type { UUID } from 'node:crypto';
 import { ClustersService } from './clusters.service.js';
@@ -23,9 +26,16 @@ import {
   GetClusterLogsZodDto,
 } from './dto/get-cluster-logs.dto.js';
 import { GetClusterStatsZodDto } from './dto/get-cluster-stats.dto.js';
+import { AuthGuard } from '../auth/guards/jwt.guard.js';
 
 @ApiTags('Clusters')
 @Controller('clusters')
+@ApiBearerAuth('jwt')
+@UseGuards(AuthGuard)
+@ApiUnauthorizedResponse({
+  description:
+    'This route is protected by an Authorization header that is either not provided or invalid.',
+})
 export class ClustersController {
   constructor(private readonly clustersService: ClustersService) {}
 

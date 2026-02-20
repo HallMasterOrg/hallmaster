@@ -47,6 +47,10 @@ jobs:
         working-directory: ./packages/backend
         run: pnpm run format
 
+      - name: Test the build process
+        working-directory: ./packages/backend
+        run: pnpm build
+
   build-and-push:
     name: Build and Push Images
     runs-on: ubuntu-latest
@@ -114,7 +118,7 @@ jobs:
         uses: docker/build-push-action@v6.19.2
         with:
           context: .
-          file: ./Dockerfile
+          file: packages/backend/Dockerfile
           push: true
           platforms: linux/amd64,linux/arm64
           tags: ${{ steps.meta.outputs.tags }}

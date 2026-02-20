@@ -6,7 +6,7 @@ import {
 } from '@nestjs/common';
 import { DockerService } from '../docker/docker.service.js';
 import { PrismaService } from '../prisma/prisma.service.js';
-import { Cluster } from '../prisma/generated/client.js';
+import type { Cluster } from '@hallmaster/prisma-client';
 
 @Injectable()
 export class ClustersService {

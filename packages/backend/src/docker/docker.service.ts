@@ -2,6 +2,7 @@ import {
   DockerContainersAPI,
   DockerImagesAPI,
   DockerSocket,
+  DockerAPIHttpError,
 } from '@hallmaster/docker.js';
 import {
   BadRequestException,
@@ -10,8 +11,8 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service.js';
-import { Bot, Cluster } from '../prisma/generated/client.js';
 import { GetClusterStatsZodDto } from '../clusters/dto/get-cluster-stats.dto.js';
+import type { Bot, Cluster } from '@hallmaster/prisma-client';
 
 @Injectable()
 export class DockerService {
@@ -179,31 +180,38 @@ export class DockerService {
     const dockerContainersAPI = new DockerContainersAPI(this.dockerSocket);
 
     try {
-      await dockerContainersAPI.stop(cluster.containerId);
+      const container = await dockerContainersAPI.get(cluster.containerId);
 
-      await this.prismaService.cluster.update({
-        where: {
-          id: cluster.id,
-        },
-        data: {
-          status: 'STOPPED',
-        },
-      });
+      await dockerContainersAPI.stop(container.Id);
     } catch (e) {
-      await this.prismaService.cluster.update({
-        where: {
-          id: cluster.id,
-        },
-        data: {
-          status: 'ERROR',
-        },
-      });
-      console.error(e);
-      throw new BadRequestException('Unable to stop the cluster', {
-        description: `An error occurred while removing the Docker container: ${e}`,
-        cause: e,
-      });
+      if (
+        !(e instanceof DockerAPIHttpError) ||
+        e.message !== `no such container: ${cluster.containerId}`
+      ) {
+        await this.prismaService.cluster.update({
+          where: {
+            id: cluster.id,
+          },
+          data: {
+            status: 'ERROR',
+          },
+        });
+
+        throw new BadRequestException('Unable to stop the cluster', {
+          description: `An error occurred while removing the Docker container: ${e}`,
+          cause: e,
+        });
+      }
     }
+
+    await this.prismaService.cluster.update({
+      where: {
+        id: cluster.id,
+      },
+      data: {
+        status: 'STOPPED',
+      },
+    });
   }
 
   async remove(cluster: Cluster) {

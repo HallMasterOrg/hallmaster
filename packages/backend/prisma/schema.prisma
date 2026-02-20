@@ -1,11 +1,16 @@
 generator client {
-    provider     = "prisma-client"
-    output       = "../src/prisma/generated"
+    provider     = "prisma-client-js"
     moduleFormat = "esm"
+    output       = "../../prisma-client/generated"
 }
 
 datasource db {
     provider = "postgresql"
+}
+
+model User {
+    username String @unique
+    password String
 }
 
 model Bot {
@@ -25,12 +30,8 @@ enum ClusterStatus {
 model Cluster {
     id    String @id @default(uuid())
     botId String
-
     containerId String?
-
     status ClusterStatus
-
     shardIds Int[]
-
     bot Bot @relation(fields: [botId], references: [id], onDelete: Cascade)
 }

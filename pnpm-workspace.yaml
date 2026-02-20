@@ -6,5 +6,5 @@ onlyBuiltDependencies:
   - '@prisma/engines'
   - '@scarf/scarf'
   - '@swc/core'
-  - esbuild
+  - argon2
   - prisma
