@@ -10,6 +10,7 @@ import {
 import { Steps } from "@skeletonlabs/skeleton-svelte";
 
 import { createBot } from "$lib/remotes/bot.remote";
+import toaster from "$lib/utils/toaster";
 import Deployment from "./components/Deployment.svelte";
 import Scaling from "./components/Scaling.svelte";
 
@@ -20,11 +21,15 @@ const steps = [
 ];
 </script>
 
-<main class="absolute top-1/2 left-1/2 -translate-1/2">
 	<form
-		{...createBot}
-		class="flex flex-col items-center gap-4 card preset-filled-surface-100-900 p-6"
-	>
+    {...createBot.enhance(({ submit }) => submit().catch(error => {
+      toaster.create({
+        type: "error",
+        title: "Error",
+        description: JSON.parse(error).message,
+      });
+    }))}
+  >
 		<BotIcon size={64} />
 
 		<Steps
@@ -60,17 +65,16 @@ const steps = [
 					<ChevronLeftIcon />
 				</Steps.PrevTrigger>
 				{#if step != steps.length - 1}
-					<Steps.NextTrigger class="flex-1 btn preset-tonal">
+					<Steps.NextTrigger class="flex-1 btn text-sm preset-tonal">
 						<span>Next</span>
 						<ChevronRightIcon />
 					</Steps.NextTrigger>
 				{:else}
-					<button type="submit" class="flex-1 btn preset-filled-primary-500">
+					<button class="flex-1 btn text-sm preset-filled-primary-500">
 						<span>Submit</span>
-						<CloudUploadIcon />
+            <ChevronRightIcon />
 					</button>
 				{/if}
 			</div>
 		</Steps>
 	</form>
-</main>
