@@ -9,6 +9,7 @@ import {
   Injectable,
   InternalServerErrorException,
 } from '@nestjs/common';
+import type { Readable } from 'node:stream';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { GetClusterStatsZodDto } from '../clusters/dto/get-cluster-stats.dto.js';
@@ -250,6 +251,20 @@ export class DockerService {
     }
 
     await this.start(bot, cluster);
+  }
+
+  async streamContainerLogs(
+    containerId: string,
+    tail?: number | 'all',
+  ): Promise<Readable> {
+    const dockerContainersAPI = new DockerContainersAPI(this.dockerSocket);
+    return await dockerContainersAPI.logs(containerId, {
+      follow: true,
+      stdout: true,
+      stderr: true,
+      timestamps: true,
+      tail: tail,
+    });
   }
 
   async getContainerLogs(

@@ -31,7 +31,7 @@
   },
   "dependencies": {
     "@fastify/compress": "8.3.1",
-    "@hallmaster/docker.js": "0.0.21",
+    "@hallmaster/docker.js": "0.0.22",
     "@hallmaster/prisma-client": "workspace:*",
     "@nestjs/common": "11.1.14",
     "@nestjs/config": "4.0.3",

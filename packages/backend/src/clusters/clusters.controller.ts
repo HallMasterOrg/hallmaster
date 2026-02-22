@@ -4,11 +4,14 @@ import {
   Get,
   HttpCode,
   HttpStatus,
+  MessageEvent,
   Param,
   Post,
   Query,
+  Sse,
   UseGuards,
 } from '@nestjs/common';
+import { Observable } from 'rxjs';
 import {
   ApiBearerAuth,
   ApiNoContentResponse,
@@ -27,6 +30,7 @@ import {
 } from './dto/get-cluster-logs.dto.js';
 import { GetClusterStatsZodDto } from './dto/get-cluster-stats.dto.js';
 import { AuthGuard } from '../auth/guards/jwt.guard.js';
+import { Readable } from 'node:stream';
 
 @ApiTags('Clusters')
 @Controller('clusters')
@@ -128,6 +132,32 @@ export class ClustersController {
       query.until ? new Date(query.until) : undefined,
       query.tail,
     );
+  }
+
+  @Sse(':id/logs/stream')
+  @UseGuards(AuthGuard)
+  streamLogs(@Param('id') id: UUID): Observable<MessageEvent> {
+    return new Observable((subscriber) => {
+      let stream: Readable | undefined;
+
+      this.clustersService
+        .streamLogs(id)
+        .then((s) => {
+          stream = s;
+
+          stream.on('data', (log: { content: string; stream: string }) => {
+            subscriber.next({ data: log } as MessageEvent);
+          });
+
+          stream.on('end', () => subscriber.complete());
+          stream.on('error', (err) => subscriber.error(err));
+        })
+        .catch((err) => subscriber.error(err));
+
+      return () => {
+        stream?.destroy();
+      };
+    });
   }
 
   @Get(':id/stats')
