@@ -35,6 +35,8 @@ const config: JestConfigWithTsJest = {
 
   // An array of file extensions your modules use
   moduleFileExtensions: ['ts', 'js', 'json', 'node'],
+
+  clearMocks: true,
 };
 
 export default config;
