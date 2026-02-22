@@ -1,18 +1,28 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import { DeepMockProxy, mockDeep } from 'jest-mock-extended';
 import { ClustersController } from './clusters.controller.js';
 import { ClustersService } from './clusters.service.js';
-import { PrismaModule } from '../prisma/prisma.module.js';
-import { DockerModule } from '../docker/docker.module.js';
+import { AuthGuard } from '../auth/guards/jwt.guard.js';
 
 describe('ClustersController', () => {
   let controller: ClustersController;
+  const authGuard: DeepMockProxy<AuthGuard> = mockDeep<AuthGuard>();
+  const clusterService: DeepMockProxy<ClustersService> =
+    mockDeep<ClustersService>();
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
-      imports: [PrismaModule, DockerModule],
       controllers: [ClustersController],
-      providers: [ClustersService],
-    }).compile();
+      providers: [
+        {
+          provide: ClustersService,
+          useValue: clusterService,
+        },
+      ],
+    })
+      .overrideGuard(AuthGuard)
+      .useValue(authGuard)
+      .compile();
 
     controller = module.get<ClustersController>(ClustersController);
   });
