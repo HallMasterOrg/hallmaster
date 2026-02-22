@@ -11,7 +11,6 @@ import { PrismaClientKnownRequestError } from '@prisma/client/runtime/client';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { RegisterDto } from './dto/register.dto.js';
 import { LoginDto } from './dto/login.dto.js';
-import { CreatedUserDto } from './entities/created-user.entity.js';
 import { UserTokenDto } from './entities/user-token.entity.js';
 import { UserTokenDataDto } from './entities/user-token-data.entity.js';
 
@@ -48,7 +47,7 @@ export class AuthService {
     return verify(hash, password);
   }
 
-  async register(dto: RegisterDto): Promise<CreatedUserDto> {
+  async register(dto: RegisterDto): Promise<UserTokenDto> {
     const users = await this.prismaService.user.count();
     if (users > 0) {
       throw new ConflictException();
@@ -67,9 +66,11 @@ export class AuthService {
         },
       });
 
-      return {
+      const token = await this.jwtService.signAsync({
         username: username,
-      };
+      });
+
+      return { token: token };
     } catch (e) {
       if (e instanceof PrismaClientKnownRequestError && 'P2002' === e.code) {
         throw new ConflictException();
