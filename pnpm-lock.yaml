@@ -27,8 +27,8 @@ importers:
         specifier: 8.3.1
         version: 8.3.1
       '@hallmaster/docker.js':
-        specifier: 0.0.21
-        version: 0.0.21
+        specifier: 0.0.22
+        version: 0.0.22
       '@hallmaster/prisma-client':
         specifier: workspace:*
         version: link:../prisma-client
@@ -913,8 +913,8 @@ packages:
   '@floating-ui/utils@0.2.10':
     resolution: {integrity: sha512-aGTxbpbg8/b5JfU1HXSrbH3wXZuLPJcNEcZQFMxLs3oSzgtVu6nFPkbbGGUvBcUjKV2YyB9Wxxabo+HEH9tcRQ==}
 
-  '@hallmaster/docker.js@0.0.21':
-    resolution: {integrity: sha512-hil9EqSHNJJ7kr9jJG9VFpYyO9VtBRl6sdTnmTGLAK0LLLqS7qrFt+7xd7pAtZSkVTAygyQSwBfJ0Lg0Bxnckg==}
+  '@hallmaster/docker.js@0.0.22':
+    resolution: {integrity: sha512-RsJInc29qB29KPqGNiKFd2cVZYQfZz1oFdRsdL9SULPKj+gqLW2yQ2lzZsP5+1kT2FstoZVpZnwehEzxJUM3mw==}
 
   '@hono/node-server@1.19.9':
     resolution: {integrity: sha512-vHL6w3ecZsky+8P5MD+eFfaGTyCeOHUIFYMGpQGbrBTSmNNoxv0if69rEZ5giu36weC5saFuznL411gRX7bJDw==}
@@ -2944,6 +2944,15 @@ packages:
       typescript:
         optional: true
 
+  cosmiconfig@9.0.0:
+    resolution: {integrity: sha512-itvL5h8RETACmOTFc4UfIyB2RfEHi71Ax6E/PivVxq9NseKbOWpeyHEOIbmAw1rs8Ak0VursQNww7lf7YtUwzg==}
+    engines: {node: '>=14'}
+    peerDependencies:
+      typescript: '>=4.9.5'
+    peerDependenciesMeta:
+      typescript:
+        optional: true
+
   create-jest@29.7.0:
     resolution: {integrity: sha512-Adz2bdH0Vq3F53KEMJOoftQFutWCukm6J24wbPWRO4k1kMY7gS7ds/uoJkNuV8wDCtWWnuwGcJwpWcih+zEW1Q==}
     engines: {node: ^14.15.0 || ^16.10.0 || >=18.0.0}
@@ -3032,6 +3041,10 @@ packages:
 
   destr@2.0.5:
     resolution: {integrity: sha512-ugFTXCtDZunbzasqBxrK93Ik/DRYsO6S/fedkWEMKqt04xZ4csmnmwGDBAb07QWNaGMAmnTIemsYZCksjATwsA==}
+
+  detect-indent@6.1.0:
+    resolution: {integrity: sha512-reYkTUJAZb9gUuZ2RvVCNhVHdg62RHnJ7WJl8ftMi4diZ6NWlciOzQN88pUhSELEwflJht4oQDv0F0BMlwaYtA==}
+    engines: {node: '>=8'}
 
   detect-libc@2.1.2:
     resolution: {integrity: sha512-Btj2BOOO83o3WyH59e8MgXsxEQVcarkUOpEYrubB0urwnN10yQ364rsiByU11nZlqWYZm05i/of7io4mzihBtQ==}
@@ -5216,6 +5229,10 @@ packages:
   tar-stream@3.1.7:
     resolution: {integrity: sha512-qJj60CXt7IU1Ffyc3NJMjh6EkuCFej46zUqJ4J7pqYlThyd9bO0XBTmcOIhSzZJVWfsLks0+nle/j538YAW9RQ==}
 
+  term-size@2.2.1:
+    resolution: {integrity: sha512-wK0Ri4fOGjv/XPy8SBHZChl8CM7uMc5VML7SqiQ0zG7+J5Vr+RMQDoHa2CNT6KHUnTGIXH34UDMkPzAUyapBZg==}
+    engines: {node: '>=8'}
+
   terser-webpack-plugin@5.3.16:
     resolution: {integrity: sha512-h9oBFCWrq78NyWWVcSwZarJkZ01c2AyGrzs1crmHZO3QUg9D61Wu4NPjBy69n7JqylFF5y+CsUZYmYEIZ3mR+Q==}
     engines: {node: '>= 10.13.0'}
@@ -6412,7 +6429,7 @@ snapshots:
 
   '@floating-ui/utils@0.2.10': {}
 
-  '@hallmaster/docker.js@0.0.21': {}
+  '@hallmaster/docker.js@0.0.22': {}
 
   '@hono/node-server@1.19.9(hono@4.11.4)':
     dependencies:
@@ -8799,6 +8816,15 @@ snapshots:
     optionalDependencies:
       typescript: 5.9.3
 
+  cosmiconfig@9.0.0(typescript@5.9.3):
+    dependencies:
+      env-paths: 2.2.1
+      import-fresh: 3.3.1
+      js-yaml: 4.1.1
+      parse-json: 5.2.0
+    optionalDependencies:
+      typescript: 5.9.3
+
   create-jest@29.7.0(@types/node@22.19.11)(ts-node@10.9.2(@swc/core@1.15.11(@swc/helpers@0.5.18))(@types/node@22.19.11)(typescript@5.9.3)):
     dependencies:
       '@jest/types': 29.6.3
@@ -8867,6 +8893,8 @@ snapshots:
   dequal@2.0.3: {}
 
   destr@2.0.5: {}
+
+  detect-indent@6.1.0: {}
 
   detect-libc@2.1.2: {}
 
@@ -11341,6 +11369,8 @@ snapshots:
     transitivePeerDependencies:
       - bare-abort-controller
       - react-native-b4a
+
+  term-size@2.2.1: {}
 
   terser-webpack-plugin@5.3.16(@swc/core@1.15.11(@swc/helpers@0.5.18))(webpack@5.104.1(@swc/core@1.15.11(@swc/helpers@0.5.18))):
     dependencies:

@@ -1,4 +1,5 @@
 import { UUID } from 'node:crypto';
+import type { Readable } from 'node:stream';
 import {
   BadRequestException,
   Injectable,
@@ -117,6 +118,17 @@ export class ClustersService {
       shardIds: resource.shardIds,
       status: resource.status,
     });
+  }
+
+  async streamLogs(id: UUID, tail?: number | 'all'): Promise<Readable> {
+    const resource = await this.getFullResource(id);
+    if (null === resource.containerId) {
+      throw new BadRequestException('The cluster has no container ID.');
+    }
+    return await this.dockerService.streamContainerLogs(
+      resource.containerId,
+      tail,
+    );
   }
 
   async logs(id: UUID, since?: Date, until?: Date, tail?: number | 'all') {
