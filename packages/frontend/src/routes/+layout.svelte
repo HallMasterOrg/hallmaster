@@ -1,6 +1,8 @@
 <script lang="ts">
 import "../app.css";
+import { Toast } from "@skeletonlabs/skeleton-svelte";
 import favicon from "$lib/assets/favicon.svg";
+import toaster from "$lib/utils/toaster";
 
 let { children } = $props();
 </script>
@@ -10,3 +12,16 @@ let { children } = $props();
 </svelte:head>
 
 {@render children?.()}
+
+
+<Toast.Group {toaster}>
+	{#snippet children(toast)}
+		<Toast toast={toast}>
+			<Toast.Message>
+			<Toast.Title>{toast.title}</Toast.Title>
+			<Toast.Description>{toast.description}</Toast.Description>
+			</Toast.Message>
+			<Toast.CloseTrigger />
+		</Toast>
+	{/snippet}
+</Toast.Group>
