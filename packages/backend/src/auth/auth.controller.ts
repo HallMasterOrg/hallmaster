@@ -38,6 +38,7 @@ export class AuthController {
   }
 
   @Post('login')
+  @HttpCode(HttpStatus.OK)
   @ApiOkResponse({
     type: UserTokenDto,
     description: 'The user token used to communicate with the API.',
