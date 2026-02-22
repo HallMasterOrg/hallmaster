@@ -129,6 +129,6 @@ jobs:
       - name: Deploy backend via HTTP
         run: |
           curl --insecure -X POST "http://${{ secrets.REGISTRY_HOST }}:9090/deploy" \
-              -H "Authorization: Basic ${{ secrets.REGISTRY_USERNAME }}:${{ secrets.REGISTRY_PASSWORD }}" \
+              -H "Authorization: Basic $(echo '${{ secrets.REGISTRY_USERNAME }}:${{ secrets.REGISTRY_PASSWORD }}' | base64)" \
               -H "X-Registry-Host: ${{ secrets.REGISTRY_HOST }}" \
               --data '' -iL
