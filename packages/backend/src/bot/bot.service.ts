@@ -44,9 +44,10 @@ export class BotService {
     shardsPerCluster: number,
   ) {
     const newClusters: number[][] = [];
-    if (clusterNumber < shards / shardsPerCluster) {
+    if (clusterNumber < Math.ceil(shards / shardsPerCluster)) {
       clusterNumber = Math.ceil(shards / shardsPerCluster);
     }
+
     for (let i = 0; i < clusterNumber; ++i) {
       newClusters.push([]);
     }
@@ -82,7 +83,7 @@ export class BotService {
       const createdResource = await this.prismaService.bot.create({
         data: {
           id: botId,
-          clusterNumber: createBotDto.clusters ?? 1,
+          clusterNumber: newClusters.length,
           shards: shards,
           clusters: {
             createMany: {

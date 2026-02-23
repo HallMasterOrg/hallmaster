@@ -2,12 +2,10 @@ import { randomBytes } from 'node:crypto';
 import {
   ConflictException,
   Injectable,
-  InternalServerErrorException,
   UnauthorizedException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { hash, argon2id, verify } from 'argon2';
-import { PrismaClientKnownRequestError } from '@prisma/client/runtime/client';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { RegisterDto } from './dto/register.dto.js';
 import { LoginDto } from './dto/login.dto.js';
@@ -32,8 +30,8 @@ export class AuthService {
     private readonly jwtService: JwtService,
   ) {}
 
-  private static hashPassword(password: string) {
-    return hash(password, {
+  static async hashPassword(password: string) {
+    return await hash(password, {
       type: argon2id,
       memoryCost: AuthService.CONFIG.m,
       timeCost: AuthService.CONFIG.t,
@@ -43,8 +41,8 @@ export class AuthService {
     });
   }
 
-  private static verifyPassword(hash: string, password: string) {
-    return verify(hash, password);
+  static async verifyPassword(hash: string, password: string) {
+    return await verify(hash, password);
   }
 
   async register(dto: RegisterDto): Promise<UserTokenDto> {
@@ -55,28 +53,21 @@ export class AuthService {
 
     const hashedPassword = await AuthService.hashPassword(dto.password);
 
-    try {
-      const { username } = await this.prismaService.user.create({
-        select: {
-          username: true,
-        },
-        data: {
-          username: dto.username,
-          password: hashedPassword,
-        },
-      });
+    const { username } = await this.prismaService.user.create({
+      select: {
+        username: true,
+      },
+      data: {
+        username: dto.username,
+        password: hashedPassword,
+      },
+    });
 
-      const token = await this.jwtService.signAsync({
-        username: username,
-      });
+    const token = await this.jwtService.signAsync({
+      username: username,
+    });
 
-      return { token: token };
-    } catch (e) {
-      if (e instanceof PrismaClientKnownRequestError && 'P2002' === e.code) {
-        throw new ConflictException();
-      }
-      throw new InternalServerErrorException();
-    }
+    return { token: token };
   }
 
   async login(dto: LoginDto): Promise<UserTokenDto> {

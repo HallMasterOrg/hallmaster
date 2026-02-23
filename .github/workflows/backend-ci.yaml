@@ -51,6 +51,10 @@ jobs:
         working-directory: ./packages/backend
         run: pnpm build
 
+      - name: Run the tests
+        working-directory: ./packages/backend
+        run: pnpm test:cov
+
   build-and-push:
     name: Build and Push Images
     runs-on: ubuntu-latest
