@@ -118,7 +118,7 @@ export class DockerService {
             id: cluster.id,
           },
           data: {
-            status: 'STOPPED',
+            status: 'RUNNING',
             containerId: containerId,
           },
         });
