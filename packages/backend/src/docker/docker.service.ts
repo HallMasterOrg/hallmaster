@@ -29,7 +29,7 @@ export class DockerService {
 
     try {
       await dockerImagesAPI.create({
-        fromImage: dockerImage.image,
+        fromImage: `${dockerImage.serverName}/${dockerImage.image}`,
         tag: dockerImage.tag,
         auth: {
           serveraddress: dockerImage.serverName,
@@ -38,7 +38,7 @@ export class DockerService {
         },
       });
     } catch (e) {
-      await this.prismaService.cluster.updateMany({
+      await this.prismaService.cluster.update({
         where: {
           id: cluster.id,
         },
