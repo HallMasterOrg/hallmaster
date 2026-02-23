@@ -8,6 +8,7 @@ import { Logger } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module.js';
 import { LoggerService } from './logger/logger.service.js';
+import { LoggingInterceptor } from './logger/logging.interceptor.js';
 import {
   DocumentBuilder,
   OpenAPIObject,
@@ -54,6 +55,9 @@ async function bootstrap() {
   Logger.overrideLogger(loggerService);
 
   app.useGlobalPipes(new ZodValidationPipe());
+  if (process.env.LOG_REQUESTS === 'true') {
+    app.useGlobalInterceptors(new LoggingInterceptor(loggerService));
+  }
 
   app.enableCors({
     origin: '*',
