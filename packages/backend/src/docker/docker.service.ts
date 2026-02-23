@@ -247,6 +247,7 @@ export class DockerService {
   async restart(bot: Bot, cluster: Cluster): Promise<void> {
     if (cluster.status === 'RUNNING') {
       await this.stop(cluster);
+      cluster.status = 'STOPPED';
     }
 
     await this.start(bot, cluster);
