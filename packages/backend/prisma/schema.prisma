@@ -1,38 +1,56 @@
 generator client {
-    provider     = "prisma-client-js"
-    moduleFormat = "esm"
-    output       = "../../prisma-client/generated"
+  provider     = "prisma-client-js"
+  moduleFormat = "esm"
+  output       = "../../prisma-client/generated"
 }
 
 datasource db {
-    provider = "postgresql"
+  provider = "postgresql"
 }
 
 model User {
-    username String @unique
-    password String
+  username String @unique
+  password String
 }
 
 model Bot {
-    id            String     @id
-    clusterNumber Int
-    shards        Int
-    clusters      Cluster[]
+  id            String      @id
+  token         String
+  totalShards   Int         @map("total_shards")
+  clusters      Cluster[]
+  dockerImage   DockerImage @relation(fields: [dockerImageId], references: [id])
+  dockerImageId String      @map("docker_image_id")
+
+  @@map("bot")
+}
+
+model DockerImage {
+  id         String  @id @default(uuid())
+  serverName String  @unique @default("host.docker.internal:5000") @map("server_name")
+  image      String
+  tag        String  @default("latest")
+  username   String?
+  password   String?
+  bots       Bot[]
+
+  @@map("docker_image")
 }
 
 enum ClusterStatus {
-    STARTING
-    RUNNING
-    STOPPED
-    UPDATING
-    ERROR
+  STARTING
+  RUNNING
+  STOPPED
+  UPDATING
+  ERROR
 }
 
 model Cluster {
-    id    String @id @default(uuid())
-    botId String
-    containerId String?
-    status ClusterStatus
-    shardIds Int[]
-    bot Bot @relation(fields: [botId], references: [id], onDelete: Cascade)
+  id          String        @id @default(uuid())
+  botId       String        @map("bot_id")
+  containerId String?       @map("container_id")
+  status      ClusterStatus
+  shardIds    Int[]         @map("shard_ids")
+  bot         Bot           @relation(fields: [botId], references: [id], onDelete: Cascade)
+
+  @@map("cluster")
 }

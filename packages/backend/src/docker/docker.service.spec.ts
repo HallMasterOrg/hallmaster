@@ -18,18 +18,6 @@ describe('DockerService', () => {
         { provide: ConfigService, useValue: configService },
         { provide: PrismaService, useValue: prismaService },
         { provide: DockerSocket, useValue: dockerSocket },
-        {
-          provide: String,
-          useValue: JSON.stringify({
-            identitytoken: Buffer.from(
-              JSON.stringify({
-                username: 'bob',
-                password: 'password',
-                serveraddress: '127.0.0.1',
-              }),
-            ).toString('base64'),
-          }),
-        },
       ],
     }).compile();
 

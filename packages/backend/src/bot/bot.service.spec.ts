@@ -54,21 +54,48 @@ describe('BotService', () => {
     const body: CreateBotDto = {
       clusters: 1,
       shards: 1,
+      token: DISCORD_BOT_TOKEN,
+      dockerImage: {
+        image: 'host.docker.internal:5000/hallmaster/discord-bot:latest',
+        username: null,
+        password: null,
+      },
     };
 
-    prismaService.bot.create.mockResolvedValueOnce({
+    (prismaService.bot.create as jest.Mock).mockResolvedValueOnce({
       id: HALLMASTER_BOT_ID,
-      clusterNumber: body.clusters,
-      shards: body.shards,
-    });
+      totalShards: body.shards,
+      clusters: [
+        {
+          id: '1',
+          botId: HALLMASTER_BOT_ID,
+          containerId: `${HALLMASTER_BOT_ID}-1`,
+          status: 'STOPPED',
+          shardIds: [0],
+        },
+      ],
+    } satisfies Prisma.BotGetPayload<{
+      select: { id: true; totalShards: true; clusters: true };
+    }>);
 
     const result = await service.create(body);
 
+    const [serverName, ...path] = body.dockerImage.image.split('/');
+    const [image, tag] = path.join('/').split(':');
     expect(prismaService.bot.create).toHaveBeenCalledWith({
       data: {
         id: HALLMASTER_BOT_ID,
-        clusterNumber: body.clusters,
-        shards: body.shards,
+        token: body.token,
+        dockerImage: {
+          create: {
+            image: image,
+            serverName: serverName,
+            username: body.dockerImage.username,
+            password: body.dockerImage.password,
+            tag: tag,
+          },
+        },
+        totalShards: body.shards,
         clusters: {
           createMany: {
             data: [{ status: 'STOPPED', shardIds: [0] }],
@@ -77,8 +104,8 @@ describe('BotService', () => {
       },
       select: {
         id: true,
-        clusterNumber: true,
-        shards: true,
+        clusters: true,
+        totalShards: true,
       },
     });
     expect(prismaService.bot.create).toHaveBeenCalledTimes(1);
@@ -94,12 +121,40 @@ describe('BotService', () => {
     const body: CreateBotDto = {
       clusters: 2,
       shards: 7,
+      token: DISCORD_BOT_TOKEN,
+      dockerImage: {
+        image: 'host.docker.internal:5000/hallmaster/discord-bot:latest',
+        username: null,
+        password: null,
+      },
     };
 
-    prismaService.bot.create.mockResolvedValueOnce({
+    (prismaService.bot.create as jest.Mock).mockResolvedValueOnce({
       id: HALLMASTER_BOT_ID,
-      clusterNumber: 3,
-      shards: body.shards,
+      totalShards: body.shards,
+      clusters: [
+        {
+          id: '1',
+          botId: HALLMASTER_BOT_ID,
+          containerId: `${HALLMASTER_BOT_ID}-1`,
+          status: 'RUNNING',
+          shardIds: [0, 1, 2],
+        },
+        {
+          id: '2',
+          botId: HALLMASTER_BOT_ID,
+          containerId: `${HALLMASTER_BOT_ID}-2`,
+          status: 'RUNNING',
+          shardIds: [3, 4, 5],
+        },
+        {
+          id: '3',
+          botId: HALLMASTER_BOT_ID,
+          containerId: `${HALLMASTER_BOT_ID}-3`,
+          status: 'RUNNING',
+          shardIds: [6],
+        },
+      ],
     });
 
     const result = await service.create(body);
@@ -107,8 +162,17 @@ describe('BotService', () => {
     expect(prismaService.bot.create).toHaveBeenCalledWith({
       data: {
         id: HALLMASTER_BOT_ID,
-        clusterNumber: 3,
-        shards: body.shards,
+        token: DISCORD_BOT_TOKEN,
+        dockerImage: {
+          create: {
+            image: 'hallmaster/discord-bot',
+            serverName: 'host.docker.internal:5000',
+            username: null,
+            password: null,
+            tag: 'latest',
+          },
+        },
+        totalShards: body.shards,
         clusters: {
           createMany: {
             data: [
@@ -121,8 +185,8 @@ describe('BotService', () => {
       },
       select: {
         id: true,
-        clusterNumber: true,
-        shards: true,
+        totalShards: true,
+        clusters: true,
       },
     });
     expect(prismaService.bot.create).toHaveBeenCalledTimes(1);
@@ -138,6 +202,12 @@ describe('BotService', () => {
     const body: CreateBotDto = {
       clusters: 1,
       shards: 1,
+      token: DISCORD_BOT_TOKEN,
+      dockerImage: {
+        image: 'host.docker.internal:5000/hallmaster/discord-bot:latest',
+        username: null,
+        password: null,
+      },
     };
 
     prismaService.bot.create.mockRejectedValueOnce(
@@ -151,11 +221,22 @@ describe('BotService', () => {
       ConflictException,
     );
 
+    const [serverName, ...path] = body.dockerImage.image.split('/');
+    const [image, tag] = path.join('/').split(':');
     expect(prismaService.bot.create).toHaveBeenCalledWith({
       data: {
         id: HALLMASTER_BOT_ID,
-        clusterNumber: body.clusters,
-        shards: body.shards,
+        token: body.token,
+        totalShards: body.shards,
+        dockerImage: {
+          create: {
+            image: image,
+            serverName: serverName,
+            username: body.dockerImage.username,
+            password: body.dockerImage.password,
+            tag: tag,
+          },
+        },
         clusters: {
           createMany: {
             data: [{ status: 'STOPPED', shardIds: [0] }],
@@ -164,27 +245,44 @@ describe('BotService', () => {
       },
       select: {
         id: true,
-        clusterNumber: true,
-        shards: true,
+        clusters: true,
+        totalShards: true,
       },
     });
     expect(prismaService.bot.create).toHaveBeenCalledTimes(1);
   });
 
   it('should find the bot', async () => {
-    prismaService.bot.findFirst.mockResolvedValueOnce({
+    (prismaService.bot.findFirst as jest.Mock).mockResolvedValueOnce({
       id: HALLMASTER_BOT_ID,
-      clusterNumber: 2,
-      shards: 6,
-    });
+      totalShards: 6,
+      clusters: [
+        {
+          id: '1',
+          botId: HALLMASTER_BOT_ID,
+          containerId: `${HALLMASTER_BOT_ID}-1`,
+          status: 'RUNNING',
+          shardIds: [0, 1, 2],
+        },
+        {
+          id: '2',
+          botId: HALLMASTER_BOT_ID,
+          containerId: `${HALLMASTER_BOT_ID}-2`,
+          status: 'RUNNING',
+          shardIds: [3, 4, 5],
+        },
+      ],
+    } satisfies Prisma.BotGetPayload<{
+      select: { id: true; totalShards: true; clusters: true };
+    }>);
 
     const data = await service.findOne();
 
     expect(prismaService.bot.findFirst).toHaveBeenCalledWith({
       select: {
         id: true,
-        clusterNumber: true,
-        shards: true,
+        totalShards: true,
+        clusters: true,
       },
     });
     expect(prismaService.bot.findFirst).toHaveBeenCalledTimes(1);
@@ -204,8 +302,8 @@ describe('BotService', () => {
     expect(prismaService.bot.findFirst).toHaveBeenCalledWith({
       select: {
         id: true,
-        clusterNumber: true,
-        shards: true,
+        totalShards: true,
+        clusters: true,
       },
     });
     expect(prismaService.bot.findFirst).toHaveBeenCalledTimes(1);
@@ -217,42 +315,41 @@ describe('BotService', () => {
       shards: 10,
     };
 
-    prismaService.bot.findFirst.mockResolvedValueOnce({
+    (prismaService.bot.findFirst as jest.Mock).mockResolvedValueOnce({
       id: HALLMASTER_BOT_ID,
-      clusterNumber: 3,
-      shards: 7,
-    });
-
-    prismaService.cluster.findMany.mockResolvedValueOnce([
-      {
-        id: '1',
-        botId: HALLMASTER_BOT_ID,
-        containerId: `${HALLMASTER_BOT_ID}-1`,
-        status: 'RUNNING',
-        shardIds: [0, 1, 2],
-      },
-      {
-        id: '2',
-        botId: HALLMASTER_BOT_ID,
-        containerId: `${HALLMASTER_BOT_ID}-2`,
-        status: 'RUNNING',
-        shardIds: [3, 4, 5],
-      },
-      {
-        id: '3',
-        botId: HALLMASTER_BOT_ID,
-        containerId: `${HALLMASTER_BOT_ID}-3`,
-        status: 'RUNNING',
-        shardIds: [6],
-      },
-    ]);
+      totalShards: 7,
+      clusters: [
+        {
+          id: '1',
+          botId: HALLMASTER_BOT_ID,
+          containerId: `${HALLMASTER_BOT_ID}-1`,
+          status: 'RUNNING',
+          shardIds: [0, 1, 2],
+        },
+        {
+          id: '2',
+          botId: HALLMASTER_BOT_ID,
+          containerId: `${HALLMASTER_BOT_ID}-2`,
+          status: 'RUNNING',
+          shardIds: [3, 4, 5],
+        },
+        {
+          id: '3',
+          botId: HALLMASTER_BOT_ID,
+          containerId: `${HALLMASTER_BOT_ID}-3`,
+          status: 'RUNNING',
+          shardIds: [6],
+        },
+      ],
+    } satisfies Prisma.BotGetPayload<{
+      select: { id: true; totalShards: true; clusters: true };
+    }>);
 
     clustersService.remove.mockResolvedValue();
 
-    prismaService.bot.update.mockResolvedValueOnce({
+    (prismaService.bot.update as jest.Mock).mockResolvedValueOnce({
       id: HALLMASTER_BOT_ID,
-      clusterNumber: body.clusters!,
-      shards: body.shards!,
+      totalShards: body.shards!,
       clusters: [
         {
           id: '1',
@@ -283,23 +380,18 @@ describe('BotService', () => {
           shardIds: [9],
         },
       ],
-    } as Prisma.BotGetPayload<object>);
+    } satisfies Prisma.BotGetPayload<{
+      select: { id: true; totalShards: true; clusters: true };
+    }>);
 
     clustersService.start.mockResolvedValue();
 
     const data = await service.update(body);
 
-    expect(prismaService.bot.findFirst).toHaveBeenCalledWith();
-    expect(prismaService.bot.findFirst).toHaveBeenCalledTimes(1);
-
-    expect(prismaService.cluster.findMany).toHaveBeenCalledWith({
-      where: {
-        bot: {
-          id: HALLMASTER_BOT_ID,
-        },
-      },
+    expect(prismaService.bot.findFirst).toHaveBeenCalledWith({
+      select: { clusters: true, id: true, totalShards: true },
     });
-    expect(prismaService.cluster.findMany).toHaveBeenCalledTimes(1);
+    expect(prismaService.bot.findFirst).toHaveBeenCalledTimes(1);
 
     expect(clustersService.remove).toHaveBeenCalledWith('1');
     expect(clustersService.remove).toHaveBeenCalledWith('2');
@@ -308,8 +400,7 @@ describe('BotService', () => {
 
     expect(prismaService.bot.update).toHaveBeenCalledWith({
       data: {
-        clusterNumber: body.clusters,
-        shards: body.shards,
+        totalShards: body.shards,
         clusters: {
           createMany: {
             data: [
@@ -338,8 +429,7 @@ describe('BotService', () => {
       },
       select: {
         id: true,
-        shards: true,
-        clusterNumber: true,
+        totalShards: true,
         clusters: true,
       },
     });
@@ -364,43 +454,43 @@ describe('BotService', () => {
       shards: 5,
     };
 
-    prismaService.bot.findFirst.mockResolvedValueOnce({
+    (prismaService.bot.findFirst as jest.Mock).mockResolvedValueOnce({
       id: HALLMASTER_BOT_ID,
-      clusterNumber: 3,
-      shards: 7,
-    });
-
-    prismaService.cluster.findMany.mockResolvedValueOnce([
-      {
-        id: '1',
-        botId: HALLMASTER_BOT_ID,
-        containerId: `${HALLMASTER_BOT_ID}-1`,
-        status: 'STOPPED',
-        shardIds: [0, 1, 2],
-      },
-      {
-        id: '2',
-        botId: HALLMASTER_BOT_ID,
-        containerId: `${HALLMASTER_BOT_ID}-2`,
-        status: 'RUNNING',
-        shardIds: [3, 4, 5],
-      },
-
-      {
-        id: '3',
-        botId: HALLMASTER_BOT_ID,
-        containerId: `${HALLMASTER_BOT_ID}-3`,
-        status: 'RUNNING',
-        shardIds: [6],
-      },
-    ]);
+      totalShards: 7,
+      clusters: [
+        {
+          id: '1',
+          botId: HALLMASTER_BOT_ID,
+          containerId: `${HALLMASTER_BOT_ID}-1`,
+          status: 'STOPPED',
+          shardIds: [0, 1, 2],
+        },
+        {
+          id: '2',
+          botId: HALLMASTER_BOT_ID,
+          containerId: `${HALLMASTER_BOT_ID}-2`,
+          status: 'RUNNING',
+          shardIds: [3, 4, 5],
+        },
+        {
+          id: '3',
+          botId: HALLMASTER_BOT_ID,
+          containerId: `${HALLMASTER_BOT_ID}-3`,
+          status: 'RUNNING',
+          shardIds: [6],
+        },
+      ],
+    } satisfies Partial<
+      Prisma.BotGetPayload<{
+        select: { id: true; totalShards: true; clusters: true };
+      }>
+    >);
 
     clustersService.remove.mockResolvedValue();
 
-    prismaService.bot.update.mockResolvedValueOnce({
+    (prismaService.bot.update as jest.Mock).mockResolvedValueOnce({
       id: HALLMASTER_BOT_ID,
-      clusterNumber: body.clusters!,
-      shards: body.shards!,
+      totalShards: body.shards!,
       clusters: [
         {
           id: '1',
@@ -417,23 +507,18 @@ describe('BotService', () => {
           shardIds: [3, 4],
         },
       ],
-    } as Prisma.BotGetPayload<object>);
+    } satisfies Prisma.BotGetPayload<{
+      select: { id: true; totalShards: true; clusters: true };
+    }>);
 
     clustersService.start.mockResolvedValue();
 
     const data = await service.update(body);
 
-    expect(prismaService.bot.findFirst).toHaveBeenCalledWith();
-    expect(prismaService.bot.findFirst).toHaveBeenCalledTimes(1);
-
-    expect(prismaService.cluster.findMany).toHaveBeenCalledWith({
-      where: {
-        bot: {
-          id: HALLMASTER_BOT_ID,
-        },
-      },
+    expect(prismaService.bot.findFirst).toHaveBeenCalledWith({
+      select: { clusters: true, id: true, totalShards: true },
     });
-    expect(prismaService.cluster.findMany).toHaveBeenCalledTimes(1);
+    expect(prismaService.bot.findFirst).toHaveBeenCalledTimes(1);
 
     expect(clustersService.remove).toHaveBeenCalledWith('1');
     expect(clustersService.remove).toHaveBeenCalledWith('2');
@@ -442,8 +527,7 @@ describe('BotService', () => {
 
     expect(prismaService.bot.update).toHaveBeenCalledWith({
       data: {
-        clusterNumber: body.clusters,
-        shards: body.shards,
+        totalShards: body.shards,
         clusters: {
           createMany: {
             data: [
@@ -464,8 +548,7 @@ describe('BotService', () => {
       },
       select: {
         id: true,
-        shards: true,
-        clusterNumber: true,
+        totalShards: true,
         clusters: true,
       },
     });
@@ -493,15 +576,16 @@ describe('BotService', () => {
       NotFoundException,
     );
 
-    expect(prismaService.bot.findFirst).toHaveBeenCalledWith();
+    expect(prismaService.bot.findFirst).toHaveBeenCalledWith({
+      select: { clusters: true, id: true, totalShards: true },
+    });
     expect(prismaService.bot.findFirst).toHaveBeenCalledTimes(1);
   });
 
   it('should remove the bot', async () => {
-    prismaService.bot.delete.mockResolvedValueOnce({
+    (prismaService.bot.findFirst as jest.Mock).mockResolvedValueOnce({
       id: HALLMASTER_BOT_ID,
-      clusterNumber: 2,
-      shards: 5,
+      totalShards: 5,
       clusters: [
         {
           id: '1',
@@ -518,7 +602,13 @@ describe('BotService', () => {
           shardIds: [3, 4],
         },
       ],
-    } as Prisma.BotGetPayload<object>);
+    } satisfies Prisma.BotGetPayload<{
+      select: { id: true; totalShards: true; clusters: true };
+    }>);
+
+    prismaService.bot.delete.mockResolvedValueOnce(
+      {} as Prisma.BotGetPayload<object>,
+    );
 
     clustersService.stopByCluster.mockResolvedValue();
 
@@ -527,12 +617,6 @@ describe('BotService', () => {
     expect(prismaService.bot.delete).toHaveBeenCalledWith({
       where: {
         id: HALLMASTER_BOT_ID,
-      },
-      select: {
-        id: true,
-        clusterNumber: true,
-        shards: true,
-        clusters: true,
       },
     });
     expect(prismaService.bot.delete).toHaveBeenCalledTimes(1);
@@ -561,26 +645,13 @@ describe('BotService', () => {
   });
 
   it('should not remove the bot', async () => {
-    prismaService.bot.delete.mockRejectedValueOnce(
-      new PrismaClientKnownRequestError('Not found', {
-        code: 'P2025',
-        clientVersion: '',
-      }),
-    );
+    prismaService.bot.findFirst.mockResolvedValueOnce(null);
 
     await expect(service.remove()).rejects.toBeInstanceOf(NotFoundException);
 
-    expect(prismaService.bot.delete).toHaveBeenCalledWith({
-      where: {
-        id: HALLMASTER_BOT_ID,
-      },
-      select: {
-        id: true,
-        clusterNumber: true,
-        shards: true,
-        clusters: true,
-      },
+    expect(prismaService.bot.findFirst).toHaveBeenCalledWith({
+      select: { id: true, totalShards: true, clusters: true },
     });
-    expect(prismaService.bot.delete).toHaveBeenCalledTimes(1);
+    expect(prismaService.bot.findFirst).toHaveBeenCalledTimes(1);
   });
 });

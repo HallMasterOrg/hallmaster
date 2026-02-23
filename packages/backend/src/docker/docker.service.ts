@@ -8,12 +8,13 @@ import {
   BadRequestException,
   Injectable,
   InternalServerErrorException,
+  NotFoundException,
 } from '@nestjs/common';
 import type { Readable } from 'node:stream';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { GetClusterStatsZodDto } from '../clusters/dto/get-cluster-stats.dto.js';
-import type { Bot, Cluster } from '@hallmaster/prisma-client';
+import { Bot, Cluster, DockerImage } from '@hallmaster/prisma-client';
 
 @Injectable()
 export class DockerService {
@@ -21,24 +22,20 @@ export class DockerService {
     private readonly configService: ConfigService,
     private readonly prismaService: PrismaService,
     private readonly dockerSocket: DockerSocket,
-    private readonly dockerToken?: string,
   ) {}
 
-  private async pullDockerImage(cluster: Cluster) {
-    const dockerRegistryImage = this.configService.getOrThrow<string>(
-      'DOCKER_REGISTRY_IMAGE',
-    );
-
+  private async pullDockerImage(cluster: Cluster, dockerImage: DockerImage) {
     const dockerImagesAPI = new DockerImagesAPI(this.dockerSocket);
 
     try {
       await dockerImagesAPI.create({
-        fromImage: dockerRegistryImage,
-        auth: this.dockerToken
-          ? {
-              identitytoken: this.dockerToken,
-            }
-          : undefined,
+        fromImage: dockerImage.image,
+        tag: dockerImage.tag,
+        auth: {
+          serveraddress: dockerImage.serverName,
+          username: dockerImage.username ?? '',
+          password: dockerImage.password ?? '',
+        },
       });
     } catch (e) {
       await this.prismaService.cluster.updateMany({
@@ -51,7 +48,7 @@ export class DockerService {
       });
 
       throw new BadRequestException('Unable to pull the Docker image.', {
-        description: `An error occurred while pulling the bot's Docker image from ${dockerRegistryImage}: ${e}`,
+        description: `An error occurred while pulling the bot's Docker image from ${dockerImage.image}: ${e}`,
         cause: e,
       });
     }
@@ -61,11 +58,13 @@ export class DockerService {
     if (cluster.status === 'RUNNING') {
       return;
     }
-    const dockerRegistryImage = this.configService.getOrThrow<string>(
-      'DOCKER_REGISTRY_IMAGE',
-    );
-    const discordBotToken =
-      this.configService.getOrThrow<string>('DISCORD_BOT_TOKEN');
+
+    const dockerImage = await this.prismaService.dockerImage.findUnique({
+      where: { id: bot.id },
+    });
+    if (null === dockerImage) {
+      throw new NotFoundException();
+    }
 
     const discordBotTokenEnvName = this.configService.getOrThrow<string>(
       'DISCORD_BOT_TOKEN_ENV_NAME',
@@ -92,16 +91,16 @@ export class DockerService {
     let containerId: null | string = cluster.containerId;
 
     if (null === containerId) {
-      await this.pullDockerImage(cluster);
+      await this.pullDockerImage(cluster, dockerImage);
       try {
         const container = await dockerContainersAPI.create(
           {
             Env: [
-              `${discordBotTokenEnvName}=${discordBotToken}`,
-              `${totalShardsEnvName}=${bot.shards}`,
+              `${discordBotTokenEnvName}=${bot.token}`,
+              `${totalShardsEnvName}=${bot.totalShards}`,
               `${shardIdListEnvName}=${cluster.shardIds.join(',')}`,
             ],
-            Image: dockerRegistryImage,
+            Image: `${dockerImage.serverName}/${dockerImage.image}:${dockerImage.tag}`,
             Labels: {
               kind: 'hallmaster',
               'cluster-id': cluster.id,
