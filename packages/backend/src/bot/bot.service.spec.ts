@@ -56,11 +56,10 @@ describe('BotService', () => {
       shards: 1,
       token: DISCORD_BOT_TOKEN,
       dockerImage: {
-        image: 'hallmaster/discord-bot',
+        image: 'hallmaster/discord-bot:latest',
         serverName: 'host.docker.internal:5000',
         username: null,
         password: null,
-        tag: 'latest',
       },
     };
 
@@ -82,17 +81,18 @@ describe('BotService', () => {
 
     const result = await service.create(body);
 
+    const [image, tag] = body.dockerImage.image.split(':');
     expect(prismaService.bot.create).toHaveBeenCalledWith({
       data: {
         id: HALLMASTER_BOT_ID,
         token: body.token,
         dockerImage: {
           create: {
-            image: body.dockerImage.image,
+            image: image,
             serverName: body.dockerImage.serverName,
             username: body.dockerImage.username,
             password: body.dockerImage.password,
-            tag: body.dockerImage.tag,
+            tag: tag,
           },
         },
         totalShards: body.shards,
@@ -123,11 +123,10 @@ describe('BotService', () => {
       shards: 7,
       token: DISCORD_BOT_TOKEN,
       dockerImage: {
-        image: 'hallmaster/discord-bot',
+        image: 'hallmaster/discord-bot:latest',
         serverName: 'host.docker.internal:5000',
         username: null,
         password: null,
-        tag: 'latest',
       },
     };
 
@@ -206,11 +205,10 @@ describe('BotService', () => {
       shards: 1,
       token: DISCORD_BOT_TOKEN,
       dockerImage: {
-        image: 'hallmaster/discord-bot',
+        image: 'hallmaster/discord-bot:latest',
         serverName: 'host.docker.internal:5000',
         username: null,
         password: null,
-        tag: 'latest',
       },
     };
 
@@ -225,6 +223,7 @@ describe('BotService', () => {
       ConflictException,
     );
 
+    const [image, tag] = body.dockerImage.image.split(':');
     expect(prismaService.bot.create).toHaveBeenCalledWith({
       data: {
         id: HALLMASTER_BOT_ID,
@@ -232,11 +231,11 @@ describe('BotService', () => {
         totalShards: body.shards,
         dockerImage: {
           create: {
-            image: body.dockerImage.image,
+            image: image,
             serverName: body.dockerImage.serverName,
             username: body.dockerImage.username,
             password: body.dockerImage.password,
-            tag: body.dockerImage.tag,
+            tag: tag,
           },
         },
         clusters: {
