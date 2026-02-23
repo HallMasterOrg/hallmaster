@@ -56,8 +56,7 @@ describe('BotService', () => {
       shards: 1,
       token: DISCORD_BOT_TOKEN,
       dockerImage: {
-        image: 'hallmaster/discord-bot:latest',
-        serverName: 'host.docker.internal:5000',
+        image: 'host.docker.internal:5000/hallmaster/discord-bot:latest',
         username: null,
         password: null,
       },
@@ -81,7 +80,8 @@ describe('BotService', () => {
 
     const result = await service.create(body);
 
-    const [image, tag] = body.dockerImage.image.split(':');
+    const [serverName, ...path] = body.dockerImage.image.split('/');
+    const [image, tag] = path.join('/').split(':');
     expect(prismaService.bot.create).toHaveBeenCalledWith({
       data: {
         id: HALLMASTER_BOT_ID,
@@ -89,7 +89,7 @@ describe('BotService', () => {
         dockerImage: {
           create: {
             image: image,
-            serverName: body.dockerImage.serverName,
+            serverName: serverName,
             username: body.dockerImage.username,
             password: body.dockerImage.password,
             tag: tag,
@@ -123,8 +123,7 @@ describe('BotService', () => {
       shards: 7,
       token: DISCORD_BOT_TOKEN,
       dockerImage: {
-        image: 'hallmaster/discord-bot:latest',
-        serverName: 'host.docker.internal:5000',
+        image: 'host.docker.internal:5000/hallmaster/discord-bot:latest',
         username: null,
         password: null,
       },
@@ -205,8 +204,7 @@ describe('BotService', () => {
       shards: 1,
       token: DISCORD_BOT_TOKEN,
       dockerImage: {
-        image: 'hallmaster/discord-bot:latest',
-        serverName: 'host.docker.internal:5000',
+        image: 'host.docker.internal:5000/hallmaster/discord-bot:latest',
         username: null,
         password: null,
       },
@@ -223,7 +221,8 @@ describe('BotService', () => {
       ConflictException,
     );
 
-    const [image, tag] = body.dockerImage.image.split(':');
+    const [serverName, ...path] = body.dockerImage.image.split('/');
+    const [image, tag] = path.join('/').split(':');
     expect(prismaService.bot.create).toHaveBeenCalledWith({
       data: {
         id: HALLMASTER_BOT_ID,
@@ -232,7 +231,7 @@ describe('BotService', () => {
         dockerImage: {
           create: {
             image: image,
-            serverName: body.dockerImage.serverName,
+            serverName: serverName,
             username: body.dockerImage.username,
             password: body.dockerImage.password,
             tag: tag,

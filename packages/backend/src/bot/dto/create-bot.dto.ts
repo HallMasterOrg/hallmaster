@@ -4,10 +4,7 @@ import z from 'zod';
 export const CreateBotDockerImageSchema = z.object({
   image: z.string().meta({
     description:
-      'The Docker image to use, including repository and tag. (example: hallmaster/discord-bot:tag)',
-  }),
-  serverName: z.string().optional().default('host.docker.internal:5000').meta({
-    description: 'The server name of the Docker registry',
+      'The Docker image to use, following this format: hostname/repo/image:tag. (example: hallmaster/discord-bot:tag)',
   }),
   username: z.string().nullable().default(null).meta({
     description:

@@ -71,7 +71,8 @@ export class BotService {
     );
 
     try {
-      const [image, tag] = createBotDto.dockerImage.image.split(':');
+      const [serverName, ...path] = createBotDto.dockerImage.image.split('/');
+      const [image, tag] = path.join('/').split(':');
       const bot = await this.prismaService.bot.create({
         data: {
           id: this.getBotId(createBotDto.token),
@@ -81,7 +82,7 @@ export class BotService {
             create: {
               image: image,
               tag: tag,
-              serverName: createBotDto.dockerImage.serverName,
+              serverName: serverName,
               username: createBotDto.dockerImage.username,
               password: createBotDto.dockerImage.password,
             },
