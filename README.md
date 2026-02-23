@@ -31,10 +31,9 @@ The backend communicates with the Docker daemon via Unix socket to manage bot co
 
 ## Prerequisites
 
-- Node.js >= 20
+- Node >= 24
 - pnpm >= 10
 - Docker
-- PostgreSQL
 
 ## Getting started
 
@@ -69,7 +68,7 @@ docker compose up -d hallmaster-postgres
 Run migrations:
 
 ```sh
-pnpm prisma:migrate
+pnpm prisma:deploy
 ```
 
 ### 4. Start the development servers
