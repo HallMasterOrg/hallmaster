@@ -13,6 +13,7 @@ import {
 } from '@nestjs/common';
 import { Observable } from 'rxjs';
 import {
+  ApiBadRequestResponse,
   ApiBearerAuth,
   ApiNoContentResponse,
   ApiNotFoundResponse,
@@ -167,6 +168,10 @@ export class ClustersController {
   })
   @ApiNotFoundResponse({
     description: 'The ID points to an unresolved cluster.',
+  })
+  @ApiBadRequestResponse({
+    description:
+      'The requested cluster has no bound container or its not running.',
   })
   async getStats(@Param('id') id: UUID) {
     return await this.clustersService.stats(id);

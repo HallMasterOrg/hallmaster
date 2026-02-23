@@ -5,9 +5,9 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import type { Cluster } from '@hallmaster/prisma-client';
 import { DockerService } from '../docker/docker.service.js';
 import { PrismaService } from '../prisma/prisma.service.js';
-import type { Cluster } from '@hallmaster/prisma-client';
 
 @Injectable()
 export class ClustersService {
@@ -151,6 +151,12 @@ export class ClustersService {
 
     if (null === resource.containerId) {
       throw new BadRequestException('The cluster has no container ID.');
+    }
+
+    if (resource.status !== 'RUNNING') {
+      throw new BadRequestException(
+        'Unable to gather stats on a non-running cluster.',
+      );
     }
 
     return await this.dockerService.getContainerStats(resource.containerId);
