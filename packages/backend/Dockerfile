@@ -52,14 +52,6 @@ RUN rm -rf packages/backend/src \
 # Create the application package
 RUN pnpm deploy --filter=@hallmaster/backend --prod --legacy /prod-app
 
-FROM node:24.13.0-alpine3.23 AS db-migrator
-
-COPY --from=build /app /app
-
-WORKDIR /app
-
-CMD ["pnpm", "--filter=@hallmaster/backend", "prisma:deploy"]
-
 FROM node:24.13.0-alpine3.23 AS server
 
 COPY --from=build /prod-app /app
