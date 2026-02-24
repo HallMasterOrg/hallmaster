@@ -32,28 +32,22 @@ jobs:
           node-version: 24
 
       - name: Install dependencies
-        working-directory: ./packages/backend
         run: pnpm install --filter=@hallmaster/backend --frozen-lockfile
 
       - name: Generate Prisma types
-        working-directory: ./packages/backend
         run: pnpm --filter=@hallmaster/backend prisma:generate
 
       - name: Run lint
-        working-directory: ./packages/backend
         run: pnpm --filter=@hallmaster/backend lint
 
       - name: Run format check
-        working-directory: ./packages/backend
         run: pnpm --filter=@hallmaster/backend format
 
       - name: Test the build process
-        working-directory: ./packages/backend
-        run: pnpm build
+        run: pnpm --filter=@hallmaster/backend build
 
       - name: Run the tests
-        working-directory: ./packages/backend
-        run: pnpm test:cov
+        run: pnpm --filter=@hallmaster/backend test:cov
 
   build-and-push:
     name: Build and Push Images
@@ -124,7 +118,7 @@ jobs:
           context: .
           file: packages/backend/Dockerfile
           push: true
-          platforms: linux/amd64,linux/arm64
+          platforms: linux/amd64 #,linux/arm64
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha

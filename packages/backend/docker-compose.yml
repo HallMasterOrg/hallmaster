@@ -12,10 +12,16 @@ services:
       - "127.0.0.1:5432:5432"
     networks:
       - hallmaster-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
   hallmaster-backend:
     depends_on:
-      - hallmaster-postgres
+      hallmaster-postgres:
+        condition: service_healthy
     image: hallmaster-backend
     build:
       context: ../..
