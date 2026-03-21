@@ -8,6 +8,7 @@ import { Logger } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module.js';
 import { LoggerService } from './logger/logger.service.js';
+import { LoggingInterceptor } from './logger/logging.interceptor.js';
 import {
   DocumentBuilder,
   OpenAPIObject,
@@ -16,6 +17,7 @@ import {
 } from '@nestjs/swagger';
 import { SwaggerTheme, SwaggerThemeNameEnum } from 'swagger-themes';
 import fastifyCompress from '@fastify/compress';
+import { ConfigService } from '@nestjs/config';
 
 const getSwaggerDocumentConfig = (): Omit<OpenAPIObject, 'paths'> =>
   new DocumentBuilder()
@@ -49,11 +51,18 @@ async function bootstrap() {
     new FastifyAdapter(),
   );
 
+  const configService = app.get<ConfigService>(ConfigService);
+  const port = configService.get<number>('PORT', 3000);
+  const logRequests = configService.get<boolean>('LOG_REQUESTS', false);
+
   const loggerService = app.get(LoggerService);
   app.useLogger(loggerService);
   Logger.overrideLogger(loggerService);
 
   app.useGlobalPipes(new ZodValidationPipe());
+  if (logRequests) {
+    app.useGlobalInterceptors(new LoggingInterceptor(loggerService));
+  }
 
   app.enableCors({
     origin: '*',
@@ -77,7 +86,7 @@ async function bootstrap() {
   };
   SwaggerModule.setup('/openapi', app, document, swaggerConfig);
 
-  await app.listen(process.env.PORT ?? 3000, '0.0.0.0');
+  await app.listen(port, '0.0.0.0');
 }
 
 bootstrap().catch(console.error);
