@@ -16,13 +16,19 @@ COPY package.json \
 # Install packages for Prisma
 COPY packages/prisma-client/package.json \
     packages/prisma-client/
-RUN pnpm fetch --filter=@hallmaster/prisma-client
-RUN pnpm install --offline --frozen-lockfile
+RUN --mount=type=cache,id=pnpm,target=/pnpm/store \
+    pnpm install \
+        --filter=@hallmaster/prisma-client \
+        --prefer-offline \
+        --frozen-lockfile
 
 # Install packages for the backend
 COPY packages/backend/package.json packages/backend/
-RUN pnpm fetch --filter=@hallmaster/backend
-RUN pnpm install --offline --frozen-lockfile
+RUN --mount=type=cache,id=pnpm,target=/pnpm/store \
+    pnpm install \
+        --filter=@hallmaster/backend \
+        --prefer-offline \
+        --frozen-lockfile
 
 # Build Prisma types
 COPY packages/backend/prisma/ packages/backend/prisma/
@@ -56,6 +62,4 @@ ENV NODE_ENV=production
 
 EXPOSE 3000
 
-RUN corepack enable
-
-ENTRYPOINT [ "pnpm", "start:prod" ]
+ENTRYPOINT [ "npm", "run", "start:prod" ]
