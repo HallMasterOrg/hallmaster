@@ -11,7 +11,7 @@ import {
   Sse,
   UseGuards,
 } from '@nestjs/common';
-import { Observable } from 'rxjs';
+import { Observable, interval, switchMap, from } from 'rxjs';
 import {
   ApiBadRequestResponse,
   ApiBearerAuth,
@@ -52,6 +52,35 @@ export class ClustersController {
   })
   findAll() {
     return this.clustersService.findAll();
+  }
+
+  @Sse('stream')
+  @ApiOkResponse({
+    description: 'A stream of all clusters, emitted every 5 seconds.',
+  })
+  @ApiProduces('text/event-stream')
+  streamAll(): Observable<MessageEvent> {
+    return new Observable((subscriber) => {
+      this.clustersService
+        .findAll()
+        .then((clusters) => {
+          subscriber.next({ data: clusters } as MessageEvent);
+        })
+        .catch((err) => subscriber.error(err));
+
+      const sub = interval(5000)
+        .pipe(switchMap(() => from(this.clustersService.findAll())))
+        .subscribe({
+          next: (clusters) => {
+            subscriber.next({ data: clusters } as MessageEvent);
+          },
+          error: (err) => subscriber.error(err),
+        });
+
+      return () => {
+        sub.unsubscribe();
+      };
+    });
   }
 
   @Get(':id')
@@ -136,6 +165,7 @@ export class ClustersController {
   }
 
   @Sse(':id/logs/stream')
+  @ApiProduces('text/event-stream')
   @UseGuards(AuthGuard)
   streamLogs(@Param('id') id: UUID): Observable<MessageEvent> {
     return new Observable((subscriber) => {
