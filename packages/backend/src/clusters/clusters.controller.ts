@@ -56,7 +56,10 @@ export class ClustersController {
 
   @Sse('stream')
   @ApiOkResponse({
-    description: 'A stream of all clusters, emitted every 5 seconds.',
+    description:
+      'A Server-Sent Events stream that emits the full list of clusters every 5 seconds.',
+    type: GetClusterZodDto,
+    isArray: true,
   })
   @ApiProduces('text/event-stream')
   streamAll(): Observable<MessageEvent> {
