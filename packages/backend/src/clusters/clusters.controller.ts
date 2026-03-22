@@ -11,7 +11,7 @@ import {
   Sse,
   UseGuards,
 } from '@nestjs/common';
-import { Observable } from 'rxjs';
+import { Observable, timer, switchMap, from } from 'rxjs';
 import {
   ApiBadRequestResponse,
   ApiBearerAuth,
@@ -52,6 +52,21 @@ export class ClustersController {
   })
   findAll() {
     return this.clustersService.findAll();
+  }
+
+  @Sse('stream')
+  @ApiOkResponse({
+    description:
+      'SSE stream that emits the full list of clusters every 5 seconds.',
+    type: GetClusterZodDto,
+    isArray: true,
+  })
+  @ApiProduces('text/event-stream')
+  streamAll(): Observable<MessageEvent> {
+    return timer(0, 5000).pipe(
+      switchMap(() => from(this.clustersService.findAll())),
+      switchMap((clusters) => [{ data: clusters } as MessageEvent]),
+    );
   }
 
   @Get(':id')
@@ -136,6 +151,7 @@ export class ClustersController {
   }
 
   @Sse(':id/logs/stream')
+  @ApiProduces('text/event-stream')
   @UseGuards(AuthGuard)
   streamLogs(@Param('id') id: UUID): Observable<MessageEvent> {
     return new Observable((subscriber) => {
