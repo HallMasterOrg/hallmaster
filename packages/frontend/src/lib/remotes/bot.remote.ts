@@ -1,12 +1,12 @@
 import { form, getRequestEvent } from "$app/server";
-import { API_URL } from "$env/static/private";
+import { env } from "$env/dynamic/private";
 import { CreateBotSchema } from "@hallmaster/backend/dto";
 import { error, redirect } from "@sveltejs/kit";
 
 export const createBot = form(CreateBotSchema, async (data) => {
   const token = getRequestEvent().cookies.get("token");
 
-  const response = await fetch(`${API_URL}/bot`, {
+  const response = await fetch(`${env.API_URL}/bot`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
