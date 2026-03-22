@@ -192,4 +192,25 @@ export class ClustersController {
   async getStats(@Param('id') id: UUID) {
     return await this.clustersService.stats(id);
   }
+
+  @Sse(':id/stats/stream')
+  @ApiOkResponse({
+    description:
+      'SSE stream that emits the stats of the cluster every 5 seconds.',
+    type: GetClusterStatsZodDto,
+  })
+  @ApiProduces('text/event-stream')
+  @ApiNotFoundResponse({
+    description: 'The ID points to an unresolved cluster.',
+  })
+  @ApiBadRequestResponse({
+    description:
+      'The requested cluster has no bound container or its not running.',
+  })
+  streamStats(@Param('id') id: UUID): Observable<MessageEvent> {
+    return timer(0, 5000).pipe(
+      switchMap(() => from(this.clustersService.stats(id))),
+      switchMap((stats) => [{ data: stats } as MessageEvent]),
+    );
+  }
 }
