@@ -11,7 +11,7 @@ import {
   Sse,
   UseGuards,
 } from '@nestjs/common';
-import { Observable, interval, switchMap, from } from 'rxjs';
+import { Observable, timer, switchMap, from } from 'rxjs';
 import {
   ApiBadRequestResponse,
   ApiBearerAuth,
@@ -60,27 +60,10 @@ export class ClustersController {
   })
   @ApiProduces('text/event-stream')
   streamAll(): Observable<MessageEvent> {
-    return new Observable((subscriber) => {
-      this.clustersService
-        .findAll()
-        .then((clusters) => {
-          subscriber.next({ data: clusters } as MessageEvent);
-        })
-        .catch((err) => subscriber.error(err));
-
-      const sub = interval(5000)
-        .pipe(switchMap(() => from(this.clustersService.findAll())))
-        .subscribe({
-          next: (clusters) => {
-            subscriber.next({ data: clusters } as MessageEvent);
-          },
-          error: (err) => subscriber.error(err),
-        });
-
-      return () => {
-        sub.unsubscribe();
-      };
-    });
+    return timer(0, 5000).pipe(
+      switchMap(() => from(this.clustersService.findAll())),
+      switchMap((clusters) => [{ data: clusters } as MessageEvent]),
+    );
   }
 
   @Get(':id')
