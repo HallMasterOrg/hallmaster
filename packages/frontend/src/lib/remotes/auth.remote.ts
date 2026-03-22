@@ -1,7 +1,7 @@
-import { loginSchema, registerSchema } from "@hallmaster/backend/dto";
-import { error, invalid, redirect } from "@sveltejs/kit";
 import { form, getRequestEvent } from "$app/server";
 import { API_URL } from "$env/static/private";
+import { loginSchema, registerSchema } from "@hallmaster/backend/dto";
+import { error, invalid, redirect } from "@sveltejs/kit";
 
 export const register = form(registerSchema, async (data) => {
   const response = await fetch(`${API_URL}/auth/register`, {

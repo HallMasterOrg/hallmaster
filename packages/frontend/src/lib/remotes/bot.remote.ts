@@ -1,7 +1,7 @@
-import { CreateBotSchema } from "@hallmaster/backend/dto";
-import { error, redirect } from "@sveltejs/kit";
 import { form, getRequestEvent } from "$app/server";
 import { API_URL } from "$env/static/private";
+import { CreateBotSchema } from "@hallmaster/backend/dto";
+import { error, redirect } from "@sveltejs/kit";
 
 export const createBot = form(CreateBotSchema, async (data) => {
   const token = getRequestEvent().cookies.get("token");
