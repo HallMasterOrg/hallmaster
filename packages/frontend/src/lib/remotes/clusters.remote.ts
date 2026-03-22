@@ -1,7 +1,7 @@
-import type { GetClusterDto } from "@hallmaster/backend/dto";
-import { error } from "@sveltejs/kit";
 import { command, getRequestEvent, query } from "$app/server";
 import { API_URL } from "$env/static/private";
+import type { GetClusterDto } from "@hallmaster/backend/dto";
+import { error } from "@sveltejs/kit";
 
 export const getClusters = query(async (): Promise<GetClusterDto[]> => {
   const token = getRequestEvent().cookies.get("token");
