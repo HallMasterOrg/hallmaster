@@ -1,10 +1,10 @@
+import { form, getRequestEvent } from "$app/server";
+import { env } from "$env/dynamic/private";
 import { loginSchema, registerSchema } from "@hallmaster/backend/dto";
 import { error, invalid, redirect } from "@sveltejs/kit";
-import { form, getRequestEvent } from "$app/server";
-import { API_URL } from "$env/static/private";
 
 export const register = form(registerSchema, async (data) => {
-  const response = await fetch(`${API_URL}/auth/register`, {
+  const response = await fetch(`${env.API_URL}/auth/register`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -31,7 +31,7 @@ export const register = form(registerSchema, async (data) => {
 });
 
 export const login = form(loginSchema, async (data, issue) => {
-  const response = await fetch(`${API_URL}/auth/login`, {
+  const response = await fetch(`${env.API_URL}/auth/login`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",

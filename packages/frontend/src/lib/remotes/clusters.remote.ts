@@ -1,12 +1,12 @@
+import { command, getRequestEvent, query } from "$app/server";
+import { env } from "$env/dynamic/private";
 import type { GetClusterDto } from "@hallmaster/backend/dto";
 import { error } from "@sveltejs/kit";
-import { command, getRequestEvent, query } from "$app/server";
-import { API_URL } from "$env/static/private";
 
 export const getClusters = query(async (): Promise<GetClusterDto[]> => {
   const token = getRequestEvent().cookies.get("token");
 
-  const response = await fetch(`${API_URL}/clusters`, {
+  const response = await fetch(`${env.API_URL}/clusters`, {
     headers: {
       Accept: "application/json",
       Authorization: `Bearer ${token}`,
@@ -27,7 +27,7 @@ export const getClusters = query(async (): Promise<GetClusterDto[]> => {
 export const startCluster = command("unchecked", async (id: string) => {
   const token = getRequestEvent().cookies.get("token");
 
-  const response = await fetch(`${API_URL}/clusters/${id}/start`, {
+  const response = await fetch(`${env.API_URL}/clusters/${id}/start`, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${token}`,
@@ -50,7 +50,7 @@ export const startCluster = command("unchecked", async (id: string) => {
 export const stopCluster = command("unchecked", async (id: string) => {
   const token = getRequestEvent().cookies.get("token");
 
-  const response = await fetch(`${API_URL}/clusters/${id}/stop`, {
+  const response = await fetch(`${env.API_URL}/clusters/${id}/stop`, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${token}`,
@@ -73,7 +73,7 @@ export const stopCluster = command("unchecked", async (id: string) => {
 export const restartCluster = command("unchecked", async (id: string) => {
   const token = getRequestEvent().cookies.get("token");
 
-  const response = await fetch(`${API_URL}/clusters/${id}/restart`, {
+  const response = await fetch(`${env.API_URL}/clusters/${id}/restart`, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${token}`,
