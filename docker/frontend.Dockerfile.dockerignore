@@ -1,0 +1,16 @@
+*
+
+!package.json
+!pnpm-lock.yaml
+!pnpm-workspace.yaml
+
+!packages/backend/src
+!packages/backend/package.json
+
+!packages/frontend/src/
+!packages/frontend/static/
+!packages/frontend/package.json
+!packages/frontend/.npmrc
+!packages/frontend/tsconfig.json
+!packages/frontend/svelte.config.js
+!packages/frontend/vite.config.ts
