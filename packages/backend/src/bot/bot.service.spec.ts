@@ -18,8 +18,7 @@ const DISCORD_BOT_TOKEN = `${Buffer.from(HALLMASTER_BOT_ID).toString('base64')}.
 describe('BotService', () => {
   let service: BotService;
 
-  const prismaService: DeepMockProxy<PrismaService> =
-    mockDeep<PrismaService>();
+  const prismaService: DeepMockProxy<PrismaService> = mockDeep<PrismaService>();
   const clustersService: DeepMockProxy<ClustersService> =
     mockDeep<ClustersService>();
 
@@ -187,7 +186,10 @@ describe('BotService', () => {
 
   it('should reject layout with duplicate shard IDs', async () => {
     const body: CreateBotDto = {
-      layout: [[0, 1], [1, 2]],
+      layout: [
+        [0, 1],
+        [1, 2],
+      ],
       token: DISCORD_BOT_TOKEN,
       dockerImage: {
         image: 'host.docker.internal:5000/hallmaster/discord-bot:latest',
@@ -308,7 +310,10 @@ describe('BotService', () => {
     expect(data).toStrictEqual({
       id: HALLMASTER_BOT_ID,
       shards: 6,
-      layout: [[0, 1, 2], [3, 4, 5]],
+      layout: [
+        [0, 1, 2],
+        [3, 4, 5],
+      ],
     });
   });
 
@@ -449,7 +454,10 @@ describe('BotService', () => {
 
   it('should update the bot layout only (same shards)', async () => {
     const body: UpdateBotDto = {
-      layout: [[0, 1, 2, 3, 4], [5, 6]],
+      layout: [
+        [0, 1, 2, 3, 4],
+        [5, 6],
+      ],
     };
 
     (prismaService.bot.findFirst as jest.Mock).mockResolvedValueOnce({
@@ -547,13 +555,19 @@ describe('BotService', () => {
     expect(data).toStrictEqual({
       id: HALLMASTER_BOT_ID,
       shards: 7,
-      layout: [[0, 1, 2, 3, 4], [5, 6]],
+      layout: [
+        [0, 1, 2, 3, 4],
+        [5, 6],
+      ],
     });
   });
 
   it('should not update the bot', async () => {
     const body: UpdateBotDto = {
-      layout: [[0, 1, 2], [3, 4]],
+      layout: [
+        [0, 1, 2],
+        [3, 4],
+      ],
     };
 
     prismaService.bot.findFirst.mockResolvedValueOnce(null);
@@ -626,7 +640,10 @@ describe('BotService', () => {
     expect(data).toStrictEqual({
       id: HALLMASTER_BOT_ID,
       shards: 5,
-      layout: [[0, 1, 2], [3, 4]],
+      layout: [
+        [0, 1, 2],
+        [3, 4],
+      ],
     });
   });
 

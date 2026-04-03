@@ -17,13 +17,10 @@ export const CreateBotDockerImageSchema = z.object({
 });
 
 export const CreateBotSchema = z.object({
-  layout: z
-    .array(z.array(z.number().nonnegative()))
-    .min(1)
-    .meta({
-      description:
-        'The cluster layout. Each element is an array of shard IDs assigned to that cluster. Example: [[0, 1, 2], [3]] creates 2 clusters with 4 total shards.',
-    }),
+  layout: z.array(z.array(z.number().nonnegative())).min(1).meta({
+    description:
+      'The cluster layout. Each element is an array of shard IDs assigned to that cluster. Example: [[0, 1, 2], [3]] creates 2 clusters with 4 total shards.',
+  }),
   token: z.string().meta({
     description: 'The token of the Discord bot.',
   }),

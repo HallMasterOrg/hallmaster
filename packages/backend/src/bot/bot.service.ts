@@ -125,15 +125,17 @@ export class BotService {
       throw new NotFoundException();
     }
 
-    const layout =
-      updateBotDto.layout ?? bot.clusters.map((c) => c.shardIds);
+    const layout = updateBotDto.layout ?? bot.clusters.map((c) => c.shardIds);
 
     this.validateLayout(layout);
 
     const totalShards = layout.flat().length;
     const sortedLayout = layout.map((s) => [...s].sort((a, b) => a - b));
-    const oldLayout = bot.clusters.map((c) => [...c.shardIds].sort((a, b) => a - b));
-    const layoutChanged = JSON.stringify(sortedLayout) !== JSON.stringify(oldLayout);
+    const oldLayout = bot.clusters.map((c) =>
+      [...c.shardIds].sort((a, b) => a - b),
+    );
+    const layoutChanged =
+      JSON.stringify(sortedLayout) !== JSON.stringify(oldLayout);
 
     for (const cluster of bot.clusters) {
       await this.clustersService.remove(cluster.id as UUID);
