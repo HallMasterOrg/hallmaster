@@ -1,9 +1,12 @@
 import { UUID } from 'node:crypto';
 import {
   ConflictException,
+  HttpException,
+  HttpStatus,
   Injectable,
   NotFoundException,
   NotImplementedException,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { ClustersService } from '../clusters/clusters.service.js';
@@ -56,6 +59,36 @@ export class BotService {
     }
 
     return newClusters;
+  }
+
+  async getRecommendedShards(token: string): Promise<{ shards: number }> {
+    const response = await fetch('https://discord.com/api/v10/gateway/bot', {
+      headers: {
+        Authorization: `Bot ${token}`,
+      },
+    });
+
+    if (response.status === 401) {
+      throw new UnauthorizedException('Invalid Discord bot token.');
+    }
+
+    if (!response.ok) {
+      throw new HttpException(
+        `Discord API returned ${response.status}: ${response.statusText}`,
+        HttpStatus.FAILED_DEPENDENCY,
+      );
+    }
+
+    const data = await response.json();
+
+    if (!data.shards || typeof data.shards !== 'number') {
+      throw new HttpException(
+        'Got an invalid response from the Discord API.',
+        HttpStatus.FAILED_DEPENDENCY,
+      );
+    }
+
+    return { shards: data.shards };
   }
 
   async create(createBotDto: CreateBotZodDto): Promise<GetBotZodDto> {

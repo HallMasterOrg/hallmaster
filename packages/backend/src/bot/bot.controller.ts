@@ -23,8 +23,13 @@ import {
 import { BotService } from './bot.service.js';
 import { CreateBotZodDto } from './dto/create-bot.dto.js';
 import { GetBotZodDto } from './dto/get-bot.dto.js';
+import {
+  GetRecommendedShardsBodyZodDto,
+  GetRecommendedShardsZodDto,
+} from './dto/get-recommended-shards.dto.js';
 import { UpdateBotZodDto } from './dto/update-bot.dto.js';
 import { AuthGuard } from '../auth/guards/jwt.guard.js';
+import { Public } from '../auth/decorators/public.decorator.js';
 
 @ApiTags('Bot')
 @Controller('bot')
@@ -36,6 +41,20 @@ import { AuthGuard } from '../auth/guards/jwt.guard.js';
 })
 export class BotController {
   constructor(private readonly botService: BotService) {}
+
+  @Public()
+  @Post('recommended-shards')
+  @ApiOkResponse({
+    description: 'The recommended number of shards from the Discord API.',
+    type: GetRecommendedShardsZodDto,
+  })
+  @ApiUnauthorizedResponse({
+    description: 'The provided Discord bot token is invalid.',
+  })
+  @HttpCode(HttpStatus.OK)
+  getRecommendedShards(@Body() body: GetRecommendedShardsBodyZodDto) {
+    return this.botService.getRecommendedShards(body.token);
+  }
 
   @Post()
   @HttpCode(HttpStatus.CREATED)
