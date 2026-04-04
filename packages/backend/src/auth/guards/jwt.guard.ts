@@ -7,7 +7,6 @@ import {
 import { Reflector } from '@nestjs/core';
 import { FastifyRequest } from 'fastify';
 import { AuthService } from '../auth.service.js';
-import { IS_PUBLIC_KEY } from '../decorators/public.decorator.js';
 
 @Injectable()
 export class AuthGuard implements CanActivate {
@@ -25,15 +24,6 @@ export class AuthGuard implements CanActivate {
   }
 
   async canActivate(context: ExecutionContext) {
-    const isPublic = this.reflector.getAllAndOverride<boolean>(IS_PUBLIC_KEY, [
-      context.getHandler(),
-      context.getClass(),
-    ]);
-
-    if (isPublic) {
-      return true;
-    }
-
     const request = context.switchToHttp().getRequest<FastifyRequest>();
     const token = AuthGuard.extractBearerToken(request);
 
