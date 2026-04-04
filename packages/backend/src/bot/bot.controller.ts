@@ -14,6 +14,7 @@ import {
   ApiBearerAuth,
   ApiConflictResponse,
   ApiCreatedResponse,
+  ApiFailedDependencyResponse,
   ApiNoContentResponse,
   ApiNotFoundResponse,
   ApiOkResponse,
@@ -29,7 +30,6 @@ import {
 } from './dto/get-recommended-shards.dto.js';
 import { UpdateBotZodDto } from './dto/update-bot.dto.js';
 import { AuthGuard } from '../auth/guards/jwt.guard.js';
-import { Public } from '../auth/decorators/public.decorator.js';
 
 @ApiTags('Bot')
 @Controller('bot')
@@ -42,8 +42,8 @@ import { Public } from '../auth/decorators/public.decorator.js';
 export class BotController {
   constructor(private readonly botService: BotService) {}
 
-  @Public()
   @Post('recommended-shards')
+  @HttpCode(HttpStatus.OK)
   @ApiOkResponse({
     description: 'The recommended number of shards from the Discord API.',
     type: GetRecommendedShardsZodDto,
@@ -51,7 +51,9 @@ export class BotController {
   @ApiUnauthorizedResponse({
     description: 'The provided Discord bot token is invalid.',
   })
-  @HttpCode(HttpStatus.OK)
+  @ApiFailedDependencyResponse({
+    description: 'Got an invalid response from the Discord API.',
+  })
   getRecommendedShards(@Body() body: GetRecommendedShardsBodyZodDto) {
     return this.botService.getRecommendedShards(body.token);
   }
