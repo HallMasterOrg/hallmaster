@@ -17,6 +17,18 @@ const FAKE_ENV: Record<string, unknown> = {
   DISCORD_BOT_TOKEN: DISCORD_BOT_TOKEN,
 };
 
+const MOCK_DOCKER_IMAGE = {
+  serverName: 'host.docker.internal:5000',
+  image: 'hallmaster/discord-bot',
+  tag: 'latest',
+  username: null,
+};
+
+const EXPECTED_DOCKER_IMAGE = {
+  image: 'host.docker.internal:5000/hallmaster/discord-bot:latest',
+  username: null,
+};
+
 describe('BotService', () => {
   let service: BotService;
 
@@ -61,6 +73,7 @@ describe('BotService', () => {
       id: HALLMASTER_BOT_ID,
       totalShards: 1,
       clusters: [{ id: '1', status: 'STOPPED', shardIds: [0] }],
+      dockerImage: MOCK_DOCKER_IMAGE,
     });
 
     const result = await service.create(body);
@@ -69,6 +82,7 @@ describe('BotService', () => {
       id: HALLMASTER_BOT_ID,
       clusters: 1,
       shards: 1,
+      dockerImage: EXPECTED_DOCKER_IMAGE,
     });
   });
 
@@ -92,6 +106,7 @@ describe('BotService', () => {
         { id: '2', status: 'STOPPED', shardIds: [3, 4, 5] },
         { id: '3', status: 'STOPPED', shardIds: [6] },
       ],
+      dockerImage: MOCK_DOCKER_IMAGE,
     });
 
     const result = await service.create(body);
@@ -100,6 +115,7 @@ describe('BotService', () => {
       id: HALLMASTER_BOT_ID,
       clusters: 3,
       shards: 7,
+      dockerImage: EXPECTED_DOCKER_IMAGE,
     });
   });
 
@@ -135,6 +151,7 @@ describe('BotService', () => {
         { id: '1', status: 'RUNNING', shardIds: [0, 1, 2] },
         { id: '2', status: 'RUNNING', shardIds: [3, 4, 5] },
       ],
+      dockerImage: MOCK_DOCKER_IMAGE,
     });
 
     const data = await service.findOne();
@@ -143,6 +160,7 @@ describe('BotService', () => {
       id: HALLMASTER_BOT_ID,
       clusters: 2,
       shards: 6,
+      dockerImage: EXPECTED_DOCKER_IMAGE,
     });
   });
 
@@ -166,6 +184,7 @@ describe('BotService', () => {
         { id: '2', status: 'RUNNING', shardIds: [3, 4, 5] },
         { id: '3', status: 'RUNNING', shardIds: [6] },
       ],
+      dockerImage: MOCK_DOCKER_IMAGE,
     });
 
     clustersService.remove.mockResolvedValue();
@@ -179,6 +198,7 @@ describe('BotService', () => {
         { id: '3', status: 'UPDATING', shardIds: [6, 7, 8] },
         { id: '4', status: 'UPDATING', shardIds: [9] },
       ],
+      dockerImage: MOCK_DOCKER_IMAGE,
     });
 
     clustersService.start.mockResolvedValue();
@@ -200,6 +220,7 @@ describe('BotService', () => {
       id: HALLMASTER_BOT_ID,
       clusters: 4,
       shards: 10,
+      dockerImage: EXPECTED_DOCKER_IMAGE,
     });
   });
 
@@ -217,6 +238,7 @@ describe('BotService', () => {
         { id: '2', status: 'RUNNING', shardIds: [3, 4, 5] },
         { id: '3', status: 'RUNNING', shardIds: [6] },
       ],
+      dockerImage: MOCK_DOCKER_IMAGE,
     });
 
     clustersService.remove.mockResolvedValue();
@@ -228,6 +250,7 @@ describe('BotService', () => {
         { id: '1', status: 'STOPPED', shardIds: [0, 1, 2] },
         { id: '2', status: 'RUNNING', shardIds: [3, 4] },
       ],
+      dockerImage: MOCK_DOCKER_IMAGE,
     });
 
     clustersService.start.mockResolvedValue();
@@ -243,6 +266,7 @@ describe('BotService', () => {
       id: HALLMASTER_BOT_ID,
       clusters: 2,
       shards: 5,
+      dockerImage: EXPECTED_DOCKER_IMAGE,
     });
   });
 
@@ -267,6 +291,7 @@ describe('BotService', () => {
         { id: '1', status: 'STOPPED', shardIds: [0, 1, 2] },
         { id: '2', status: 'RUNNING', shardIds: [3, 4] },
       ],
+      dockerImage: MOCK_DOCKER_IMAGE,
     });
 
     prismaService.bot.delete.mockResolvedValueOnce({} as never);
@@ -280,6 +305,7 @@ describe('BotService', () => {
       id: HALLMASTER_BOT_ID,
       clusters: 2,
       shards: 5,
+      dockerImage: EXPECTED_DOCKER_IMAGE,
     });
   });
 
