@@ -3,12 +3,10 @@ import z from 'zod';
 
 export const GetBotDockerImageSchema = z.object({
   image: z.string().meta({
-    description:
-      'The full Docker image URI (serverName/image:tag).',
+    description: 'The full Docker image URI (serverName/image:tag).',
   }),
   username: z.string().nullable().meta({
-    description:
-      'The username used to authenticate to the Docker registry.',
+    description: 'The username used to authenticate to the Docker registry.',
   }),
 });
 
