@@ -6,11 +6,11 @@ export const CreateBotDockerImageSchema = z.object({
     description:
       'The Docker image to use, following this format: hostname/repo/image:tag. (example: hallmaster/discord-bot:tag)',
   }),
-  username: z.string().nullable().default(null).meta({
+  username: z.string().optional().meta({
     description:
       'The username used to authenticate to a remote Docker registry.',
   }),
-  password: z.string().nullable().default(null).meta({
+  password: z.string().optional().meta({
     description:
       'The password used to authenticate to a remote Docker registry.',
   }),
