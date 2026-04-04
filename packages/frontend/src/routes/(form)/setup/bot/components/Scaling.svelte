@@ -20,21 +20,21 @@ let checked = $state(false);
     <LabeledInput
       label="Clusters"
       icon={BoxesIcon}
-      disabled={checked}
       required
       min={1}
-      {...createBot.fields.clusters.as("number")}
-      issues={createBot.fields.clusters.issues()}
+      // {...createBot.fields.clusters.as("number")}
+      // issues={createBot.fields.clusters.issues()}
+      disabled
     />
 
     <LabeledInput
       label="Shards"
       icon={BoxIcon}
-      disabled={checked}
       required
       min={1}
-      {...createBot.fields.shards.as("number")}
-      issues={createBot.fields.shards.issues()}
+      // {...createBot.fields.shards.as("number")}
+      // issues={createBot.fields.shards.issues()}
+      disabled
     />
 	</div>
 </div>
