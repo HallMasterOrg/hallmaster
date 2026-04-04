@@ -61,10 +61,18 @@ export class BotService {
     return newClusters;
   }
 
-  async getRecommendedShards(token: string): Promise<{ shards: number }> {
+  async getRecommendedShards(): Promise<{ shards: number }> {
+    const bot = await this.prismaService.bot.findFirst({
+      select: { token: true },
+    });
+
+    if (bot === null) {
+      throw new NotFoundException('No bot created.');
+    }
+
     const response = await fetch('https://discord.com/api/v10/gateway/bot', {
       headers: {
-        Authorization: `Bot ${token}`,
+        Authorization: `Bot ${bot.token}`,
       },
     });
 
