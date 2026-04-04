@@ -33,9 +33,8 @@ describe('BotService', () => {
     service = module.get<BotService>(BotService);
   });
 
-  it('should create the bot', async () => {
+  it('should create the bot without layout', async () => {
     const body: CreateBotDto = {
-      layout: [[0]],
       token: DISCORD_BOT_TOKEN,
       dockerImage: {
         image: 'host.docker.internal:5000/hallmaster/discord-bot:latest',
@@ -46,87 +45,21 @@ describe('BotService', () => {
 
     (prismaService.bot.create as jest.Mock).mockResolvedValueOnce({
       id: HALLMASTER_BOT_ID,
-      totalShards: 1,
-      clusters: [{ id: '1', status: 'STOPPED', shardIds: [0] }],
+      totalShards: 0,
+      clusters: [],
     });
 
     const result = await service.create(body);
 
     expect(result).toStrictEqual({
       id: HALLMASTER_BOT_ID,
-      shards: 1,
-      layout: [[0]],
+      shards: 0,
+      layout: [],
     });
-  });
-
-  it('should create the bot with custom layout', async () => {
-    const body: CreateBotDto = {
-      layout: [[0, 1, 2], [3, 4, 5], [6]],
-      token: DISCORD_BOT_TOKEN,
-      dockerImage: {
-        image: 'host.docker.internal:5000/hallmaster/discord-bot:latest',
-        username: null,
-        password: null,
-      },
-    };
-
-    (prismaService.bot.create as jest.Mock).mockResolvedValueOnce({
-      id: HALLMASTER_BOT_ID,
-      totalShards: 7,
-      clusters: [
-        { id: '1', status: 'STOPPED', shardIds: [0, 1, 2] },
-        { id: '2', status: 'STOPPED', shardIds: [3, 4, 5] },
-        { id: '3', status: 'STOPPED', shardIds: [6] },
-      ],
-    });
-
-    const result = await service.create(body);
-
-    expect(result).toStrictEqual({
-      id: HALLMASTER_BOT_ID,
-      shards: 7,
-      layout: [[0, 1, 2], [3, 4, 5], [6]],
-    });
-  });
-
-  it('should reject layout with duplicate shard IDs', async () => {
-    const body: CreateBotDto = {
-      layout: [
-        [0, 1],
-        [1, 2],
-      ],
-      token: DISCORD_BOT_TOKEN,
-      dockerImage: {
-        image: 'host.docker.internal:5000/hallmaster/discord-bot:latest',
-        username: null,
-        password: null,
-      },
-    };
-
-    await expect(service.create(body)).rejects.toBeInstanceOf(
-      BadRequestException,
-    );
-  });
-
-  it('should reject layout with out-of-range shard IDs', async () => {
-    const body: CreateBotDto = {
-      layout: [[0, 5]],
-      token: DISCORD_BOT_TOKEN,
-      dockerImage: {
-        image: 'host.docker.internal:5000/hallmaster/discord-bot:latest',
-        username: null,
-        password: null,
-      },
-    };
-
-    await expect(service.create(body)).rejects.toBeInstanceOf(
-      BadRequestException,
-    );
   });
 
   it('should throw ConflictException when bot already exists', async () => {
     const body: CreateBotDto = {
-      layout: [[0]],
       token: DISCORD_BOT_TOKEN,
       dockerImage: {
         image: 'host.docker.internal:5000/hallmaster/discord-bot:latest',
@@ -166,6 +99,22 @@ describe('BotService', () => {
         [0, 1, 2],
         [3, 4, 5],
       ],
+    });
+  });
+
+  it('should find the bot without layout', async () => {
+    (prismaService.bot.findFirst as jest.Mock).mockResolvedValueOnce({
+      id: HALLMASTER_BOT_ID,
+      totalShards: 0,
+      clusters: [],
+    });
+
+    const data = await service.findOne();
+
+    expect(data).toStrictEqual({
+      id: HALLMASTER_BOT_ID,
+      shards: 0,
+      layout: [],
     });
   });
 
@@ -225,6 +174,45 @@ describe('BotService', () => {
     });
   });
 
+  it('should set initial layout via update', async () => {
+    const body: UpdateBotDto = {
+      layout: [[0, 1, 2], [3, 4, 5], [6]],
+    };
+
+    (prismaService.bot.findFirst as jest.Mock).mockResolvedValueOnce({
+      id: HALLMASTER_BOT_ID,
+      totalShards: 0,
+      clusters: [],
+    });
+
+    (prismaService.bot.update as jest.Mock).mockResolvedValueOnce({
+      id: HALLMASTER_BOT_ID,
+      totalShards: 7,
+      clusters: [
+        { id: '1', status: 'UPDATING', shardIds: [0, 1, 2] },
+        { id: '2', status: 'UPDATING', shardIds: [3, 4, 5] },
+        { id: '3', status: 'UPDATING', shardIds: [6] },
+      ],
+    });
+
+    clustersService.start.mockResolvedValue();
+
+    const data = await service.update(body);
+
+    expect(clustersService.remove).not.toHaveBeenCalled();
+
+    expect(clustersService.start).toHaveBeenCalledWith('1');
+    expect(clustersService.start).toHaveBeenCalledWith('2');
+    expect(clustersService.start).toHaveBeenCalledWith('3');
+    expect(clustersService.start).toHaveBeenCalledTimes(3);
+
+    expect(data).toStrictEqual({
+      id: HALLMASTER_BOT_ID,
+      shards: 7,
+      layout: [[0, 1, 2], [3, 4, 5], [6]],
+    });
+  });
+
   it('should update the bot layout only (same shards)', async () => {
     const body: UpdateBotDto = {
       layout: [
@@ -272,6 +260,41 @@ describe('BotService', () => {
         [5, 6],
       ],
     });
+  });
+
+  it('should reject layout with duplicate shard IDs', async () => {
+    const body: UpdateBotDto = {
+      layout: [
+        [0, 1],
+        [1, 2],
+      ],
+    };
+
+    (prismaService.bot.findFirst as jest.Mock).mockResolvedValueOnce({
+      id: HALLMASTER_BOT_ID,
+      totalShards: 0,
+      clusters: [],
+    });
+
+    await expect(service.update(body)).rejects.toBeInstanceOf(
+      BadRequestException,
+    );
+  });
+
+  it('should reject layout with out-of-range shard IDs', async () => {
+    const body: UpdateBotDto = {
+      layout: [[0, 5]],
+    };
+
+    (prismaService.bot.findFirst as jest.Mock).mockResolvedValueOnce({
+      id: HALLMASTER_BOT_ID,
+      totalShards: 0,
+      clusters: [],
+    });
+
+    await expect(service.update(body)).rejects.toBeInstanceOf(
+      BadRequestException,
+    );
   });
 
   it('should throw NotFoundException when updating non-existent bot', async () => {

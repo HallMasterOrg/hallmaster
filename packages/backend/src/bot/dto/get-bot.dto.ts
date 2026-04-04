@@ -5,7 +5,7 @@ export const GetBotSchema = z.object({
   id: z.string().meta({
     description: 'The bot ID.',
   }),
-  shards: z.number().positive().meta({
+  shards: z.number().nonnegative().meta({
     description: 'The total number of shards for the bot.',
   }),
   layout: z.array(z.array(z.number().nonnegative())).meta({

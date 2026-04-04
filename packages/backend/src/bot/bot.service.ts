@@ -42,17 +42,13 @@ export class BotService {
   }
 
   async create(createBotDto: CreateBotZodDto): Promise<GetBotZodDto> {
-    this.validateLayout(createBotDto.layout);
-
-    const totalShards = createBotDto.layout.flat().length;
-
     try {
       const [serverName, ...path] = createBotDto.dockerImage.image.split('/');
       const [image, tag] = path.join('/').split(':');
       const bot = await this.prismaService.bot.create({
         data: {
           id: this.getBotId(createBotDto.token),
-          totalShards,
+          totalShards: 0,
           token: createBotDto.token,
           dockerImage: {
             create: {
@@ -61,14 +57,6 @@ export class BotService {
               serverName: serverName,
               username: createBotDto.dockerImage.username,
               password: createBotDto.dockerImage.password,
-            },
-          },
-          clusters: {
-            createMany: {
-              data: createBotDto.layout.map((clusterShardIds) => ({
-                status: 'STOPPED',
-                shardIds: clusterShardIds,
-              })),
             },
           },
         },
