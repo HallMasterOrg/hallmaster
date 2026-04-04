@@ -79,7 +79,7 @@ export class BotService {
       );
     }
 
-    const data = await response.json();
+    const data = (await response.json()) as { shards?: number };
 
     if (!data.shards || typeof data.shards !== 'number') {
       throw new HttpException(
