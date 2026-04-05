@@ -14,6 +14,7 @@ import { CreateBotZodDto } from './dto/create-bot.dto.js';
 import { GetBotZodDto } from './dto/get-bot.dto.js';
 import { UpdateBotZodDto } from './dto/update-bot.dto.js';
 import { PrismaClientKnownRequestError } from '@prisma/client/runtime/client';
+import { formatDockerImage } from './bot.utils.js';
 
 @Injectable()
 export class BotService {
@@ -21,6 +22,20 @@ export class BotService {
     private readonly prismaService: PrismaService,
     private readonly clustersService: ClustersService,
   ) {}
+
+  private static readonly BOT_SELECT = {
+    id: true,
+    totalShards: true,
+    clusters: true,
+    dockerImage: {
+      select: {
+        serverName: true,
+        image: true,
+        tag: true,
+        username: true,
+      },
+    },
+  } as const;
 
   private getBotId(token: string): string {
     return Buffer.from(token.split('.')[0], 'base64').toString('ascii');
@@ -101,17 +116,14 @@ export class BotService {
             },
           },
         },
-        select: {
-          id: true,
-          clusters: true,
-          totalShards: true,
-        },
+        select: BotService.BOT_SELECT,
       });
 
       return {
         id: bot.id,
         shards: bot.totalShards,
         layout: bot.clusters.map((c) => c.shardIds),
+        dockerImage: formatDockerImage(bot.dockerImage),
       };
     } catch (e) {
       if (e instanceof PrismaClientKnownRequestError && 'P2002' === e.code) {
@@ -123,11 +135,7 @@ export class BotService {
 
   async findOne(): Promise<GetBotZodDto> {
     const bot = await this.prismaService.bot.findFirst({
-      select: {
-        id: true,
-        totalShards: true,
-        clusters: true,
-      },
+      select: BotService.BOT_SELECT,
     });
 
     if (null === bot) {
@@ -138,16 +146,13 @@ export class BotService {
       id: bot.id,
       shards: bot.totalShards,
       layout: bot.clusters.map((c) => c.shardIds),
+      dockerImage: formatDockerImage(bot.dockerImage),
     };
   }
 
   async update(updateBotDto: UpdateBotZodDto): Promise<GetBotZodDto> {
     const bot = await this.prismaService.bot.findFirst({
-      select: {
-        id: true,
-        totalShards: true,
-        clusters: true,
-      },
+      select: BotService.BOT_SELECT,
     });
 
     if (null === bot) {
@@ -188,11 +193,7 @@ export class BotService {
       where: {
         id: bot.id,
       },
-      select: {
-        id: true,
-        totalShards: true,
-        clusters: true,
-      },
+      select: BotService.BOT_SELECT,
     });
 
     for (const cluster of newBot.clusters) {
@@ -205,12 +206,13 @@ export class BotService {
       id: newBot.id,
       shards: newBot.totalShards,
       layout: newBot.clusters.map((c) => c.shardIds),
+      dockerImage: formatDockerImage(newBot.dockerImage),
     };
   }
 
   async remove(): Promise<GetBotZodDto> {
     const bot = await this.prismaService.bot.findFirst({
-      select: { id: true, totalShards: true, clusters: true },
+      select: BotService.BOT_SELECT,
     });
     if (null === bot) {
       throw new NotFoundException();
@@ -237,6 +239,7 @@ export class BotService {
       id: bot.id,
       shards: bot.totalShards,
       layout: bot.clusters.map((c) => c.shardIds),
+      dockerImage: formatDockerImage(bot.dockerImage),
     };
   }
 }
