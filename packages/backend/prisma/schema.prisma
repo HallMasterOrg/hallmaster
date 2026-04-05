@@ -14,12 +14,11 @@ model User {
 }
 
 model Bot {
-  id            String      @id
-  token         String
-  totalShards   Int         @map("total_shards")
-  clusters      Cluster[]
-  dockerImage   DockerImage @relation(fields: [dockerImageId], references: [id])
-  dockerImageId String      @map("docker_image_id")
+  id          String       @id
+  token       String
+  totalShards Int          @map("total_shards")
+  clusters    Cluster[]
+  dockerImage DockerImage?
 
   @@map("bot")
 }
@@ -31,7 +30,8 @@ model DockerImage {
   tag        String  @default("latest")
   username   String?
   password   String?
-  bots       Bot[]
+  botId      String  @unique @map("bot_id")
+  bot        Bot     @relation(fields: [botId], references: [id], onDelete: Cascade)
 
   @@map("docker_image")
 }

@@ -60,7 +60,7 @@ export class DockerService {
     }
 
     const dockerImage = await this.prismaService.dockerImage.findUnique({
-      where: { id: bot.dockerImageId },
+      where: { botId: bot.id },
     });
     if (null === dockerImage) {
       throw new NotFoundException();

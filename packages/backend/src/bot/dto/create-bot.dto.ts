@@ -17,12 +17,6 @@ export const CreateBotDockerImageSchema = z.object({
 });
 
 export const CreateBotSchema = z.object({
-  clusters: z.number().positive().optional().default(1).meta({
-    description: 'The number of clusters allocated for the bot.',
-  }),
-  shards: z.number().positive().optional().default(1).meta({
-    description: 'The total number of shards for the bot.',
-  }),
   token: z.string().meta({
     description: 'The token of the Discord bot.',
   }),
