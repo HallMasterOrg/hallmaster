@@ -4,16 +4,12 @@ import {
   Injectable,
   UnauthorizedException,
 } from '@nestjs/common';
-import { Reflector } from '@nestjs/core';
 import { FastifyRequest } from 'fastify';
 import { AuthService } from '../auth.service.js';
 
 @Injectable()
 export class AuthGuard implements CanActivate {
-  constructor(
-    private readonly authService: AuthService,
-    private readonly reflector: Reflector,
-  ) {}
+  constructor(private readonly authService: AuthService) {}
 
   private static extractBearerToken(request: FastifyRequest): string {
     const authHeader = request.headers.authorization ?? '';
