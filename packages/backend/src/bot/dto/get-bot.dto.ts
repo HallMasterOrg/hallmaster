@@ -14,11 +14,12 @@ export const GetBotSchema = z.object({
   id: z.string().meta({
     description: 'The bot ID.',
   }),
-  clusters: z.number().positive().meta({
-    description: 'The number of clusters allocated for the bot.',
+  shards: z.number().nonnegative().meta({
+    description: 'The total number of shards for the bot.',
   }),
-  shards: z.number().positive().meta({
-    description: 'The number of shards allocated for the bot.',
+  layout: z.array(z.array(z.number().nonnegative())).meta({
+    description:
+      'The cluster layout. Each element is an array of shard IDs assigned to that cluster.',
   }),
   dockerImage: GetBotDockerImageSchema.meta({
     description: 'The Docker image configuration associated with the bot.',

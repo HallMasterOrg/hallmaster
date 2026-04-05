@@ -9,11 +9,13 @@ import {
   Post,
   UseGuards,
 } from '@nestjs/common';
+
 import {
   ApiAcceptedResponse,
   ApiBearerAuth,
   ApiConflictResponse,
   ApiCreatedResponse,
+  ApiFailedDependencyResponse,
   ApiNoContentResponse,
   ApiNotFoundResponse,
   ApiOkResponse,
@@ -23,6 +25,7 @@ import {
 import { BotService } from './bot.service.js';
 import { CreateBotZodDto } from './dto/create-bot.dto.js';
 import { GetBotZodDto } from './dto/get-bot.dto.js';
+import { GetRecommendedShardsZodDto } from './dto/get-recommended-shards.dto.js';
 import { UpdateBotZodDto } from './dto/update-bot.dto.js';
 import { AuthGuard } from '../auth/guards/jwt.guard.js';
 
@@ -36,6 +39,24 @@ import { AuthGuard } from '../auth/guards/jwt.guard.js';
 })
 export class BotController {
   constructor(private readonly botService: BotService) {}
+
+  @Get('recommended-shards')
+  @ApiOkResponse({
+    description: 'The recommended number of shards from the Discord API.',
+    type: GetRecommendedShardsZodDto,
+  })
+  @ApiNotFoundResponse({
+    description: 'No bot created beforehand.',
+  })
+  @ApiUnauthorizedResponse({
+    description: 'The Discord bot token stored in database is invalid.',
+  })
+  @ApiFailedDependencyResponse({
+    description: 'Got an invalid response from the Discord API.',
+  })
+  getRecommendedShards() {
+    return this.botService.getRecommendedShards();
+  }
 
   @Post()
   @HttpCode(HttpStatus.CREATED)
