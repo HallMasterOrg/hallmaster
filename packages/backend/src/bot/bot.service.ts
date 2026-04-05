@@ -2,8 +2,11 @@ import { UUID } from 'node:crypto';
 import {
   BadRequestException,
   ConflictException,
+  HttpException,
+  HttpStatus,
   Injectable,
   NotFoundException,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { ClustersService } from '../clusters/clusters.service.js';
 import { PrismaService } from '../prisma/prisma.service.js';
@@ -39,6 +42,44 @@ export class BotService {
         );
       }
     }
+  }
+
+  async getRecommendedShards(): Promise<{ shards: number }> {
+    const bot = await this.prismaService.bot.findFirst({
+      select: { token: true },
+    });
+
+    if (bot === null) {
+      throw new NotFoundException('No bot created.');
+    }
+
+    const response = await fetch('https://discord.com/api/v10/gateway/bot', {
+      headers: {
+        Authorization: `Bot ${bot.token}`,
+      },
+    });
+
+    if (response.status === 401) {
+      throw new UnauthorizedException('Invalid Discord bot token.');
+    }
+
+    if (!response.ok) {
+      throw new HttpException(
+        `Discord API returned ${response.status}: ${response.statusText}`,
+        HttpStatus.FAILED_DEPENDENCY,
+      );
+    }
+
+    const data = (await response.json()) as { shards?: number };
+
+    if (!data.shards || typeof data.shards !== 'number') {
+      throw new HttpException(
+        'Got an invalid response from the Discord API.',
+        HttpStatus.FAILED_DEPENDENCY,
+      );
+    }
+
+    return { shards: data.shards };
   }
 
   async create(createBotDto: CreateBotZodDto): Promise<GetBotZodDto> {
