@@ -18,7 +18,7 @@ export const register = form(registerSchema, async (data) => {
       const { token } = await response.json();
 
       cookies.set("token", token, { path: "/" });
-      return redirect(303, "/setup/bot");
+      return redirect(303, "/setup#bot");
     }
     case 400:
       return error(400, "Invalid fields");
