@@ -1,20 +1,12 @@
-import {
-  DockerContainersAPI,
-  DockerImagesAPI,
-  DockerSocket,
-  DockerAPIHttpError,
-} from '@hallmaster/docker.js';
-import {
-  BadRequestException,
-  Injectable,
-  InternalServerErrorException,
-  NotFoundException,
-} from '@nestjs/common';
 import type { Readable } from 'node:stream';
-import { ConfigService } from '@nestjs/config';
-import { PrismaService } from '../prisma/prisma.service.js';
-import { GetClusterStatsZodDto } from '../clusters/dto/get-cluster-stats.dto.js';
+
+import { DockerContainersAPI, DockerImagesAPI, DockerSocket, DockerAPIHttpError } from '@hallmaster/docker.js';
 import { Bot, Cluster, DockerImage } from '@hallmaster/prisma-client';
+import { BadRequestException, Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+
+import { GetClusterStatsZodDto } from '../clusters/dto/get-cluster-stats.dto.js';
+import { PrismaService } from '../prisma/prisma.service.js';
 
 @Injectable()
 export class DockerService {
@@ -48,7 +40,7 @@ export class DockerService {
       });
 
       throw new BadRequestException('Unable to pull the Docker image.', {
-        description: `An error occurred while pulling the bot's Docker image from ${dockerImage.image}: ${e}`,
+        description: `An error occurred while pulling the bot's Docker image from ${dockerImage.image}: ${e instanceof Error ? e.message : String(e)}`,
         cause: e,
       });
     }
@@ -66,17 +58,11 @@ export class DockerService {
       throw new NotFoundException();
     }
 
-    const discordBotTokenEnvName = this.configService.getOrThrow<string>(
-      'DISCORD_BOT_TOKEN_ENV_NAME',
-    );
+    const discordBotTokenEnvName = this.configService.getOrThrow<string>('DISCORD_BOT_TOKEN_ENV_NAME');
 
-    const totalShardsEnvName = this.configService.getOrThrow<string>(
-      'TOTAL_SHARDS_ENV_NAME',
-    );
+    const totalShardsEnvName = this.configService.getOrThrow<string>('TOTAL_SHARDS_ENV_NAME');
 
-    const shardIdListEnvName = this.configService.getOrThrow<string>(
-      'SHARD_ID_LIST_ENV_NAME',
-    );
+    const shardIdListEnvName = this.configService.getOrThrow<string>('SHARD_ID_LIST_ENV_NAME');
 
     await this.prismaService.cluster.update({
       data: {
@@ -134,7 +120,7 @@ export class DockerService {
         });
 
         throw new BadRequestException('Unable to create the cluster', {
-          description: `An error occurred while starting the Docker container project: ${e}`,
+          description: `An error occurred while starting the Docker container project: ${e instanceof Error ? e.message : String(e)}`,
           cause: e,
         });
       }
@@ -171,7 +157,7 @@ export class DockerService {
       });
 
       throw new BadRequestException('Unable to create the cluster', {
-        description: `An error occurred while starting the Docker container project: ${e}`,
+        description: `An error occurred while starting the Docker container project: ${e instanceof Error ? e.message : String(e)}`,
         cause: e,
       });
     }
@@ -189,10 +175,7 @@ export class DockerService {
 
       await dockerContainersAPI.stop(container.Id);
     } catch (e) {
-      if (
-        !(e instanceof DockerAPIHttpError) ||
-        e.message !== `no such container: ${cluster.containerId}`
-      ) {
+      if (!(e instanceof DockerAPIHttpError) || e.message !== `no such container: ${cluster.containerId}`) {
         await this.prismaService.cluster.update({
           where: {
             id: cluster.id,
@@ -203,7 +186,7 @@ export class DockerService {
         });
 
         throw new BadRequestException('Unable to stop the cluster', {
-          description: `An error occurred while removing the Docker container: ${e}`,
+          description: `An error occurred while removing the Docker container: ${e instanceof Error ? e.message : String(e)}`,
           cause: e,
         });
       }
@@ -231,7 +214,7 @@ export class DockerService {
         await dockerContainersAPI.remove(cluster.containerId);
       } catch (e) {
         throw new BadRequestException('Unable to remove the cluster', {
-          description: `An error occurred while removing the Docker container: ${e}`,
+          description: `An error occurred while removing the Docker container: ${e instanceof Error ? e.message : String(e)}`,
           cause: e,
         });
       }
@@ -253,10 +236,7 @@ export class DockerService {
     await this.start(bot, cluster);
   }
 
-  async streamContainerLogs(
-    containerId: string,
-    tail?: number | 'all',
-  ): Promise<Readable> {
+  async streamContainerLogs(containerId: string, tail?: number | 'all'): Promise<Readable> {
     const dockerContainersAPI = new DockerContainersAPI(this.dockerSocket);
     return await dockerContainersAPI.logs(containerId, {
       follow: true,
@@ -267,12 +247,7 @@ export class DockerService {
     });
   }
 
-  async getContainerLogs(
-    containerId: string,
-    since?: Date,
-    until?: Date,
-    tail?: number | 'all',
-  ) {
+  async getContainerLogs(containerId: string, since?: Date, until?: Date, tail?: number | 'all') {
     const dockerContainersAPI = new DockerContainersAPI(this.dockerSocket);
 
     const sinceTimestamp = since ? since.getTime() / 1000 : undefined;
@@ -297,20 +272,13 @@ export class DockerService {
       stream: false,
     });
 
-    const cpuDelta =
-      stats.cpu_stats.cpu_usage.total_usage -
-      stats.precpu_stats.cpu_usage.total_usage;
+    const cpuDelta = stats.cpu_stats.cpu_usage.total_usage - stats.precpu_stats.cpu_usage.total_usage;
 
-    const systemDelta =
-      stats.cpu_stats.system_cpu_usage - stats.precpu_stats.system_cpu_usage;
+    const systemDelta = stats.cpu_stats.system_cpu_usage - stats.precpu_stats.system_cpu_usage;
 
-    const onlineCPUs =
-      stats.cpu_stats.online_cpus ??
-      stats.cpu_stats.cpu_usage.percpu_usage?.length ??
-      1;
+    const onlineCPUs = stats.cpu_stats.online_cpus ?? stats.cpu_stats.cpu_usage.percpu_usage?.length ?? 1;
 
-    const cpuPercentage =
-      systemDelta > 0 ? (cpuDelta / systemDelta) * onlineCPUs * 100 : 0;
+    const cpuPercentage = systemDelta > 0 ? (cpuDelta / systemDelta) * onlineCPUs * 100 : 0;
 
     const processesUsage = stats.pids_stats.current;
     const processesPercentage = (processesUsage / stats.pids_stats.limit) * 100;
@@ -329,13 +297,11 @@ export class DockerService {
       ?.filter((service) => service.op === 'write')
       ?.reduce((acc, cur) => acc + cur.value, 0);
 
-    const networks = Object.entries(stats.networks).map(
-      ([interfaceName, data]) => ({
-        interface: interfaceName,
-        transmitted: data.tx_bytes,
-        received: data.rx_bytes,
-      }),
-    );
+    const networks = Object.entries(stats.networks).map(([interfaceName, data]) => ({
+      interface: interfaceName,
+      transmitted: data.tx_bytes,
+      received: data.rx_bytes,
+    }));
 
     return {
       cpuPercentage: cpuPercentage,

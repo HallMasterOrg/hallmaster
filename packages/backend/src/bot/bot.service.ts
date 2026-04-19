@@ -1,4 +1,5 @@
 import { UUID } from 'node:crypto';
+
 import {
   BadRequestException,
   ConflictException,
@@ -8,13 +9,15 @@ import {
   NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
+import { PrismaClientKnownRequestError } from '@prisma/client/runtime/client';
+
 import { ClustersService } from '../clusters/clusters.service.js';
 import { PrismaService } from '../prisma/prisma.service.js';
+
+import { formatDockerImage } from './bot.utils.js';
 import { CreateBotZodDto } from './dto/create-bot.dto.js';
 import { GetBotZodDto } from './dto/get-bot.dto.js';
 import { UpdateBotZodDto } from './dto/update-bot.dto.js';
-import { PrismaClientKnownRequestError } from '@prisma/client/runtime/client';
-import { formatDockerImage } from './bot.utils.js';
 
 @Injectable()
 export class BotService {
@@ -52,9 +55,7 @@ export class BotService {
 
     for (const shardId of allShardIds) {
       if (shardId < 0 || shardId >= totalShards) {
-        throw new BadRequestException(
-          `Shard ID ${shardId} is out of range [0, ${totalShards - 1}].`,
-        );
+        throw new BadRequestException(`Shard ID ${shardId} is out of range [0, ${totalShards - 1}].`);
       }
     }
   }
@@ -88,10 +89,7 @@ export class BotService {
     const data = (await response.json()) as { shards?: number };
 
     if (!data.shards || typeof data.shards !== 'number') {
-      throw new HttpException(
-        'Got an invalid response from the Discord API.',
-        HttpStatus.FAILED_DEPENDENCY,
-      );
+      throw new HttpException('Got an invalid response from the Discord API.', HttpStatus.FAILED_DEPENDENCY);
     }
 
     return { shards: data.shards };
@@ -165,11 +163,8 @@ export class BotService {
 
     const totalShards = layout.flat().length;
     const sortedLayout = layout.map((s) => [...s].sort((a, b) => a - b));
-    const oldLayout = bot.clusters.map((c) =>
-      [...c.shardIds].sort((a, b) => a - b),
-    );
-    const layoutChanged =
-      JSON.stringify(sortedLayout) !== JSON.stringify(oldLayout);
+    const oldLayout = bot.clusters.map((c) => [...c.shardIds].sort((a, b) => a - b));
+    const layoutChanged = JSON.stringify(sortedLayout) !== JSON.stringify(oldLayout);
 
     for (const cluster of bot.clusters) {
       await this.clustersService.remove(cluster.id as UUID);
@@ -181,10 +176,7 @@ export class BotService {
         clusters: {
           createMany: {
             data: layout.map((clusterShardIds, index) => ({
-              status:
-                layoutChanged || bot.clusters[index]?.status !== 'STOPPED'
-                  ? 'UPDATING'
-                  : 'STOPPED',
+              status: layoutChanged || bot.clusters[index]?.status !== 'STOPPED' ? 'UPDATING' : 'STOPPED',
               shardIds: clusterShardIds,
             })),
           },
