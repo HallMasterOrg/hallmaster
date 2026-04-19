@@ -6,9 +6,13 @@ on:
       - dev
     paths:
       - "packages/backend/**"
+      - "packages/prisma-client/**"
+      - ".github/workflows/backend-ci.yaml"
   pull_request:
     paths:
       - "packages/backend/**"
+      - "packages/prisma-client/**"
+      - ".github/workflows/backend-ci.yaml"
 
 concurrency:
   group: docker-build-${{ github.ref }}
@@ -23,16 +27,11 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v5
-        with:
-          node-version: 24
+      - name: Setup Node.js & pnpm
+        uses: ./.github/actions/setup
 
       - name: Install dependencies
-        run: pnpm install --filter=@hallmaster/backend --frozen-lockfile
+        run: pnpm install --filter=@hallmaster/backend... --frozen-lockfile
 
       - name: Generate Prisma types
         run: pnpm --filter=@hallmaster/backend prisma:generate
