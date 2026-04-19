@@ -45,6 +45,12 @@ export class BotService {
   }
 
   private validateLayout(layout: number[][]): void {
+    for (const [index, cluster] of layout.entries()) {
+      if (cluster.length === 0) {
+        throw new BadRequestException(`Cluster at index ${index} is empty.`);
+      }
+    }
+
     const allShardIds = layout.flat();
     const uniqueShardIds = new Set(allShardIds);
     const totalShards = allShardIds.length;
