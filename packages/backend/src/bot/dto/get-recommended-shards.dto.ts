@@ -1,5 +1,5 @@
 import { createZodDto } from 'nestjs-zod';
-import z from 'zod';
+import { z } from 'zod';
 
 export const GetRecommendedShardsSchema = z.object({
   shards: z.number().positive().meta({
@@ -7,6 +7,4 @@ export const GetRecommendedShardsSchema = z.object({
   }),
 });
 
-export class GetRecommendedShardsZodDto extends createZodDto(
-  GetRecommendedShardsSchema,
-) {}
+export class GetRecommendedShardsZodDto extends createZodDto(GetRecommendedShardsSchema) {}

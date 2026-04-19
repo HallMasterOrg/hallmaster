@@ -1,12 +1,16 @@
+import type { Prisma } from '@hallmaster/prisma-client';
 import { beforeEach, describe, expect, it, jest } from '@jest/globals';
-import { Test, TestingModule } from '@nestjs/testing';
-import { JwtModule, JwtService } from '@nestjs/jwt';
-import { DeepMockProxy, mockDeep } from 'jest-mock-extended';
-import { AuthService } from './auth.service.js';
-import { PrismaService } from '../prisma/prisma.service.js';
-import { RegisterDto } from './dto/register.dto.js';
-import { Prisma } from '@hallmaster/prisma-client';
 import { ConflictException, UnauthorizedException } from '@nestjs/common';
+import { JwtModule, JwtService } from '@nestjs/jwt';
+import type { TestingModule } from '@nestjs/testing';
+import { Test } from '@nestjs/testing';
+import type { DeepMockProxy } from 'jest-mock-extended';
+import { mockDeep } from 'jest-mock-extended';
+
+import { PrismaService } from '../prisma/prisma.service.js';
+
+import { AuthService } from './auth.service.js';
+import type { RegisterDto } from './dto/register.dto.js';
 
 describe('authService', () => {
   let service: AuthService;
@@ -54,9 +58,7 @@ describe('authService', () => {
 
     const hashPasswordMock = jest
       .spyOn(AuthService, 'hashPassword')
-      .mockImplementationOnce((password) =>
-        Promise.resolve(`${password}-hashed`),
-      );
+      .mockImplementationOnce((password) => Promise.resolve(`${password}-hashed`));
 
     const signAsyncMock = jest.spyOn(jwtService, 'signAsync');
 
@@ -101,9 +103,7 @@ describe('authService', () => {
 
     prismaService.user.count.mockResolvedValueOnce(1);
 
-    await expect(service.register(credentials)).rejects.toBeInstanceOf(
-      ConflictException,
-    );
+    await expect(service.register(credentials)).rejects.toBeInstanceOf(ConflictException);
 
     expect(prismaService.user.count).toHaveBeenCalledTimes(1);
   });
@@ -121,9 +121,7 @@ describe('authService', () => {
 
     const verifyPasswordMock = jest
       .spyOn(AuthService, 'verifyPassword')
-      .mockImplementationOnce((hash: string, password: string) =>
-        Promise.resolve(hash === `${password}-hashed`),
-      );
+      .mockImplementationOnce((hash: string, password: string) => Promise.resolve(hash === `${password}-hashed`));
 
     const signAsyncMock = jest.spyOn(jwtService, 'signAsync');
 
@@ -140,10 +138,7 @@ describe('authService', () => {
     });
     expect(prismaService.user.findFirst).toHaveBeenCalledTimes(1);
 
-    expect(verifyPasswordMock).toHaveBeenCalledWith(
-      `${credentials.password}-hashed`,
-      credentials.password,
-    );
+    expect(verifyPasswordMock).toHaveBeenCalledWith(`${credentials.password}-hashed`, credentials.password);
     expect(verifyPasswordMock).toHaveBeenCalledTimes(1);
 
     expect(signAsyncMock).toHaveBeenCalledWith({
@@ -169,9 +164,7 @@ describe('authService', () => {
 
     prismaService.user.findFirst.mockResolvedValueOnce(null);
 
-    await expect(service.login(credentials)).rejects.toBeInstanceOf(
-      UnauthorizedException,
-    );
+    await expect(service.login(credentials)).rejects.toBeInstanceOf(UnauthorizedException);
 
     expect(prismaService.user.findFirst).toHaveBeenCalledWith({
       select: {
@@ -198,13 +191,9 @@ describe('authService', () => {
 
     const verifyPasswordMock = jest
       .spyOn(AuthService, 'verifyPassword')
-      .mockImplementationOnce((hash: string, password: string) =>
-        Promise.resolve(hash === `${password}-hashed`),
-      );
+      .mockImplementationOnce((hash: string, password: string) => Promise.resolve(hash === `${password}-hashed`));
 
-    await expect(service.login(credentials)).rejects.toBeInstanceOf(
-      UnauthorizedException,
-    );
+    await expect(service.login(credentials)).rejects.toBeInstanceOf(UnauthorizedException);
 
     expect(prismaService.user.findFirst).toHaveBeenCalledWith({
       select: {
@@ -217,10 +206,7 @@ describe('authService', () => {
     });
     expect(prismaService.user.findFirst).toHaveBeenCalledTimes(1);
 
-    expect(verifyPasswordMock).toHaveBeenCalledWith(
-      `not-${credentials.password}-hashed`,
-      credentials.password,
-    );
+    expect(verifyPasswordMock).toHaveBeenCalledWith(`not-${credentials.password}-hashed`, credentials.password);
     expect(verifyPasswordMock).toHaveBeenCalledTimes(1);
   });
 });
