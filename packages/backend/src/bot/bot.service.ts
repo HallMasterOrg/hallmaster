@@ -148,9 +148,48 @@ export class BotService {
     };
   }
 
+  private buildDockerImageUpdate(
+    input: UpdateBotZodDto['dockerImage'],
+    current: {
+      serverName: string;
+      image: string;
+      tag: string;
+      username: string | null;
+    } | null,
+  ): Record<string, unknown> | undefined {
+    if (!input) {
+      return undefined;
+    }
+
+    const update: Record<string, unknown> = {};
+
+    if (input.image !== undefined) {
+      const [serverName, ...path] = input.image.split('/');
+      const [image, tag] = path.join('/').split(':');
+      if (current === null || serverName !== current.serverName || image !== current.image || tag !== current.tag) {
+        update.serverName = serverName;
+        update.image = image;
+        update.tag = tag;
+      }
+    }
+
+    if (input.username !== undefined && input.username !== current?.username) {
+      update.username = input.username;
+    }
+
+    if (input.password !== undefined) {
+      update.password = input.password;
+    }
+
+    return Object.keys(update).length > 0 ? update : undefined;
+  }
+
   async update(updateBotDto: UpdateBotZodDto): Promise<GetBotZodDto> {
     const bot = await this.prismaService.bot.findFirst({
-      select: BotService.BOT_SELECT,
+      select: {
+        ...BotService.BOT_SELECT,
+        token: true,
+      },
     });
 
     if (null === bot) {
@@ -166,6 +205,13 @@ export class BotService {
     const oldLayout = bot.clusters.map((c) => [...c.shardIds].sort((a, b) => a - b));
     const layoutChanged = JSON.stringify(sortedLayout) !== JSON.stringify(oldLayout);
 
+    const tokenChanged = updateBotDto.token !== undefined && updateBotDto.token !== bot.token;
+
+    const dockerImageUpdate = this.buildDockerImageUpdate(updateBotDto.dockerImage, bot.dockerImage);
+    const dockerImageChanged = dockerImageUpdate !== undefined;
+
+    const shouldForceRestart = layoutChanged || tokenChanged || dockerImageChanged;
+
     for (const cluster of bot.clusters) {
       await this.clustersService.remove(cluster.id as UUID);
     }
@@ -173,10 +219,14 @@ export class BotService {
     const newBot = await this.prismaService.bot.update({
       data: {
         totalShards,
+        ...(tokenChanged && { token: updateBotDto.token }),
+        ...(dockerImageChanged && {
+          dockerImage: { update: dockerImageUpdate },
+        }),
         clusters: {
           createMany: {
             data: layout.map((clusterShardIds, index) => ({
-              status: layoutChanged || bot.clusters[index]?.status !== 'STOPPED' ? 'UPDATING' : 'STOPPED',
+              status: shouldForceRestart || bot.clusters[index]?.status !== 'STOPPED' ? 'UPDATING' : 'STOPPED',
               shardIds: clusterShardIds,
             })),
           },
