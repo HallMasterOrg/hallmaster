@@ -1,5 +1,5 @@
 import { createZodDto } from 'nestjs-zod';
-import z from 'zod';
+import { z } from 'zod';
 
 export const GetClusterSchema = z.object({
   id: z.uuid().meta({

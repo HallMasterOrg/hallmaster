@@ -1,5 +1,6 @@
-import { z } from 'zod';
 import { createZodDto } from 'nestjs-zod';
+import { z } from 'zod';
+
 import { CreateBotSchema } from './create-bot.dto.js';
 
 export const UpdateBotSchema = CreateBotSchema.extend({
