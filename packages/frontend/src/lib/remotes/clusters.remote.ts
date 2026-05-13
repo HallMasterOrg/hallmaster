@@ -1,6 +1,6 @@
 import { command, getRequestEvent, query } from "$app/server";
 import { env } from "$env/dynamic/private";
-import type { GetClusterDto } from "@hallmaster/backend/dto";
+import { type GetClusterDto, type GetClusterLogsDto } from "@hallmaster/backend/dto";
 import { error } from "@sveltejs/kit";
 
 export const getClusters = query(async (): Promise<GetClusterDto[]> => {
@@ -93,3 +93,26 @@ export const restartCluster = command("unchecked", async (id: number) => {
       return error(500, "An error occured");
   }
 });
+
+export const getClusterLogs = query(
+  "unchecked",
+  async (id: GetClusterDto["id"]): Promise<GetClusterLogsDto> => {
+    const token = getRequestEvent().cookies.get("token");
+
+    const response = await fetch(`${env.API_URL}/clusters/${id}/logs`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+
+    switch (response.status) {
+      case 200:
+        return await response.json();
+      case 401:
+        return error(401, "Unauthorized");
+      case 404:
+        return error(404, "Cluster not found");
+
+      default:
+        return error(500, "An error occured");
+    }
+  },
+);
