@@ -15,7 +15,8 @@ export const getClusters = query(async (): Promise<GetClusterDto[]> => {
 
   switch (response.status) {
     case 200:
-      return await response.json();
+      const clusters: GetClusterDto[] = await response.json();
+      return clusters.sort((a, b) => a.id.localeCompare(b.id));
     case 401:
       return error(401, "Unauthorized");
 
