@@ -10,6 +10,15 @@ export const GetBotDockerImageSchema = z.object({
   }),
 });
 
+export const GetBotLayoutClusterSchema = z.object({
+  id: z.number().int().positive().meta({
+    description: 'The cluster ID (sequential per bot).',
+  }),
+  shardIds: z.array(z.number().nonnegative()).meta({
+    description: 'The shard IDs assigned to that cluster.',
+  }),
+});
+
 export const GetBotSchema = z.object({
   id: z.string().meta({
     description: 'The bot ID.',
@@ -17,9 +26,9 @@ export const GetBotSchema = z.object({
   shards: z.number().nonnegative().meta({
     description: 'The total number of shards for the bot.',
   }),
-  layout: z.array(z.array(z.number().nonnegative())).meta({
+  layout: z.array(GetBotLayoutClusterSchema).meta({
     description:
-      'The cluster layout. Each element is an array of shard IDs assigned to that cluster.',
+      'The cluster layout. Each element is a cluster with its ID and assigned shard IDs.',
   }),
   dockerImage: GetBotDockerImageSchema.meta({
     description: 'The Docker image configuration associated with the bot.',

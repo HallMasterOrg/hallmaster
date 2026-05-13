@@ -40,7 +40,7 @@ export class DockerService {
     } catch (e) {
       await this.prismaService.cluster.update({
         where: {
-          id: cluster.id,
+          botId_id: { botId: cluster.botId, id: cluster.id },
         },
         data: {
           status: 'ERROR',
@@ -83,7 +83,7 @@ export class DockerService {
         status: 'STARTING',
       },
       where: {
-        id: cluster.id,
+        botId_id: { botId: cluster.botId, id: cluster.id },
       },
     });
 
@@ -103,7 +103,7 @@ export class DockerService {
             Image: `${dockerImage.serverName}/${dockerImage.image}:${dockerImage.tag}`,
             Labels: {
               kind: 'hallmaster',
-              'cluster-id': cluster.id,
+              'cluster-id': String(cluster.id),
               'bot-id': bot.id,
             },
           },
@@ -114,8 +114,7 @@ export class DockerService {
 
         await this.prismaService.cluster.update({
           where: {
-            botId: bot.id,
-            id: cluster.id,
+            botId_id: { botId: bot.id, id: cluster.id },
           },
           data: {
             status: 'RUNNING',
@@ -125,8 +124,7 @@ export class DockerService {
       } catch (e) {
         await this.prismaService.cluster.update({
           where: {
-            botId: bot.id,
-            id: cluster.id,
+            botId_id: { botId: bot.id, id: cluster.id },
           },
           data: {
             status: 'ERROR',
@@ -149,8 +147,7 @@ export class DockerService {
 
       await this.prismaService.cluster.update({
         where: {
-          botId: bot.id,
-          id: cluster.id,
+          botId_id: { botId: bot.id, id: cluster.id },
         },
         data: {
           status: 'RUNNING',
@@ -162,8 +159,7 @@ export class DockerService {
     } catch (e) {
       await this.prismaService.cluster.update({
         where: {
-          botId: bot.id,
-          id: cluster.id,
+          botId_id: { botId: bot.id, id: cluster.id },
         },
         data: {
           status: 'ERROR',
@@ -195,7 +191,7 @@ export class DockerService {
       ) {
         await this.prismaService.cluster.update({
           where: {
-            id: cluster.id,
+            botId_id: { botId: cluster.botId, id: cluster.id },
           },
           data: {
             status: 'ERROR',
@@ -211,7 +207,7 @@ export class DockerService {
 
     await this.prismaService.cluster.update({
       where: {
-        id: cluster.id,
+        botId_id: { botId: cluster.botId, id: cluster.id },
       },
       data: {
         status: 'STOPPED',
@@ -239,7 +235,7 @@ export class DockerService {
 
     await this.prismaService.cluster.delete({
       where: {
-        id: cluster.id,
+        botId_id: { botId: cluster.botId, id: cluster.id },
       },
     });
   }

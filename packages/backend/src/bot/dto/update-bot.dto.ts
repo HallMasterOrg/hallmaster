@@ -5,10 +5,20 @@ import {
   CreateBotSchema,
 } from './create-bot.dto.js';
 
-export const UpdateBotSchema = CreateBotSchema.extend({
-  layout: z.array(z.array(z.number().nonnegative())).min(1).meta({
+export const LayoutClusterSchema = z.object({
+  id: z.number().int().positive().optional().meta({
     description:
-      'The cluster layout. Each element is an array of shard IDs assigned to that cluster. Example: [[0, 1, 2], [3]] creates 2 clusters with 4 total shards.',
+      'The cluster ID. Omit to create a new cluster (next available ID will be assigned).',
+  }),
+  shardIds: z.array(z.number().nonnegative()).min(1).meta({
+    description: 'The shard IDs assigned to that cluster.',
+  }),
+});
+
+export const UpdateBotSchema = CreateBotSchema.extend({
+  layout: z.array(LayoutClusterSchema).min(1).meta({
+    description:
+      'The cluster layout. Each element references an existing cluster by ID (or omits it to create a new one) along with its shard IDs.',
   }),
   dockerImage: CreateBotDockerImageSchema.partial().meta({
     description:

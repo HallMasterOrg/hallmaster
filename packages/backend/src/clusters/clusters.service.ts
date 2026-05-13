@@ -1,11 +1,12 @@
-import { UUID } from 'node:crypto';
 import type { Readable } from 'node:stream';
+
+import type { Cluster } from '@hallmaster/prisma-client';
 import {
   BadRequestException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import type { Cluster } from '@hallmaster/prisma-client';
+
 import { DockerService } from '../docker/docker.service.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 
@@ -16,18 +17,17 @@ export class ClustersService {
     private readonly dockerService: DockerService,
   ) {}
 
-  private async getFullResource(id: UUID) {
-    const resource = await this.prismaService.cluster.findUnique({
+  private async getFullResource(id: number) {
+    const resource = await this.prismaService.cluster.findFirst({
       select: {
         bot: true,
         containerId: true,
         id: true,
         shardIds: true,
         status: true,
+        botId: true,
       },
-      where: {
-        id,
-      },
+      where: { id },
     });
 
     if (null === resource) {
@@ -38,27 +38,24 @@ export class ClustersService {
   }
 
   async findAll() {
-    const resources = await this.prismaService.cluster.findMany({
+    return await this.prismaService.cluster.findMany({
       select: {
         id: true,
         shardIds: true,
         status: true,
       },
+      orderBy: { id: 'asc' },
     });
-
-    return resources;
   }
 
-  async findOne(id: UUID) {
-    const resource = await this.prismaService.cluster.findUnique({
+  async findOne(id: number) {
+    const resource = await this.prismaService.cluster.findFirst({
       select: {
         id: true,
         shardIds: true,
         status: true,
       },
-      where: {
-        id,
-      },
+      where: { id },
     });
 
     if (null === resource) {
@@ -68,37 +65,37 @@ export class ClustersService {
     return resource;
   }
 
-  async remove(id: UUID) {
+  async remove(id: number) {
     const resource = await this.getFullResource(id);
 
     await this.dockerService.remove({
       id: resource.id,
       containerId: resource.containerId,
-      botId: resource.bot.id,
+      botId: resource.botId,
       shardIds: resource.shardIds,
       status: resource.status,
     });
   }
 
-  async start(id: UUID) {
+  async start(id: number) {
     const resource = await this.getFullResource(id);
 
     await this.dockerService.start(resource.bot, {
       id: resource.id,
       containerId: resource.containerId,
-      botId: resource.bot.id,
+      botId: resource.botId,
       shardIds: resource.shardIds,
       status: resource.status,
     });
   }
 
-  async stop(id: UUID) {
+  async stop(id: number) {
     const resource = await this.getFullResource(id);
 
     await this.dockerService.stop({
       id: resource.id,
       containerId: resource.containerId,
-      botId: resource.bot.id,
+      botId: resource.botId,
       shardIds: resource.shardIds,
       status: resource.status,
     });
@@ -108,19 +105,19 @@ export class ClustersService {
     await this.dockerService.stop(cluster);
   }
 
-  async restart(id: UUID) {
+  async restart(id: number) {
     const resource = await this.getFullResource(id);
 
     await this.dockerService.restart(resource.bot, {
       id: resource.id,
       containerId: resource.containerId,
-      botId: resource.bot.id,
+      botId: resource.botId,
       shardIds: resource.shardIds,
       status: resource.status,
     });
   }
 
-  async streamLogs(id: UUID, tail?: number | 'all'): Promise<Readable> {
+  async streamLogs(id: number, tail?: number | 'all'): Promise<Readable> {
     const resource = await this.getFullResource(id);
     if (null === resource.containerId) {
       throw new BadRequestException('The cluster has no container ID.');
@@ -131,7 +128,7 @@ export class ClustersService {
     );
   }
 
-  async logs(id: UUID, since?: Date, until?: Date, tail?: number | 'all') {
+  async logs(id: number, since?: Date, until?: Date, tail?: number | 'all') {
     const resource = await this.getFullResource(id);
 
     if (null === resource.containerId) {
@@ -146,7 +143,7 @@ export class ClustersService {
     );
   }
 
-  async stats(id: UUID) {
+  async stats(id: number) {
     const resource = await this.getFullResource(id);
 
     if (null === resource.containerId) {
