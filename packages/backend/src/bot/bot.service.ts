@@ -82,8 +82,12 @@ export class BotService {
     }
   }
 
-  private assignClusterIds(layout: LayoutInput): Array<{ id: number; shardIds: number[] }> {
-    const sorted = [...layout].sort((a, b) => Math.min(...a.shardIds) - Math.min(...b.shardIds));
+  private assignClusterIds(
+    layout: LayoutInput,
+  ): Array<{ id: number; shardIds: number[] }> {
+    const sorted = [...layout].sort(
+      (a, b) => Math.min(...a.shardIds) - Math.min(...b.shardIds),
+    );
 
     const usedIds = new Set<number>();
     for (const cluster of sorted) {
