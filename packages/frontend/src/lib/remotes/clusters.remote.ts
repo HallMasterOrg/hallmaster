@@ -36,7 +36,7 @@ export const startCluster = command("unchecked", async (id: number) => {
 
   switch (response.status) {
     case 204:
-      return;
+      return await getClusters().refresh();
     case 401:
       return error(401, "Unauthorized");
     case 404:
@@ -59,7 +59,7 @@ export const stopCluster = command("unchecked", async (id: number) => {
 
   switch (response.status) {
     case 204:
-      return;
+      return await getClusters().refresh();
     case 401:
       return error(401, "Unauthorized");
     case 404:
@@ -82,7 +82,7 @@ export const restartCluster = command("unchecked", async (id: number) => {
 
   switch (response.status) {
     case 204:
-      return;
+      return await getClusters().refresh();
     case 401:
       return error(401, "Unauthorized");
     case 404:
