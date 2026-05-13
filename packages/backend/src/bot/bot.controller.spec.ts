@@ -1,8 +1,12 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { DeepMockProxy, mockDeep } from 'jest-mock-extended';
+import type { TestingModule } from '@nestjs/testing';
+import { Test } from '@nestjs/testing';
+import type { DeepMockProxy } from 'jest-mock-extended';
+import { mockDeep } from 'jest-mock-extended';
+
+import { AuthGuard } from '../auth/guards/jwt.guard.js';
+
 import { BotController } from './bot.controller.js';
 import { BotService } from './bot.service.js';
-import { AuthGuard } from '../auth/guards/jwt.guard.js';
 
 describe('BotController', () => {
   let controller: BotController;

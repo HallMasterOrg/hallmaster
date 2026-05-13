@@ -1,12 +1,7 @@
-import {
-  CallHandler,
-  ExecutionContext,
-  HttpException,
-  Injectable,
-  NestInterceptor,
-} from '@nestjs/common';
-import { catchError, Observable, tap, throwError } from 'rxjs';
+import { CallHandler, ExecutionContext, HttpException, Injectable, NestInterceptor } from '@nestjs/common';
 import type { FastifyReply, FastifyRequest } from 'fastify';
+import { catchError, Observable, tap, throwError } from 'rxjs';
+
 import { LoggerService } from './logger.service.js';
 
 @Injectable()
@@ -32,15 +27,9 @@ export class LoggingInterceptor implements NestInterceptor {
 
         if (error instanceof HttpException) {
           const statusCode = error.getStatus();
-          this.logger.error(
-            `${method} ${url} ${statusCode} - ${duration}ms - ${error.message}`,
-            error.stack ?? '',
-          );
+          this.logger.error(`${method} ${url} ${statusCode} - ${duration}ms - ${error.message}`, error.stack ?? '');
         } else {
-          this.logger.error(
-            `${method} ${url} 500 - ${duration}ms`,
-            error instanceof Error ? (error.stack ?? '') : '',
-          );
+          this.logger.error(`${method} ${url} 500 - ${duration}ms`, error instanceof Error ? (error.stack ?? '') : '');
         }
 
         return throwError(() => error);

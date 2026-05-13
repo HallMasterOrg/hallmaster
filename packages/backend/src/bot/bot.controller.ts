@@ -1,15 +1,4 @@
-import {
-  Body,
-  Controller,
-  Delete,
-  Get,
-  HttpCode,
-  HttpStatus,
-  Patch,
-  Post,
-  UseGuards,
-} from '@nestjs/common';
-
+import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Patch, Post, UseGuards } from '@nestjs/common';
 import {
   ApiAcceptedResponse,
   ApiBearerAuth,
@@ -22,20 +11,21 @@ import {
   ApiTags,
   ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
+
+import { AuthGuard } from '../auth/guards/jwt.guard.js';
+
 import { BotService } from './bot.service.js';
 import { CreateBotZodDto } from './dto/create-bot.dto.js';
 import { GetBotZodDto } from './dto/get-bot.dto.js';
 import { GetRecommendedShardsZodDto } from './dto/get-recommended-shards.dto.js';
 import { UpdateBotZodDto } from './dto/update-bot.dto.js';
-import { AuthGuard } from '../auth/guards/jwt.guard.js';
 
 @ApiTags('Bot')
 @Controller('bot')
 @ApiBearerAuth('jwt')
 @UseGuards(AuthGuard)
 @ApiUnauthorizedResponse({
-  description:
-    'This route is protected by an Authorization header that is either not provided or invalid.',
+  description: 'This route is protected by an Authorization header that is either not provided or invalid.',
 })
 export class BotController {
   constructor(private readonly botService: BotService) {}
@@ -61,8 +51,7 @@ export class BotController {
   @Post()
   @HttpCode(HttpStatus.CREATED)
   @ApiCreatedResponse({
-    description:
-      'The bot informations have been retrieve correctly and it has been created in database successfully.',
+    description: 'The bot informations have been retrieve correctly and it has been created in database successfully.',
     type: GetBotZodDto,
   })
   @ApiConflictResponse({

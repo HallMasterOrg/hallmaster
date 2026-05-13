@@ -1,9 +1,13 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { ConfigService } from '@nestjs/config';
-import { DeepMockProxy, mockDeep } from 'jest-mock-extended';
 import { DockerSocket } from '@hallmaster/docker.js';
-import { DockerService } from './docker.service.js';
+import { ConfigService } from '@nestjs/config';
+import type { TestingModule } from '@nestjs/testing';
+import { Test } from '@nestjs/testing';
+import type { DeepMockProxy } from 'jest-mock-extended';
+import { mockDeep } from 'jest-mock-extended';
+
 import { PrismaService } from '../prisma/prisma.service.js';
+
+import { DockerService } from './docker.service.js';
 
 describe('DockerService', () => {
   let service: DockerService;

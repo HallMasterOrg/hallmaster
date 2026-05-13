@@ -8,9 +8,10 @@ import {
   ApiTags,
   ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
+
 import { AuthService } from './auth.service.js';
-import { RegisterDto } from './dto/register.dto.js';
 import { LoginDto } from './dto/login.dto.js';
+import { RegisterDto } from './dto/register.dto.js';
 import { UserTokenDto } from './entities/user-token.entity.js';
 
 @Controller('auth')

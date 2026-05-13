@@ -1,15 +1,16 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { DeepMockProxy, mockDeep } from 'jest-mock-extended';
-import { BotService } from './bot.service.js';
-import { PrismaService } from '../prisma/prisma.service.js';
-import { ClustersService } from '../clusters/clusters.service.js';
-import { CreateBotDto, UpdateBotDto } from 'src/index.dto.js';
+import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
+import type { TestingModule } from '@nestjs/testing';
+import { Test } from '@nestjs/testing';
 import { PrismaClientKnownRequestError } from '@prisma/client/runtime/client';
-import {
-  BadRequestException,
-  ConflictException,
-  NotFoundException,
-} from '@nestjs/common';
+import type { DeepMockProxy } from 'jest-mock-extended';
+import { mockDeep } from 'jest-mock-extended';
+
+import type { CreateBotDto, UpdateBotDto } from 'src/index.dto.js';
+
+import { ClustersService } from '../clusters/clusters.service.js';
+import { PrismaService } from '../prisma/prisma.service.js';
+
+import { BotService } from './bot.service.js';
 
 const HALLMASTER_BOT_ID = '1352006130926096504';
 const DISCORD_BOT_TOKEN = `${Buffer.from(HALLMASTER_BOT_ID).toString('base64')}.YYYYYY.ZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZ`;
@@ -30,8 +31,7 @@ describe('BotService', () => {
   let service: BotService;
 
   const prismaService: DeepMockProxy<PrismaService> = mockDeep<PrismaService>();
-  const clustersService: DeepMockProxy<ClustersService> =
-    mockDeep<ClustersService>();
+  const clustersService: DeepMockProxy<ClustersService> = mockDeep<ClustersService>();
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -89,9 +89,7 @@ describe('BotService', () => {
       }),
     );
 
-    await expect(service.create(body)).rejects.toBeInstanceOf(
-      ConflictException,
-    );
+    await expect(service.create(body)).rejects.toBeInstanceOf(ConflictException);
   });
 
   it('should find the bot', async () => {
@@ -304,9 +302,7 @@ describe('BotService', () => {
       dockerImage: MOCK_DOCKER_IMAGE,
     });
 
-    await expect(service.update(body)).rejects.toBeInstanceOf(
-      BadRequestException,
-    );
+    await expect(service.update(body)).rejects.toBeInstanceOf(BadRequestException);
   });
 
   it('should reject layout with out-of-range shard IDs', async () => {
@@ -321,9 +317,7 @@ describe('BotService', () => {
       dockerImage: MOCK_DOCKER_IMAGE,
     });
 
-    await expect(service.update(body)).rejects.toBeInstanceOf(
-      BadRequestException,
-    );
+    await expect(service.update(body)).rejects.toBeInstanceOf(BadRequestException);
   });
 
   it('should throw NotFoundException when updating non-existent bot', async () => {
@@ -336,9 +330,7 @@ describe('BotService', () => {
 
     prismaService.bot.findFirst.mockResolvedValueOnce(null);
 
-    await expect(service.update(body)).rejects.toBeInstanceOf(
-      NotFoundException,
-    );
+    await expect(service.update(body)).rejects.toBeInstanceOf(NotFoundException);
   });
 
   it('should remove the bot and stop all clusters', async () => {

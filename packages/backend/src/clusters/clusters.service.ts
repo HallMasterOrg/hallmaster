@@ -1,11 +1,9 @@
 import { UUID } from 'node:crypto';
 import type { Readable } from 'node:stream';
-import {
-  BadRequestException,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
+
 import type { Cluster } from '@hallmaster/prisma-client';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+
 import { DockerService } from '../docker/docker.service.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 
@@ -125,10 +123,7 @@ export class ClustersService {
     if (null === resource.containerId) {
       throw new BadRequestException('The cluster has no container ID.');
     }
-    return await this.dockerService.streamContainerLogs(
-      resource.containerId,
-      tail,
-    );
+    return await this.dockerService.streamContainerLogs(resource.containerId, tail);
   }
 
   async logs(id: UUID, since?: Date, until?: Date, tail?: number | 'all') {
@@ -138,12 +133,7 @@ export class ClustersService {
       throw new BadRequestException('The cluster has no container ID.');
     }
 
-    return await this.dockerService.getContainerLogs(
-      resource.containerId,
-      since,
-      until,
-      tail,
-    );
+    return await this.dockerService.getContainerLogs(resource.containerId, since, until, tail);
   }
 
   async stats(id: UUID) {
@@ -154,9 +144,7 @@ export class ClustersService {
     }
 
     if (resource.status !== 'RUNNING') {
-      throw new BadRequestException(
-        'Unable to gather stats on a non-running cluster.',
-      );
+      throw new BadRequestException('Unable to gather stats on a non-running cluster.');
     }
 
     return await this.dockerService.getContainerStats(resource.containerId);
