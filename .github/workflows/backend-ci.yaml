@@ -3,7 +3,7 @@ name: Backend CI
 on:
   push:
     branches:
-      - dev
+      - main
     paths:
       - "packages/backend/**"
       - "packages/prisma-client/**"
@@ -108,7 +108,7 @@ jobs:
         with:
           images: ${{ secrets.REGISTRY_HOST }}/hallmaster/backend
           tags: |
-            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/dev' }}
+            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
             type=sha,format=short
 
       - name: Build and push image (backend)
