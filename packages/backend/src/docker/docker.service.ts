@@ -16,6 +16,33 @@ export class DockerService {
     private readonly dockerSocket: DockerSocket,
   ) {}
 
+  async verifyImage(dockerImage: {
+    serverName: string;
+    image: string;
+    tag: string;
+    username: string | null;
+    password: string | null;
+  }): Promise<void> {
+    const dockerImagesAPI = new DockerImagesAPI(this.dockerSocket);
+
+    try {
+      await dockerImagesAPI.verify({
+        fromImage: `${dockerImage.serverName}/${dockerImage.image}`,
+        tag: dockerImage.tag,
+        auth: {
+          serveraddress: dockerImage.serverName,
+          username: dockerImage.username ?? '',
+          password: dockerImage.password ?? '',
+        },
+      });
+    } catch (e) {
+      throw new BadRequestException('Unable to pull the Docker image.', {
+        description: `Failed to verify ${dockerImage.serverName}/${dockerImage.image}:${dockerImage.tag}: ${e instanceof Error ? e.message : String(e)}`,
+        cause: e,
+      });
+    }
+  }
+
   private async pullDockerImage(cluster: Cluster, dockerImage: DockerImage) {
     const dockerImagesAPI = new DockerImagesAPI(this.dockerSocket);
 

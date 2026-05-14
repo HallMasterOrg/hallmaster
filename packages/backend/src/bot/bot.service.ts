@@ -12,6 +12,7 @@ import {
 import { PrismaClientKnownRequestError } from '@prisma/client/runtime/client';
 
 import { ClustersService } from '../clusters/clusters.service.js';
+import { DockerService } from '../docker/docker.service.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 
 import { formatDockerImage } from './bot.utils.js';
@@ -24,7 +25,14 @@ export class BotService {
   constructor(
     private readonly prismaService: PrismaService,
     private readonly clustersService: ClustersService,
+    private readonly dockerService: DockerService,
   ) {}
+
+  private parseDockerImage(image: string): { serverName: string; image: string; tag: string } {
+    const [serverName, ...path] = image.split('/');
+    const [imageName, tag] = path.join('/').split(':');
+    return { serverName, image: imageName, tag };
+  }
 
   private static readonly BOT_SELECT = {
     id: true,
@@ -96,9 +104,17 @@ export class BotService {
   }
 
   async create(createBotDto: CreateBotZodDto): Promise<GetBotZodDto> {
+    const { serverName, image, tag } = this.parseDockerImage(createBotDto.dockerImage.image);
+
+    await this.dockerService.verifyImage({
+      serverName,
+      image,
+      tag,
+      username: createBotDto.dockerImage.username ?? null,
+      password: createBotDto.dockerImage.password ?? null,
+    });
+
     try {
-      const [serverName, ...path] = createBotDto.dockerImage.image.split('/');
-      const [image, tag] = path.join('/').split(':');
       const bot = await this.prismaService.bot.create({
         data: {
           id: this.getBotId(createBotDto.token),
@@ -156,16 +172,29 @@ export class BotService {
       tag: string;
       username: string | null;
     } | null,
-  ): Record<string, unknown> | undefined {
+  ):
+    | {
+        serverName?: string;
+        image?: string;
+        tag?: string;
+        username?: string | null;
+        password?: string | null;
+      }
+    | undefined {
     if (!input) {
       return undefined;
     }
 
-    const update: Record<string, unknown> = {};
+    const update: {
+      serverName?: string;
+      image?: string;
+      tag?: string;
+      username?: string | null;
+      password?: string | null;
+    } = {};
 
     if (input.image !== undefined) {
-      const [serverName, ...path] = input.image.split('/');
-      const [image, tag] = path.join('/').split(':');
+      const { serverName, image, tag } = this.parseDockerImage(input.image);
       if (current === null || serverName !== current.serverName || image !== current.image || tag !== current.tag) {
         update.serverName = serverName;
         update.image = image;
@@ -209,6 +238,20 @@ export class BotService {
 
     const dockerImageUpdate = this.buildDockerImageUpdate(updateBotDto.dockerImage, bot.dockerImage);
     const dockerImageChanged = dockerImageUpdate !== undefined;
+
+    if (dockerImageUpdate !== undefined) {
+      const currentImage = await this.prismaService.dockerImage.findUniqueOrThrow({
+        where: { botId: bot.id },
+        select: { serverName: true, image: true, tag: true, username: true, password: true },
+      });
+      await this.dockerService.verifyImage({
+        serverName: dockerImageUpdate.serverName ?? currentImage.serverName,
+        image: dockerImageUpdate.image ?? currentImage.image,
+        tag: dockerImageUpdate.tag ?? currentImage.tag,
+        username: dockerImageUpdate.username !== undefined ? dockerImageUpdate.username : currentImage.username,
+        password: dockerImageUpdate.password !== undefined ? dockerImageUpdate.password : currentImage.password,
+      });
+    }
 
     const shouldForceRestart = layoutChanged || tokenChanged || dockerImageChanged;
 
