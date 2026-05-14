@@ -1,3 +1,4 @@
+import { jest } from '@jest/globals';
 import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
 import type { TestingModule } from '@nestjs/testing';
 import { Test } from '@nestjs/testing';
@@ -27,13 +28,34 @@ const EXPECTED_DOCKER_IMAGE = {
   username: null,
 };
 
+const mockDiscordGatewayBotResponse = (status = 200, body: unknown = { shards: 1 }) =>
+  ({
+    ok: status >= 200 && status < 300,
+    status,
+    statusText: status === 401 ? 'Unauthorized' : 'OK',
+    json: () => Promise.resolve(body),
+  }) as Response;
+
 describe('BotService', () => {
   let service: BotService;
+  const originalFetch = globalThis.fetch;
+  const fetchMock = jest.fn<typeof fetch>();
 
   const prismaService: DeepMockProxy<PrismaService> = mockDeep<PrismaService>();
   const clustersService: DeepMockProxy<ClustersService> = mockDeep<ClustersService>();
 
+  beforeAll(() => {
+    globalThis.fetch = fetchMock;
+  });
+
+  afterAll(() => {
+    globalThis.fetch = originalFetch;
+  });
+
   beforeEach(async () => {
+    fetchMock.mockReset();
+    fetchMock.mockResolvedValue(mockDiscordGatewayBotResponse());
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         BotService,
@@ -90,6 +112,22 @@ describe('BotService', () => {
     );
 
     await expect(service.create(body)).rejects.toBeInstanceOf(ConflictException);
+  });
+
+  it('should reject creation when Discord rejects the token', async () => {
+    const body: CreateBotDto = {
+      token: DISCORD_BOT_TOKEN,
+      dockerImage: {
+        image: 'host.docker.internal:5000/hallmaster/discord-bot:latest',
+        username: null,
+        password: null,
+      },
+    };
+
+    fetchMock.mockResolvedValueOnce(mockDiscordGatewayBotResponse(401));
+
+    await expect(service.create(body)).rejects.toThrow('Invalid Discord bot token.');
+    expect(prismaService.bot.create).not.toHaveBeenCalled();
   });
 
   it('should find the bot', async () => {
@@ -346,6 +384,42 @@ describe('BotService', () => {
     prismaService.bot.findFirst.mockResolvedValueOnce(null);
 
     await expect(service.update(body)).rejects.toBeInstanceOf(NotFoundException);
+  });
+
+  it('should reject update when Discord rejects the new token', async () => {
+    (prismaService.bot.findFirst as jest.Mock).mockResolvedValueOnce({
+      id: HALLMASTER_BOT_ID,
+      totalShards: 0,
+      clusters: [],
+      token: DISCORD_BOT_TOKEN,
+      dockerImage: MOCK_DOCKER_IMAGE,
+    });
+
+    fetchMock.mockResolvedValueOnce(mockDiscordGatewayBotResponse(401));
+
+    await expect(service.update({ token: 'a-new-but-invalid-token' })).rejects.toThrow('Invalid Discord bot token.');
+    expect(prismaService.bot.update).not.toHaveBeenCalled();
+  });
+
+  it('should not call Discord when the token is unchanged in update', async () => {
+    (prismaService.bot.findFirst as jest.Mock).mockResolvedValueOnce({
+      id: HALLMASTER_BOT_ID,
+      totalShards: 0,
+      clusters: [],
+      token: DISCORD_BOT_TOKEN,
+      dockerImage: MOCK_DOCKER_IMAGE,
+    });
+
+    (prismaService.bot.update as jest.Mock).mockResolvedValueOnce({
+      id: HALLMASTER_BOT_ID,
+      totalShards: 0,
+      clusters: [],
+      dockerImage: MOCK_DOCKER_IMAGE,
+    });
+
+    await service.update({ token: DISCORD_BOT_TOKEN });
+
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 
   it('should remove the bot and stop all clusters', async () => {
