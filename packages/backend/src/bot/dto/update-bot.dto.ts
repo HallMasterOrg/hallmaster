@@ -4,7 +4,7 @@ import { z } from 'zod';
 import { CreateBotDockerImageSchema, CreateBotSchema } from './create-bot.dto.js';
 
 export const UpdateBotSchema = CreateBotSchema.extend({
-  layout: z.array(z.array(z.number().nonnegative())).min(1).meta({
+  layout: z.array(z.array(z.number().nonnegative()).min(1)).min(1).meta({
     description:
       'The cluster layout. Each element is an array of shard IDs assigned to that cluster. Example: [[0, 1, 2], [3]] creates 2 clusters with 4 total shards.',
   }),

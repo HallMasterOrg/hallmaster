@@ -320,6 +320,21 @@ describe('BotService', () => {
     await expect(service.update(body)).rejects.toBeInstanceOf(BadRequestException);
   });
 
+  it('should reject layout with an empty cluster', async () => {
+    const body: UpdateBotDto = {
+      layout: [[0, 1], [], [2]],
+    };
+
+    (prismaService.bot.findFirst as jest.Mock).mockResolvedValueOnce({
+      id: HALLMASTER_BOT_ID,
+      totalShards: 0,
+      clusters: [],
+      dockerImage: MOCK_DOCKER_IMAGE,
+    });
+
+    await expect(service.update(body)).rejects.toBeInstanceOf(BadRequestException);
+  });
+
   it('should throw NotFoundException when updating non-existent bot', async () => {
     const body: UpdateBotDto = {
       layout: [
