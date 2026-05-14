@@ -46,7 +46,10 @@ export class BotService {
 
   private validateLayout(layout: LayoutInput, existingClusterIds: Set<number>): void {
     const providedIds = new Set<number>();
-    for (const cluster of layout) {
+    for (const [index, cluster] of layout.entries()) {
+      if (cluster.shardIds.length === 0) {
+        throw new BadRequestException(`Cluster at index ${index} is empty.`);
+      }
       if (cluster.id !== undefined) {
         if (providedIds.has(cluster.id)) {
           throw new BadRequestException(`Duplicate cluster ID ${cluster.id} in layout.`);
@@ -93,18 +96,10 @@ export class BotService {
     });
   }
 
-  async getRecommendedShards(): Promise<{ shards: number }> {
-    const bot = await this.prismaService.bot.findFirst({
-      select: { token: true },
-    });
-
-    if (bot === null) {
-      throw new NotFoundException('No bot created.');
-    }
-
+  private async fetchDiscordGatewayBot(token: string): Promise<{ shards: number }> {
     const response = await fetch('https://discord.com/api/v10/gateway/bot', {
       headers: {
-        Authorization: `Bot ${bot.token}`,
+        Authorization: `Bot ${token}`,
       },
     });
 
@@ -128,7 +123,21 @@ export class BotService {
     return { shards: data.shards };
   }
 
+  async getRecommendedShards(): Promise<{ shards: number }> {
+    const bot = await this.prismaService.bot.findFirst({
+      select: { token: true },
+    });
+
+    if (bot === null) {
+      throw new NotFoundException('No bot created.');
+    }
+
+    return await this.fetchDiscordGatewayBot(bot.token);
+  }
+
   async create(createBotDto: CreateBotZodDto): Promise<GetBotZodDto> {
+    await this.fetchDiscordGatewayBot(createBotDto.token);
+
     try {
       const [serverName, ...path] = createBotDto.dockerImage.image.split('/');
       const [image, tag] = path.join('/').split(':');
@@ -247,7 +256,12 @@ export class BotService {
       .sort((a, b) => a.id - b.id);
     const layoutChanged = JSON.stringify(sortedLayout) !== JSON.stringify(oldLayout);
 
-    const tokenChanged = updateBotDto.token !== undefined && updateBotDto.token !== bot.token;
+    const newToken = updateBotDto.token !== undefined && updateBotDto.token !== bot.token ? updateBotDto.token : null;
+    const tokenChanged = newToken !== null;
+
+    if (newToken !== null) {
+      await this.fetchDiscordGatewayBot(newToken);
+    }
 
     const dockerImageUpdate = this.buildDockerImageUpdate(updateBotDto.dockerImage, bot.dockerImage);
     const dockerImageChanged = dockerImageUpdate !== undefined;
@@ -263,7 +277,7 @@ export class BotService {
     const newBot = await this.prismaService.bot.update({
       data: {
         totalShards,
-        ...(tokenChanged && { token: updateBotDto.token }),
+        ...(newToken !== null && { token: newToken }),
         ...(dockerImageChanged && {
           dockerImage: { update: dockerImageUpdate },
         }),
