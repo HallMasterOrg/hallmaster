@@ -118,7 +118,7 @@ export class ClustersService {
     });
   }
 
-  async streamLogs(id: UUID, tail?: number | 'all'): Promise<Readable> {
+  async streamLogs(id: UUID, tail: number | 'all' = 0): Promise<Readable> {
     const resource = await this.getFullResource(id);
     if (null === resource.containerId) {
       throw new BadRequestException('The cluster has no container ID.');
