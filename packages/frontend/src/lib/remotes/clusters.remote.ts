@@ -2,6 +2,7 @@ import { command, getRequestEvent, query } from "$app/server";
 import { env } from "$env/dynamic/private";
 import { type GetClusterDto, type GetClusterLogsDto } from "@hallmaster/backend/dto";
 import { error } from "@sveltejs/kit";
+import { EventSourceParserStream } from "eventsource-parser/stream";
 
 export const getClusters = query(async (): Promise<GetClusterDto[]> => {
   const token = getRequestEvent().cookies.get("token");
@@ -16,7 +17,38 @@ export const getClusters = query(async (): Promise<GetClusterDto[]> => {
   switch (response.status) {
     case 200:
       const clusters: GetClusterDto[] = await response.json();
-      return clusters.sort((a, b) => a.id.localeCompare(b.id));
+      return clusters.sort((a, b) => a.id - b.id);
+    case 401:
+      return error(401, "Unauthorized");
+
+    default:
+      return error(500, "An error occured");
+  }
+});
+
+export const getClustersLive = query.live(async function* () {
+  const token = getRequestEvent().cookies.get("token");
+
+  const response = await fetch(`${env.API_URL}/clusters/stream`, {
+    headers: {
+      Accept: "text/event-stream",
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  switch (response.status) {
+    case 200:
+      if (!response.body) return error(500, "An error occured");
+
+      const chunks = response.body
+        .pipeThrough(new TextDecoderStream())
+        .pipeThrough(new EventSourceParserStream())
+        .values();
+
+      for await (const clusters of chunks)
+        yield (JSON.parse(clusters.data) as GetClusterDto[]).sort((a, b) => a.id - b.id);
+      return;
+
     case 401:
       return error(401, "Unauthorized");
 
@@ -110,6 +142,39 @@ export const getClusterLogs = query(
         return error(401, "Unauthorized");
       case 404:
         return error(404, "Cluster not found");
+
+      default:
+        return error(500, "An error occured");
+    }
+  },
+);
+
+export const getClusterLogsLive = query.live(
+  "unchecked",
+  async function* (id: GetClusterDto["id"]) {
+    const token = getRequestEvent().cookies.get("token");
+
+    const response = await fetch(`${env.API_URL}/clusters/${id}/logs/stream`, {
+      headers: {
+        Accept: "text/event-stream",
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    switch (response.status) {
+      case 200:
+        if (!response.body) return error(500, "An error occured");
+
+        const chunks = response.body
+          .pipeThrough(new TextDecoderStream())
+          .pipeThrough(new EventSourceParserStream())
+          .values();
+
+        for await (const chunk of chunks) yield JSON.parse(chunk.data) as GetClusterLogsDto[number];
+        return;
+
+      case 401:
+        return error(401, "Unauthorized");
 
       default:
         return error(500, "An error occured");
