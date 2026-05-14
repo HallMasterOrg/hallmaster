@@ -1,5 +1,5 @@
 import { createZodDto } from 'nestjs-zod';
-import z from 'zod';
+import { z } from 'zod';
 
 export const GetBotDockerImageSchema = z.object({
   image: z.string().meta({
@@ -27,8 +27,7 @@ export const GetBotSchema = z.object({
     description: 'The total number of shards for the bot.',
   }),
   layout: z.array(GetBotLayoutClusterSchema).meta({
-    description:
-      'The cluster layout. Each element is a cluster with its ID and assigned shard IDs.',
+    description: 'The cluster layout. Each element is a cluster with its ID and assigned shard IDs.',
   }),
   dockerImage: GetBotDockerImageSchema.meta({
     description: 'The Docker image configuration associated with the bot.',

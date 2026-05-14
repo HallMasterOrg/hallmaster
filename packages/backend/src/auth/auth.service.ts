@@ -1,16 +1,15 @@
 import { randomBytes } from 'node:crypto';
-import {
-  ConflictException,
-  Injectable,
-  UnauthorizedException,
-} from '@nestjs/common';
+
+import { ConflictException, Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { hash, argon2id, verify } from 'argon2';
+
 import { PrismaService } from '../prisma/prisma.service.js';
-import { RegisterDto } from './dto/register.dto.js';
+
 import { LoginDto } from './dto/login.dto.js';
-import { UserTokenDto } from './entities/user-token.entity.js';
+import { RegisterDto } from './dto/register.dto.js';
 import { UserTokenDataDto } from './entities/user-token-data.entity.js';
+import { UserTokenDto } from './entities/user-token.entity.js';
 
 /* https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html#argon2id */
 const OWASP_CONFIGS = [
@@ -85,10 +84,7 @@ export class AuthService {
       throw new UnauthorizedException();
     }
 
-    const passwordMatch = await AuthService.verifyPassword(
-      user.password,
-      dto.password,
-    );
+    const passwordMatch = await AuthService.verifyPassword(user.password, dto.password);
     if (!passwordMatch) {
       throw new UnauthorizedException();
     }

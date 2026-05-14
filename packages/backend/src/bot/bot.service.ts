@@ -44,22 +44,15 @@ export class BotService {
     return Buffer.from(token.split('.')[0], 'base64').toString('ascii');
   }
 
-  private validateLayout(
-    layout: LayoutInput,
-    existingClusterIds: Set<number>,
-  ): void {
+  private validateLayout(layout: LayoutInput, existingClusterIds: Set<number>): void {
     const providedIds = new Set<number>();
     for (const cluster of layout) {
       if (cluster.id !== undefined) {
         if (providedIds.has(cluster.id)) {
-          throw new BadRequestException(
-            `Duplicate cluster ID ${cluster.id} in layout.`,
-          );
+          throw new BadRequestException(`Duplicate cluster ID ${cluster.id} in layout.`);
         }
         if (!existingClusterIds.has(cluster.id)) {
-          throw new BadRequestException(
-            `Cluster ID ${cluster.id} does not exist.`,
-          );
+          throw new BadRequestException(`Cluster ID ${cluster.id} does not exist.`);
         }
         providedIds.add(cluster.id);
       }
@@ -75,19 +68,13 @@ export class BotService {
 
     for (const shardId of allShardIds) {
       if (shardId < 0 || shardId >= totalShards) {
-        throw new BadRequestException(
-          `Shard ID ${shardId} is out of range [0, ${totalShards - 1}].`,
-        );
+        throw new BadRequestException(`Shard ID ${shardId} is out of range [0, ${totalShards - 1}].`);
       }
     }
   }
 
-  private assignClusterIds(
-    layout: LayoutInput,
-  ): Array<{ id: number; shardIds: number[] }> {
-    const sorted = [...layout].sort(
-      (a, b) => Math.min(...a.shardIds) - Math.min(...b.shardIds),
-    );
+  private assignClusterIds(layout: LayoutInput): Array<{ id: number; shardIds: number[] }> {
+    const sorted = [...layout].sort((a, b) => Math.min(...a.shardIds) - Math.min(...b.shardIds));
 
     const usedIds = new Set<number>();
     for (const cluster of sorted) {
@@ -135,10 +122,7 @@ export class BotService {
     const data = (await response.json()) as { shards?: number };
 
     if (!data.shards || typeof data.shards !== 'number') {
-      throw new HttpException(
-        'Got an invalid response from the Discord API.',
-        HttpStatus.FAILED_DEPENDENCY,
-      );
+      throw new HttpException('Got an invalid response from the Discord API.', HttpStatus.FAILED_DEPENDENCY);
     }
 
     return { shards: data.shards };
@@ -215,12 +199,7 @@ export class BotService {
     if (input.image !== undefined) {
       const [serverName, ...path] = input.image.split('/');
       const [image, tag] = path.join('/').split(':');
-      if (
-        current === null ||
-        serverName !== current.serverName ||
-        image !== current.image ||
-        tag !== current.tag
-      ) {
+      if (current === null || serverName !== current.serverName || image !== current.image || tag !== current.tag) {
         update.serverName = serverName;
         update.image = image;
         update.tag = tag;
@@ -253,8 +232,7 @@ export class BotService {
     const existingClusterIds = new Set(bot.clusters.map((c) => c.id));
 
     const layoutInput: LayoutInput =
-      updateBotDto.layout ??
-      bot.clusters.map((c) => ({ id: c.id, shardIds: c.shardIds }));
+      updateBotDto.layout ?? bot.clusters.map((c) => ({ id: c.id, shardIds: c.shardIds }));
 
     this.validateLayout(layoutInput, existingClusterIds);
 
@@ -262,31 +240,19 @@ export class BotService {
     const totalShards = resolvedLayout.flatMap((c) => c.shardIds).length;
 
     const sortedLayout = resolvedLayout
-      .map((c) => ({
-        id: c.id,
-        shardIds: [...c.shardIds].sort((a, b) => a - b),
-      }))
+      .map((c) => ({ id: c.id, shardIds: [...c.shardIds].sort((a, b) => a - b) }))
       .sort((a, b) => a.id - b.id);
     const oldLayout = bot.clusters
-      .map((c) => ({
-        id: c.id,
-        shardIds: [...c.shardIds].sort((a, b) => a - b),
-      }))
+      .map((c) => ({ id: c.id, shardIds: [...c.shardIds].sort((a, b) => a - b) }))
       .sort((a, b) => a.id - b.id);
-    const layoutChanged =
-      JSON.stringify(sortedLayout) !== JSON.stringify(oldLayout);
+    const layoutChanged = JSON.stringify(sortedLayout) !== JSON.stringify(oldLayout);
 
-    const tokenChanged =
-      updateBotDto.token !== undefined && updateBotDto.token !== bot.token;
+    const tokenChanged = updateBotDto.token !== undefined && updateBotDto.token !== bot.token;
 
-    const dockerImageUpdate = this.buildDockerImageUpdate(
-      updateBotDto.dockerImage,
-      bot.dockerImage,
-    );
+    const dockerImageUpdate = this.buildDockerImageUpdate(updateBotDto.dockerImage, bot.dockerImage);
     const dockerImageChanged = dockerImageUpdate !== undefined;
 
-    const shouldForceRestart =
-      layoutChanged || tokenChanged || dockerImageChanged;
+    const shouldForceRestart = layoutChanged || tokenChanged || dockerImageChanged;
 
     const oldStatusById = new Map(bot.clusters.map((c) => [c.id, c.status]));
 
@@ -305,11 +271,7 @@ export class BotService {
           createMany: {
             data: resolvedLayout.map((cluster) => ({
               id: cluster.id,
-              status:
-                shouldForceRestart ||
-                oldStatusById.get(cluster.id) !== 'STOPPED'
-                  ? 'UPDATING'
-                  : 'STOPPED',
+              status: shouldForceRestart || oldStatusById.get(cluster.id) !== 'STOPPED' ? 'UPDATING' : 'STOPPED',
               shardIds: cluster.shardIds,
             })),
           },

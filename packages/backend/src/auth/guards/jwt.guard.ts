@@ -1,10 +1,6 @@
-import {
-  CanActivate,
-  ExecutionContext,
-  Injectable,
-  UnauthorizedException,
-} from '@nestjs/common';
+import { CanActivate, ExecutionContext, Injectable, UnauthorizedException } from '@nestjs/common';
 import { FastifyRequest } from 'fastify';
+
 import { AuthService } from '../auth.service.js';
 
 @Injectable()

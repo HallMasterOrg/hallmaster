@@ -1,3 +1,5 @@
+import { Readable } from 'node:stream';
+
 import {
   Controller,
   Delete,
@@ -12,7 +14,6 @@ import {
   Sse,
   UseGuards,
 } from '@nestjs/common';
-import { Observable, timer, switchMap, from } from 'rxjs';
 import {
   ApiBadRequestResponse,
   ApiBearerAuth,
@@ -23,23 +24,21 @@ import {
   ApiTags,
   ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
-import { ClustersService } from './clusters.service.js';
-import { GetClusterZodDto } from './dto/get-cluster.dto.js';
-import {
-  GetClusterLogsQueryZodDto,
-  GetClusterLogsZodDto,
-} from './dto/get-cluster-logs.dto.js';
-import { GetClusterStatsZodDto } from './dto/get-cluster-stats.dto.js';
+import { Observable, timer, switchMap, from } from 'rxjs';
+
 import { AuthGuard } from '../auth/guards/jwt.guard.js';
-import { Readable } from 'node:stream';
+
+import { ClustersService } from './clusters.service.js';
+import { GetClusterLogsQueryZodDto, GetClusterLogsZodDto } from './dto/get-cluster-logs.dto.js';
+import { GetClusterStatsZodDto } from './dto/get-cluster-stats.dto.js';
+import { GetClusterZodDto } from './dto/get-cluster.dto.js';
 
 @ApiTags('Clusters')
 @Controller('clusters')
 @ApiBearerAuth('jwt')
 @UseGuards(AuthGuard)
 @ApiUnauthorizedResponse({
-  description:
-    'This route is protected by an Authorization header that is either not provided or invalid.',
+  description: 'This route is protected by an Authorization header that is either not provided or invalid.',
 })
 export class ClustersController {
   constructor(private readonly clustersService: ClustersService) {}
@@ -56,8 +55,7 @@ export class ClustersController {
 
   @Sse('stream')
   @ApiOkResponse({
-    description:
-      'SSE stream that emits the full list of clusters every 5 seconds.',
+    description: 'SSE stream that emits the full list of clusters every 5 seconds.',
     type: GetClusterZodDto,
     isArray: true,
   })
@@ -138,10 +136,7 @@ export class ClustersController {
   @ApiNotFoundResponse({
     description: 'The ID points to an unresolved cluster.',
   })
-  async getLogs(
-    @Param('id', ParseIntPipe) id: number,
-    @Query() query: GetClusterLogsQueryZodDto,
-  ) {
+  async getLogs(@Param('id', ParseIntPipe) id: number, @Query() query: GetClusterLogsQueryZodDto) {
     return await this.clustersService.logs(
       id,
       query.since ? new Date(query.since) : undefined,
@@ -186,8 +181,7 @@ export class ClustersController {
     description: 'The ID points to an unresolved cluster.',
   })
   @ApiBadRequestResponse({
-    description:
-      'The requested cluster has no bound container or its not running.',
+    description: 'The requested cluster has no bound container or its not running.',
   })
   async getStats(@Param('id', ParseIntPipe) id: number) {
     return await this.clustersService.stats(id);
@@ -195,8 +189,7 @@ export class ClustersController {
 
   @Sse(':id/stats/stream')
   @ApiOkResponse({
-    description:
-      'SSE stream that emits the stats of the cluster every 5 seconds.',
+    description: 'SSE stream that emits the stats of the cluster every 5 seconds.',
     type: GetClusterStatsZodDto,
   })
   @ApiProduces('text/event-stream')
@@ -204,8 +197,7 @@ export class ClustersController {
     description: 'The ID points to an unresolved cluster.',
   })
   @ApiBadRequestResponse({
-    description:
-      'The requested cluster has no bound container or its not running.',
+    description: 'The requested cluster has no bound container or its not running.',
   })
   streamStats(@Param('id', ParseIntPipe) id: number): Observable<MessageEvent> {
     return timer(0, 5000).pipe(

@@ -1,13 +1,12 @@
 import { createZodDto } from 'nestjs-zod';
-import z from 'zod';
+import { z } from 'zod';
 
 const GetClusterStatsProcessesUsageSchema = z.object({
   usage: z.number().meta({
     description: 'The number of processes running in the cluster.',
   }),
   percentage: z.number().meta({
-    description:
-      'The number of running processes in the cluster over the limit.',
+    description: 'The number of running processes in the cluster over the limit.',
   }),
 });
 
@@ -34,12 +33,10 @@ const GetClusterStatsNetworkSchema = z.object({
 
 const GetClusterStatsDiskSchema = z.object({
   read: z.number().nullable().meta({
-    description:
-      'The number of bytes read from disk. The value is null if no disk interface is detected.',
+    description: 'The number of bytes read from disk. The value is null if no disk interface is detected.',
   }),
   write: z.number().nullable().meta({
-    description:
-      'The number of bytes written to disk. The value is null if no disk interface is detected.',
+    description: 'The number of bytes written to disk. The value is null if no disk interface is detected.',
   }),
 });
 
@@ -51,13 +48,10 @@ export const GetClusterStatsSchema = z.object({
   memory: GetClusterStatsMemoryUsageSchema,
   disk: GetClusterStatsDiskSchema,
   networks: z.array(GetClusterStatsNetworkSchema).meta({
-    description:
-      'The usage of each detected networking interface in the cluster.',
+    description: 'The usage of each detected networking interface in the cluster.',
   }),
 });
 
-export class GetClusterStatsZodDto extends createZodDto(
-  GetClusterStatsSchema,
-) {}
+export class GetClusterStatsZodDto extends createZodDto(GetClusterStatsSchema) {}
 
 export type GetClusterStatsDto = z.infer<typeof GetClusterStatsSchema>;

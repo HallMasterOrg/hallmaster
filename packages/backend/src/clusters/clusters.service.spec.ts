@@ -1,8 +1,12 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { DeepMockProxy, mockDeep } from 'jest-mock-extended';
-import { ClustersService } from './clusters.service.js';
-import { PrismaService } from '../prisma/prisma.service.js';
+import type { TestingModule } from '@nestjs/testing';
+import { Test } from '@nestjs/testing';
+import type { DeepMockProxy } from 'jest-mock-extended';
+import { mockDeep } from 'jest-mock-extended';
+
 import { DockerService } from '../docker/docker.service.js';
+import { PrismaService } from '../prisma/prisma.service.js';
+
+import { ClustersService } from './clusters.service.js';
 
 describe('ClustersService', () => {
   let service: ClustersService;
