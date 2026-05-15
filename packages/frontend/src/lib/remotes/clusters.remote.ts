@@ -1,6 +1,10 @@
 import { command, getRequestEvent, query } from "$app/server";
 import { env } from "$env/dynamic/private";
-import { type GetClusterDto, type GetClusterLogsDto } from "@hallmaster/backend/dto";
+import {
+  type GetClusterDto,
+  type GetClusterLogsDto,
+  type GetClusterStatsDto,
+} from "@hallmaster/backend/dto";
 import { error } from "@sveltejs/kit";
 import { EventSourceParserStream } from "eventsource-parser/stream";
 
@@ -175,6 +179,42 @@ export const getClusterLogsLive = query.live(
 
       case 401:
         return error(401, "Unauthorized");
+
+      default:
+        return error(500, "An error occured");
+    }
+  },
+);
+
+export const getClusterStatsLive = query.live(
+  "unchecked",
+  async function* (id: GetClusterDto["id"]) {
+    const token = getRequestEvent().cookies.get("token");
+
+    const response = await fetch(new URL(`/clusters/${id}/stats/stream`, env.API_URL), {
+      headers: {
+        Accept: "text/event-stream",
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    switch (response.status) {
+      case 200:
+        if (!response.body) return error(500, "An error occured");
+
+        const chunks = response.body
+          .pipeThrough(new TextDecoderStream())
+          .pipeThrough(new EventSourceParserStream())
+          .values();
+
+        for await (const chunk of chunks) yield JSON.parse(chunk.data) as GetClusterStatsDto;
+        break;
+      case 400:
+        return error(400, "Cluster has no container or is not running");
+      case 401:
+        return error(401, "Unauthorized");
+      case 404:
+        return error(404, "Cluster not found");
 
       default:
         return error(500, "An error occured");

@@ -27,6 +27,7 @@
     "@types/node": "^22.19.11",
     "eventsource-parser": "^3.0.8",
     "globals": "^16.5.0",
+    "layerchart": "2.0.0-next.63",
     "oxfmt": "^0.41.0",
     "oxlint": "^1.56.0",
     "oxlint-tsgolint": "^0.17.1",

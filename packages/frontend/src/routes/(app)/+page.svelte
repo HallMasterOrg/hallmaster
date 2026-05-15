@@ -7,6 +7,8 @@
   import ClusterLogs from "./components/ClusterLogs.svelte";
   import ClusterShards from "./components/ClusterShards.svelte";
   import ClusterStatus from "./components/ClusterStatus.svelte";
+  import ClusterMemory from "./components/ClusterMemory.svelte";
+  import ClusterCPU from "./components/ClusterCPU.svelte";
 
   let clusters = getClusters();
   $effect(() => {
@@ -45,6 +47,8 @@
             >
               <ClusterShards shards={shardIds} />
               <ClusterLogs {id} />
+              <ClusterCPU {id} />
+              <ClusterMemory {id} />
             </div>
           {/if}
         {/snippet}
