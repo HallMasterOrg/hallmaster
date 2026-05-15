@@ -29,7 +29,9 @@
             />
           </Collapsible.Indicator>
           <ClusterStatus {status} />
-          <p class="text-lg text-surface-700-300 font-bold">{String(id).padStart(2, "0")}</p>
+          <p class="text-lg text-surface-700-300 font-bold">
+            {String(id).padStart(2, "0")}
+          </p>
         </Collapsible.Trigger>
 
         <div class="flex gap-1">
