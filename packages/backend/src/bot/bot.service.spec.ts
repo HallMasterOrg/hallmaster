@@ -9,6 +9,7 @@ import { mockDeep } from 'jest-mock-extended';
 import type { CreateBotDto, UpdateBotDto } from 'src/index.dto.js';
 
 import { ClustersService } from '../clusters/clusters.service.js';
+import { DockerService } from '../docker/docker.service.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 
 import { BotService } from './bot.service.js';
@@ -43,6 +44,7 @@ describe('BotService', () => {
 
   const prismaService: DeepMockProxy<PrismaService> = mockDeep<PrismaService>();
   const clustersService: DeepMockProxy<ClustersService> = mockDeep<ClustersService>();
+  const dockerService: DeepMockProxy<DockerService> = mockDeep<DockerService>();
 
   beforeAll(() => {
     globalThis.fetch = fetchMock;
@@ -55,12 +57,14 @@ describe('BotService', () => {
   beforeEach(async () => {
     fetchMock.mockReset();
     fetchMock.mockResolvedValue(mockDiscordGatewayBotResponse());
+    dockerService.verifyImage.mockResolvedValue();
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         BotService,
         { provide: PrismaService, useValue: prismaService },
         { provide: ClustersService, useValue: clustersService },
+        { provide: DockerService, useValue: dockerService },
       ],
     }).compile();
 
@@ -127,6 +131,22 @@ describe('BotService', () => {
     fetchMock.mockResolvedValueOnce(mockDiscordGatewayBotResponse(401));
 
     await expect(service.create(body)).rejects.toThrow('Invalid Discord bot token.');
+    expect(prismaService.bot.create).not.toHaveBeenCalled();
+  });
+
+  it('should reject creation when the Docker image cannot be pulled', async () => {
+    const body: CreateBotDto = {
+      token: DISCORD_BOT_TOKEN,
+      dockerImage: {
+        image: 'host.docker.internal:5000/hallmaster/discord-bot:latest',
+        username: null,
+        password: null,
+      },
+    };
+
+    dockerService.verifyImage.mockRejectedValueOnce(new BadRequestException('Unable to pull the Docker image.'));
+
+    await expect(service.create(body)).rejects.toBeInstanceOf(BadRequestException);
     expect(prismaService.bot.create).not.toHaveBeenCalled();
   });
 
@@ -464,6 +484,48 @@ describe('BotService', () => {
     await service.update({ token: DISCORD_BOT_TOKEN });
 
     expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('should reject update when the new Docker image cannot be pulled', async () => {
+    (prismaService.bot.findFirst as jest.Mock).mockResolvedValueOnce({
+      id: HALLMASTER_BOT_ID,
+      totalShards: 0,
+      clusters: [],
+      dockerImage: MOCK_DOCKER_IMAGE,
+    });
+    (prismaService.dockerImage.findUniqueOrThrow as jest.Mock).mockResolvedValueOnce({
+      ...MOCK_DOCKER_IMAGE,
+      password: null,
+    });
+
+    dockerService.verifyImage.mockRejectedValueOnce(new BadRequestException('Unable to pull the Docker image.'));
+
+    await expect(
+      service.update({ dockerImage: { image: 'host.docker.internal:5000/hallmaster/discord-bot:broken' } }),
+    ).rejects.toBeInstanceOf(BadRequestException);
+    expect(prismaService.bot.update).not.toHaveBeenCalled();
+  });
+
+  it('should not verify Docker image when it is unchanged in update', async () => {
+    (prismaService.bot.findFirst as jest.Mock).mockResolvedValueOnce({
+      id: HALLMASTER_BOT_ID,
+      totalShards: 0,
+      clusters: [],
+      dockerImage: MOCK_DOCKER_IMAGE,
+    });
+
+    (prismaService.bot.update as jest.Mock).mockResolvedValueOnce({
+      id: HALLMASTER_BOT_ID,
+      totalShards: 0,
+      clusters: [],
+      dockerImage: MOCK_DOCKER_IMAGE,
+    });
+
+    dockerService.verifyImage.mockClear();
+
+    await service.update({ layout: [] });
+
+    expect(dockerService.verifyImage).not.toHaveBeenCalled();
   });
 
   it('should remove the bot and stop all clusters', async () => {
