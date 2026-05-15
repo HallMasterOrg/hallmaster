@@ -24,6 +24,9 @@ export const GetClusterLogSchema = z.object({
   stream: z.union([z.literal('STDOUT'), z.literal('STDERR')]).meta({
     description: 'The stream that the log was published into.',
   }),
+  timestamp: z.string().optional().meta({
+    description: 'RFC3339Nano timestamp emitted by the Docker daemon for that log line.',
+  }),
 });
 
 export const GetClusterLogsSchema = z.array(GetClusterLogSchema).meta({

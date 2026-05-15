@@ -157,7 +157,7 @@ export class ClustersController {
         .then((s) => {
           stream = s;
 
-          stream.on('data', (log: { content: string; stream: string }) => {
+          stream.on('data', (log: { content: string; stream: string; timestamp?: string }) => {
             subscriber.next({ data: log } as MessageEvent);
           });
 
