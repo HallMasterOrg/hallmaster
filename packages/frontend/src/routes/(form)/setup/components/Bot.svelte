@@ -52,7 +52,7 @@
   </Switch>
 
   {#if authentication}
-    <div class="flex gap-2" transition:slide={{ duration: 150 }}>
+    <div class="grid grid-cols-2 gap-2" transition:slide={{ duration: 150 }}>
       <LabeledInput
         label="Username"
         icon={TextCursorIcon}
