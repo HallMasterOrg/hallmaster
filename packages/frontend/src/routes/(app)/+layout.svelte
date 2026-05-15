@@ -4,6 +4,6 @@
   let { children }: LayoutProps = $props();
 </script>
 
-<main class="max-w-6xl">
+<main class="max-w-6xl mx-auto">
   {@render children()}
 </main>

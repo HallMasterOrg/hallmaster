@@ -77,5 +77,3 @@
     {/if}
   {/each}
 {/if}
-
-<button class="btn-icon"><TrashIcon /></button>
