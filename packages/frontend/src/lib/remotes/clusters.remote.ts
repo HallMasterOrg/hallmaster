@@ -47,6 +47,7 @@ export const getClustersLive = query.live(async function* () {
       const chunks = response.body
         .pipeThrough(new TextDecoderStream())
         .pipeThrough(new EventSourceParserStream())
+        // @ts-ignore svelte-check false positive
         .values();
 
       for await (const clusters of chunks)
@@ -172,6 +173,7 @@ export const getClusterLogsLive = query.live(
         const chunks = response.body
           .pipeThrough(new TextDecoderStream())
           .pipeThrough(new EventSourceParserStream())
+          // @ts-ignore svelte-check false positive
           .values();
 
         for await (const chunk of chunks) yield JSON.parse(chunk.data) as GetClusterLogsDto[number];
@@ -191,7 +193,7 @@ export const getClusterStatsLive = query.live(
   async function* (id: GetClusterDto["id"]) {
     const token = getRequestEvent().cookies.get("token");
 
-    const response = await fetch(new URL(`/clusters/${id}/stats/stream`, env.API_URL), {
+    const response = await fetch(new URL(`/clusters/${id}/stats/stream?interval=2`, env.API_URL), {
       headers: {
         Accept: "text/event-stream",
         Authorization: `Bearer ${token}`,
@@ -205,6 +207,7 @@ export const getClusterStatsLive = query.live(
         const chunks = response.body
           .pipeThrough(new TextDecoderStream())
           .pipeThrough(new EventSourceParserStream())
+          // @ts-ignore svelte-check false positive
           .values();
 
         for await (const chunk of chunks) yield JSON.parse(chunk.data) as GetClusterStatsDto;
