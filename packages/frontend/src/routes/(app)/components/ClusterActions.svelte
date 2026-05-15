@@ -12,11 +12,10 @@
     PlayIcon,
     RotateCcwIcon,
     SquareIcon,
-    TrashIcon,
   } from "@lucide/svelte";
 
   type Props = {
-    id?: GetClusterDto["id"];
+    id: GetClusterDto["id"];
     status: GetClusterDto["status"];
   };
 
@@ -46,34 +45,32 @@
   let loading: (typeof actions)[number]["label"] | null = $state(null);
 </script>
 
-{#if id}
-  {#each actions as { require, remote, icon, label }}
-    {#if require === status}
-      {@const Icon = icon}
+{#each actions as { require, remote, icon, label }}
+  {#if require === status}
+    {@const Icon = icon}
 
-      <button
-        class="btn-icon"
-        onclick={() => {
-          loading = label;
-          remote(id)
-            .catch((error) => {
-              toaster.create({
-                type: "error",
-                title: "Error",
-                description: JSON.parse(error).message,
-              });
-              getClusters().refresh();
-            })
-            .finally(() => (loading = null));
-        }}
-        disabled={loading === label}
-      >
-        {#if loading === label}
-          <LoaderCircleIcon class="animate-spin" />
-        {:else}
-          <Icon />
-        {/if}
-      </button>
-    {/if}
-  {/each}
-{/if}
+    <button
+      class="btn-icon"
+      onclick={() => {
+        loading = label;
+        remote(id)
+          .catch((error) => {
+            toaster.create({
+              type: "error",
+              title: "Error",
+              description: JSON.parse(error).message,
+            });
+            getClusters().refresh();
+          })
+          .finally(() => (loading = null));
+      }}
+      disabled={loading === label}
+    >
+      {#if loading === label}
+        <LoaderCircleIcon class="animate-spin" />
+      {:else}
+        <Icon />
+      {/if}
+    </button>
+  {/if}
+{/each}

@@ -3,5 +3,5 @@
   "sortImports": {},
   "sortTailwindcss": {
     "stylesheet": "src/app.css"
-  },
+  }
 }
