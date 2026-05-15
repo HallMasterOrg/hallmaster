@@ -32,6 +32,7 @@ import { ClustersService } from './clusters.service.js';
 import { GetClusterLogsQueryZodDto, GetClusterLogsZodDto } from './dto/get-cluster-logs.dto.js';
 import { GetClusterStatsZodDto } from './dto/get-cluster-stats.dto.js';
 import { GetClusterZodDto } from './dto/get-cluster.dto.js';
+import { SseIntervalQueryZodDto } from './dto/sse-interval-query.dto.js';
 
 @ApiTags('Clusters')
 @Controller('clusters')
@@ -55,13 +56,13 @@ export class ClustersController {
 
   @Sse('stream')
   @ApiOkResponse({
-    description: 'SSE stream that emits the full list of clusters every 5 seconds.',
+    description: 'SSE stream that emits the full list of clusters at a configurable interval (default 5s).',
     type: GetClusterZodDto,
     isArray: true,
   })
   @ApiProduces('text/event-stream')
-  streamAll(): Observable<MessageEvent> {
-    return timer(0, 5000).pipe(
+  streamAll(@Query() query: SseIntervalQueryZodDto): Observable<MessageEvent> {
+    return timer(0, query.interval * 1000).pipe(
       switchMap(() => from(this.clustersService.findAll())),
       switchMap((clusters) => [{ data: clusters } as MessageEvent]),
     );
@@ -189,7 +190,7 @@ export class ClustersController {
 
   @Sse(':id/stats/stream')
   @ApiOkResponse({
-    description: 'SSE stream that emits the stats of the cluster every 5 seconds.',
+    description: 'SSE stream that emits the stats of the cluster at a configurable interval (default 5s).',
     type: GetClusterStatsZodDto,
   })
   @ApiProduces('text/event-stream')
@@ -199,8 +200,8 @@ export class ClustersController {
   @ApiBadRequestResponse({
     description: 'The requested cluster has no bound container or its not running.',
   })
-  streamStats(@Param('id', ParseIntPipe) id: number): Observable<MessageEvent> {
-    return timer(0, 5000).pipe(
+  streamStats(@Param('id', ParseIntPipe) id: number, @Query() query: SseIntervalQueryZodDto): Observable<MessageEvent> {
+    return timer(0, query.interval * 1000).pipe(
       switchMap(() => from(this.clustersService.stats(id))),
       switchMap((stats) => [{ data: stats } as MessageEvent]),
     );
