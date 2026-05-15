@@ -155,8 +155,8 @@ describe('BotService', () => {
       id: HALLMASTER_BOT_ID,
       totalShards: 6,
       clusters: [
-        { id: 1, status: 'RUNNING', shardIds: [0, 1, 2] },
-        { id: 2, status: 'RUNNING', shardIds: [3, 4, 5] },
+        { id: 0, status: 'RUNNING', shardIds: [0, 1, 2] },
+        { id: 1, status: 'RUNNING', shardIds: [3, 4, 5] },
       ],
       dockerImage: MOCK_DOCKER_IMAGE,
     });
@@ -167,8 +167,8 @@ describe('BotService', () => {
       id: HALLMASTER_BOT_ID,
       shards: 6,
       layout: [
-        { id: 1, shardIds: [0, 1, 2] },
-        { id: 2, shardIds: [3, 4, 5] },
+        { id: 0, shardIds: [0, 1, 2] },
+        { id: 1, shardIds: [3, 4, 5] },
       ],
       dockerImage: EXPECTED_DOCKER_IMAGE,
     });
@@ -201,9 +201,9 @@ describe('BotService', () => {
   it('should update the bot layout (grow shards)', async () => {
     const body: UpdateBotDto = {
       layout: [
-        { id: 1, shardIds: [0, 1, 2] },
-        { id: 2, shardIds: [3, 4, 5] },
-        { id: 3, shardIds: [6, 7, 8] },
+        { id: 0, shardIds: [0, 1, 2] },
+        { id: 1, shardIds: [3, 4, 5] },
+        { id: 2, shardIds: [6, 7, 8] },
         { shardIds: [9] },
       ],
     };
@@ -212,9 +212,9 @@ describe('BotService', () => {
       id: HALLMASTER_BOT_ID,
       totalShards: 7,
       clusters: [
-        { id: 1, status: 'RUNNING', shardIds: [0, 1, 2] },
-        { id: 2, status: 'RUNNING', shardIds: [3, 4, 5] },
-        { id: 3, status: 'RUNNING', shardIds: [6] },
+        { id: 0, status: 'RUNNING', shardIds: [0, 1, 2] },
+        { id: 1, status: 'RUNNING', shardIds: [3, 4, 5] },
+        { id: 2, status: 'RUNNING', shardIds: [6] },
       ],
       dockerImage: MOCK_DOCKER_IMAGE,
     });
@@ -225,10 +225,10 @@ describe('BotService', () => {
       id: HALLMASTER_BOT_ID,
       totalShards: 10,
       clusters: [
-        { id: 1, status: 'UPDATING', shardIds: [0, 1, 2] },
-        { id: 2, status: 'UPDATING', shardIds: [3, 4, 5] },
-        { id: 3, status: 'UPDATING', shardIds: [6, 7, 8] },
-        { id: 4, status: 'UPDATING', shardIds: [9] },
+        { id: 0, status: 'UPDATING', shardIds: [0, 1, 2] },
+        { id: 1, status: 'UPDATING', shardIds: [3, 4, 5] },
+        { id: 2, status: 'UPDATING', shardIds: [6, 7, 8] },
+        { id: 3, status: 'UPDATING', shardIds: [9] },
       ],
       dockerImage: MOCK_DOCKER_IMAGE,
     });
@@ -237,25 +237,25 @@ describe('BotService', () => {
 
     const data = await service.update(body);
 
+    expect(clustersService.remove).toHaveBeenCalledWith(0);
     expect(clustersService.remove).toHaveBeenCalledWith(1);
     expect(clustersService.remove).toHaveBeenCalledWith(2);
-    expect(clustersService.remove).toHaveBeenCalledWith(3);
     expect(clustersService.remove).toHaveBeenCalledTimes(3);
 
+    expect(clustersService.start).toHaveBeenCalledWith(0);
     expect(clustersService.start).toHaveBeenCalledWith(1);
     expect(clustersService.start).toHaveBeenCalledWith(2);
     expect(clustersService.start).toHaveBeenCalledWith(3);
-    expect(clustersService.start).toHaveBeenCalledWith(4);
     expect(clustersService.start).toHaveBeenCalledTimes(4);
 
     expect(data).toStrictEqual({
       id: HALLMASTER_BOT_ID,
       shards: 10,
       layout: [
-        { id: 1, shardIds: [0, 1, 2] },
-        { id: 2, shardIds: [3, 4, 5] },
-        { id: 3, shardIds: [6, 7, 8] },
-        { id: 4, shardIds: [9] },
+        { id: 0, shardIds: [0, 1, 2] },
+        { id: 1, shardIds: [3, 4, 5] },
+        { id: 2, shardIds: [6, 7, 8] },
+        { id: 3, shardIds: [9] },
       ],
       dockerImage: EXPECTED_DOCKER_IMAGE,
     });
@@ -277,9 +277,9 @@ describe('BotService', () => {
       id: HALLMASTER_BOT_ID,
       totalShards: 7,
       clusters: [
-        { id: 1, status: 'UPDATING', shardIds: [0, 1, 2] },
-        { id: 2, status: 'UPDATING', shardIds: [3, 4, 5] },
-        { id: 3, status: 'UPDATING', shardIds: [6] },
+        { id: 0, status: 'UPDATING', shardIds: [0, 1, 2] },
+        { id: 1, status: 'UPDATING', shardIds: [3, 4, 5] },
+        { id: 2, status: 'UPDATING', shardIds: [6] },
       ],
       dockerImage: MOCK_DOCKER_IMAGE,
     });
@@ -290,18 +290,18 @@ describe('BotService', () => {
 
     expect(clustersService.remove).not.toHaveBeenCalled();
 
+    expect(clustersService.start).toHaveBeenCalledWith(0);
     expect(clustersService.start).toHaveBeenCalledWith(1);
     expect(clustersService.start).toHaveBeenCalledWith(2);
-    expect(clustersService.start).toHaveBeenCalledWith(3);
     expect(clustersService.start).toHaveBeenCalledTimes(3);
 
     expect(data).toStrictEqual({
       id: HALLMASTER_BOT_ID,
       shards: 7,
       layout: [
-        { id: 1, shardIds: [0, 1, 2] },
-        { id: 2, shardIds: [3, 4, 5] },
-        { id: 3, shardIds: [6] },
+        { id: 0, shardIds: [0, 1, 2] },
+        { id: 1, shardIds: [3, 4, 5] },
+        { id: 2, shardIds: [6] },
       ],
       dockerImage: EXPECTED_DOCKER_IMAGE,
     });
@@ -310,8 +310,8 @@ describe('BotService', () => {
   it('should update the bot layout only (same shards)', async () => {
     const body: UpdateBotDto = {
       layout: [
-        { id: 1, shardIds: [0, 1, 2, 3, 4] },
-        { id: 2, shardIds: [5, 6] },
+        { id: 0, shardIds: [0, 1, 2, 3, 4] },
+        { id: 1, shardIds: [5, 6] },
       ],
     };
 
@@ -319,9 +319,9 @@ describe('BotService', () => {
       id: HALLMASTER_BOT_ID,
       totalShards: 7,
       clusters: [
-        { id: 1, status: 'STOPPED', shardIds: [0, 1, 2] },
-        { id: 2, status: 'RUNNING', shardIds: [3, 4, 5] },
-        { id: 3, status: 'RUNNING', shardIds: [6] },
+        { id: 0, status: 'STOPPED', shardIds: [0, 1, 2] },
+        { id: 1, status: 'RUNNING', shardIds: [3, 4, 5] },
+        { id: 2, status: 'RUNNING', shardIds: [6] },
       ],
       dockerImage: MOCK_DOCKER_IMAGE,
     });
@@ -332,8 +332,8 @@ describe('BotService', () => {
       id: HALLMASTER_BOT_ID,
       totalShards: 7,
       clusters: [
-        { id: 1, status: 'UPDATING', shardIds: [0, 1, 2, 3, 4] },
-        { id: 2, status: 'UPDATING', shardIds: [5, 6] },
+        { id: 0, status: 'UPDATING', shardIds: [0, 1, 2, 3, 4] },
+        { id: 1, status: 'UPDATING', shardIds: [5, 6] },
       ],
       dockerImage: MOCK_DOCKER_IMAGE,
     });
@@ -344,16 +344,16 @@ describe('BotService', () => {
 
     expect(clustersService.remove).toHaveBeenCalledTimes(3);
 
+    expect(clustersService.start).toHaveBeenCalledWith(0);
     expect(clustersService.start).toHaveBeenCalledWith(1);
-    expect(clustersService.start).toHaveBeenCalledWith(2);
     expect(clustersService.start).toHaveBeenCalledTimes(2);
 
     expect(data).toStrictEqual({
       id: HALLMASTER_BOT_ID,
       shards: 7,
       layout: [
-        { id: 1, shardIds: [0, 1, 2, 3, 4] },
-        { id: 2, shardIds: [5, 6] },
+        { id: 0, shardIds: [0, 1, 2, 3, 4] },
+        { id: 1, shardIds: [5, 6] },
       ],
       dockerImage: EXPECTED_DOCKER_IMAGE,
     });
@@ -407,15 +407,15 @@ describe('BotService', () => {
   it('should reject layout referencing a non-existent cluster ID', async () => {
     const body: UpdateBotDto = {
       layout: [
-        { id: 1, shardIds: [0, 1] },
-        { id: 99, shardIds: [2] },
+        { id: 0, shardIds: [0, 1] },
+        { id: 98, shardIds: [2] },
       ],
     };
 
     (prismaService.bot.findFirst as jest.Mock).mockResolvedValueOnce({
       id: HALLMASTER_BOT_ID,
       totalShards: 2,
-      clusters: [{ id: 1, status: 'RUNNING', shardIds: [0, 1] }],
+      clusters: [{ id: 0, status: 'RUNNING', shardIds: [0, 1] }],
       dockerImage: MOCK_DOCKER_IMAGE,
     });
 
@@ -425,15 +425,15 @@ describe('BotService', () => {
   it('should reject layout with duplicate cluster IDs', async () => {
     const body: UpdateBotDto = {
       layout: [
-        { id: 1, shardIds: [0, 1] },
-        { id: 1, shardIds: [2] },
+        { id: 0, shardIds: [0, 1] },
+        { id: 0, shardIds: [2] },
       ],
     };
 
     (prismaService.bot.findFirst as jest.Mock).mockResolvedValueOnce({
       id: HALLMASTER_BOT_ID,
       totalShards: 2,
-      clusters: [{ id: 1, status: 'RUNNING', shardIds: [0, 1] }],
+      clusters: [{ id: 0, status: 'RUNNING', shardIds: [0, 1] }],
       dockerImage: MOCK_DOCKER_IMAGE,
     });
 
@@ -533,8 +533,8 @@ describe('BotService', () => {
       id: HALLMASTER_BOT_ID,
       totalShards: 5,
       clusters: [
-        { id: 1, status: 'STOPPED', shardIds: [0, 1, 2] },
-        { id: 2, status: 'RUNNING', shardIds: [3, 4] },
+        { id: 0, status: 'STOPPED', shardIds: [0, 1, 2] },
+        { id: 1, status: 'RUNNING', shardIds: [3, 4] },
       ],
       dockerImage: MOCK_DOCKER_IMAGE,
     });
@@ -550,8 +550,8 @@ describe('BotService', () => {
       id: HALLMASTER_BOT_ID,
       shards: 5,
       layout: [
-        { id: 1, shardIds: [0, 1, 2] },
-        { id: 2, shardIds: [3, 4] },
+        { id: 0, shardIds: [0, 1, 2] },
+        { id: 1, shardIds: [3, 4] },
       ],
       dockerImage: EXPECTED_DOCKER_IMAGE,
     });
