@@ -92,7 +92,7 @@ export class BotService {
       if (cluster.id !== undefined) usedIds.add(cluster.id);
     }
 
-    let candidate = 1;
+    let candidate = 0;
     return sorted.map((cluster) => {
       if (cluster.id !== undefined) {
         return { id: cluster.id, shardIds: cluster.shardIds };
