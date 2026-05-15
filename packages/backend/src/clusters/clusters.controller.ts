@@ -1,4 +1,3 @@
-import type { UUID } from 'node:crypto';
 import { Readable } from 'node:stream';
 
 import {
@@ -9,6 +8,7 @@ import {
   HttpStatus,
   MessageEvent,
   Param,
+  ParseIntPipe,
   Post,
   Query,
   Sse,
@@ -75,7 +75,7 @@ export class ClustersController {
   @ApiNotFoundResponse({
     description: 'The ID points to an unresolved cluster.',
   })
-  findOne(@Param('id') id: UUID) {
+  findOne(@Param('id', ParseIntPipe) id: number) {
     return this.clustersService.findOne(id);
   }
 
@@ -87,7 +87,7 @@ export class ClustersController {
   @ApiNotFoundResponse({
     description: 'The ID points to an unresolved cluster.',
   })
-  async remove(@Param('id') id: UUID) {
+  async remove(@Param('id', ParseIntPipe) id: number) {
     await this.clustersService.remove(id);
   }
 
@@ -99,7 +99,7 @@ export class ClustersController {
   @ApiNotFoundResponse({
     description: 'The ID points to an unresolved cluster.',
   })
-  async start(@Param('id') id: UUID) {
+  async start(@Param('id', ParseIntPipe) id: number) {
     await this.clustersService.start(id);
   }
 
@@ -111,7 +111,7 @@ export class ClustersController {
   @ApiNotFoundResponse({
     description: 'The ID points to an unresolved cluster.',
   })
-  async stop(@Param('id') id: UUID) {
+  async stop(@Param('id', ParseIntPipe) id: number) {
     await this.clustersService.stop(id);
   }
 
@@ -123,7 +123,7 @@ export class ClustersController {
   @ApiNotFoundResponse({
     description: 'The ID points to an unresolved cluster.',
   })
-  async restart(@Param('id') id: UUID) {
+  async restart(@Param('id', ParseIntPipe) id: number) {
     await this.clustersService.restart(id);
   }
 
@@ -136,7 +136,7 @@ export class ClustersController {
   @ApiNotFoundResponse({
     description: 'The ID points to an unresolved cluster.',
   })
-  async getLogs(@Param('id') id: UUID, @Query() query: GetClusterLogsQueryZodDto) {
+  async getLogs(@Param('id', ParseIntPipe) id: number, @Query() query: GetClusterLogsQueryZodDto) {
     return await this.clustersService.logs(
       id,
       query.since ? new Date(query.since) : undefined,
@@ -148,7 +148,7 @@ export class ClustersController {
   @Sse(':id/logs/stream')
   @ApiProduces('text/event-stream')
   @UseGuards(AuthGuard)
-  streamLogs(@Param('id') id: UUID): Observable<MessageEvent> {
+  streamLogs(@Param('id', ParseIntPipe) id: number): Observable<MessageEvent> {
     return new Observable((subscriber) => {
       let stream: Readable | undefined;
 
@@ -183,7 +183,7 @@ export class ClustersController {
   @ApiBadRequestResponse({
     description: 'The requested cluster has no bound container or its not running.',
   })
-  async getStats(@Param('id') id: UUID) {
+  async getStats(@Param('id', ParseIntPipe) id: number) {
     return await this.clustersService.stats(id);
   }
 
@@ -199,7 +199,7 @@ export class ClustersController {
   @ApiBadRequestResponse({
     description: 'The requested cluster has no bound container or its not running.',
   })
-  streamStats(@Param('id') id: UUID): Observable<MessageEvent> {
+  streamStats(@Param('id', ParseIntPipe) id: number): Observable<MessageEvent> {
     return timer(0, 5000).pipe(
       switchMap(() => from(this.clustersService.stats(id))),
       switchMap((stats) => [{ data: stats } as MessageEvent]),

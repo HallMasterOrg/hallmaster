@@ -24,7 +24,7 @@ export const getClusters = query(async (): Promise<GetClusterDto[]> => {
   }
 });
 
-export const startCluster = command("unchecked", async (id: string) => {
+export const startCluster = command("unchecked", async (id: number) => {
   const token = getRequestEvent().cookies.get("token");
 
   const response = await fetch(`${env.API_URL}/clusters/${id}/start`, {
@@ -47,7 +47,7 @@ export const startCluster = command("unchecked", async (id: string) => {
   }
 });
 
-export const stopCluster = command("unchecked", async (id: string) => {
+export const stopCluster = command("unchecked", async (id: number) => {
   const token = getRequestEvent().cookies.get("token");
 
   const response = await fetch(`${env.API_URL}/clusters/${id}/stop`, {
@@ -70,7 +70,7 @@ export const stopCluster = command("unchecked", async (id: string) => {
   }
 });
 
-export const restartCluster = command("unchecked", async (id: string) => {
+export const restartCluster = command("unchecked", async (id: number) => {
   const token = getRequestEvent().cookies.get("token");
 
   const response = await fetch(`${env.API_URL}/clusters/${id}/restart`, {

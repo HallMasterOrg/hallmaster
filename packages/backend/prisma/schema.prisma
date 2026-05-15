@@ -45,12 +45,13 @@ enum ClusterStatus {
 }
 
 model Cluster {
-  id          String        @id @default(uuid())
+  id          Int
   botId       String        @map("bot_id")
   containerId String?       @map("container_id")
   status      ClusterStatus
   shardIds    Int[]         @map("shard_ids")
   bot         Bot           @relation(fields: [botId], references: [id], onDelete: Cascade)
 
+  @@id([botId, id])
   @@map("cluster")
 }

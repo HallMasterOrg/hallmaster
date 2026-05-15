@@ -1,5 +1,3 @@
-import { UUID } from 'node:crypto';
-
 import {
   BadRequestException,
   ConflictException,
@@ -18,6 +16,8 @@ import { formatDockerImage } from './bot.utils.js';
 import { CreateBotZodDto } from './dto/create-bot.dto.js';
 import { GetBotZodDto } from './dto/get-bot.dto.js';
 import { UpdateBotZodDto } from './dto/update-bot.dto.js';
+
+type LayoutInput = NonNullable<UpdateBotZodDto['layout']>;
 
 @Injectable()
 export class BotService {
@@ -44,14 +44,24 @@ export class BotService {
     return Buffer.from(token.split('.')[0], 'base64').toString('ascii');
   }
 
-  private validateLayout(layout: number[][]): void {
+  private validateLayout(layout: LayoutInput, existingClusterIds: Set<number>): void {
+    const providedIds = new Set<number>();
     for (const [index, cluster] of layout.entries()) {
-      if (cluster.length === 0) {
+      if (cluster.shardIds.length === 0) {
         throw new BadRequestException(`Cluster at index ${index} is empty.`);
+      }
+      if (cluster.id !== undefined) {
+        if (providedIds.has(cluster.id)) {
+          throw new BadRequestException(`Duplicate cluster ID ${cluster.id} in layout.`);
+        }
+        if (!existingClusterIds.has(cluster.id)) {
+          throw new BadRequestException(`Cluster ID ${cluster.id} does not exist.`);
+        }
+        providedIds.add(cluster.id);
       }
     }
 
-    const allShardIds = layout.flat();
+    const allShardIds = layout.flatMap((c) => c.shardIds);
     const uniqueShardIds = new Set(allShardIds);
     const totalShards = allShardIds.length;
 
@@ -64,6 +74,26 @@ export class BotService {
         throw new BadRequestException(`Shard ID ${shardId} is out of range [0, ${totalShards - 1}].`);
       }
     }
+  }
+
+  private assignClusterIds(layout: LayoutInput): Array<{ id: number; shardIds: number[] }> {
+    const sorted = [...layout].sort((a, b) => Math.min(...a.shardIds) - Math.min(...b.shardIds));
+
+    const usedIds = new Set<number>();
+    for (const cluster of sorted) {
+      if (cluster.id !== undefined) usedIds.add(cluster.id);
+    }
+
+    let candidate = 1;
+    return sorted.map((cluster) => {
+      if (cluster.id !== undefined) {
+        return { id: cluster.id, shardIds: cluster.shardIds };
+      }
+      while (usedIds.has(candidate)) candidate++;
+      const id = candidate++;
+      usedIds.add(id);
+      return { id, shardIds: cluster.shardIds };
+    });
   }
 
   private async fetchDiscordGatewayBot(token: string): Promise<{ shards: number }> {
@@ -132,7 +162,7 @@ export class BotService {
       return {
         id: bot.id,
         shards: bot.totalShards,
-        layout: bot.clusters.map((c) => c.shardIds),
+        layout: bot.clusters.map((c) => ({ id: c.id, shardIds: c.shardIds })),
         dockerImage: formatDockerImage(bot.dockerImage),
       };
     } catch (e) {
@@ -155,7 +185,7 @@ export class BotService {
     return {
       id: bot.id,
       shards: bot.totalShards,
-      layout: bot.clusters.map((c) => c.shardIds),
+      layout: bot.clusters.map((c) => ({ id: c.id, shardIds: c.shardIds })),
       dockerImage: formatDockerImage(bot.dockerImage),
     };
   }
@@ -208,13 +238,22 @@ export class BotService {
       throw new NotFoundException();
     }
 
-    const layout = updateBotDto.layout ?? bot.clusters.map((c) => c.shardIds);
+    const existingClusterIds = new Set(bot.clusters.map((c) => c.id));
 
-    this.validateLayout(layout);
+    const layoutInput: LayoutInput =
+      updateBotDto.layout ?? bot.clusters.map((c) => ({ id: c.id, shardIds: c.shardIds }));
 
-    const totalShards = layout.flat().length;
-    const sortedLayout = layout.map((s) => [...s].sort((a, b) => a - b));
-    const oldLayout = bot.clusters.map((c) => [...c.shardIds].sort((a, b) => a - b));
+    this.validateLayout(layoutInput, existingClusterIds);
+
+    const resolvedLayout = this.assignClusterIds(layoutInput);
+    const totalShards = resolvedLayout.flatMap((c) => c.shardIds).length;
+
+    const sortedLayout = resolvedLayout
+      .map((c) => ({ id: c.id, shardIds: [...c.shardIds].sort((a, b) => a - b) }))
+      .sort((a, b) => a.id - b.id);
+    const oldLayout = bot.clusters
+      .map((c) => ({ id: c.id, shardIds: [...c.shardIds].sort((a, b) => a - b) }))
+      .sort((a, b) => a.id - b.id);
     const layoutChanged = JSON.stringify(sortedLayout) !== JSON.stringify(oldLayout);
 
     const newToken = updateBotDto.token !== undefined && updateBotDto.token !== bot.token ? updateBotDto.token : null;
@@ -229,8 +268,10 @@ export class BotService {
 
     const shouldForceRestart = layoutChanged || tokenChanged || dockerImageChanged;
 
+    const oldStatusById = new Map(bot.clusters.map((c) => [c.id, c.status]));
+
     for (const cluster of bot.clusters) {
-      await this.clustersService.remove(cluster.id as UUID);
+      await this.clustersService.remove(cluster.id);
     }
 
     const newBot = await this.prismaService.bot.update({
@@ -242,9 +283,10 @@ export class BotService {
         }),
         clusters: {
           createMany: {
-            data: layout.map((clusterShardIds, index) => ({
-              status: shouldForceRestart || bot.clusters[index]?.status !== 'STOPPED' ? 'UPDATING' : 'STOPPED',
-              shardIds: clusterShardIds,
+            data: resolvedLayout.map((cluster) => ({
+              id: cluster.id,
+              status: shouldForceRestart || oldStatusById.get(cluster.id) !== 'STOPPED' ? 'UPDATING' : 'STOPPED',
+              shardIds: cluster.shardIds,
             })),
           },
         },
@@ -257,14 +299,14 @@ export class BotService {
 
     for (const cluster of newBot.clusters) {
       if (cluster.status !== 'STOPPED') {
-        await this.clustersService.start(cluster.id as UUID);
+        await this.clustersService.start(cluster.id);
       }
     }
 
     return {
       id: newBot.id,
       shards: newBot.totalShards,
-      layout: newBot.clusters.map((c) => c.shardIds),
+      layout: newBot.clusters.map((c) => ({ id: c.id, shardIds: c.shardIds })),
       dockerImage: formatDockerImage(newBot.dockerImage),
     };
   }
@@ -297,7 +339,7 @@ export class BotService {
     return {
       id: bot.id,
       shards: bot.totalShards,
-      layout: bot.clusters.map((c) => c.shardIds),
+      layout: bot.clusters.map((c) => ({ id: c.id, shardIds: c.shardIds })),
       dockerImage: formatDockerImage(bot.dockerImage),
     };
   }
