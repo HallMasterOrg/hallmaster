@@ -1,5 +1,5 @@
 import { DockerAPIHttpError, DockerSocket } from '@hallmaster/docker.js';
-import type { Cluster } from '@hallmaster/prisma-client';
+import type { Bot, Cluster } from '@hallmaster/prisma-client';
 import { ConfigService } from '@nestjs/config';
 import type { TestingModule } from '@nestjs/testing';
 import { Test } from '@nestjs/testing';
@@ -66,6 +66,47 @@ describe('DockerService', () => {
       expect(prismaService.cluster.delete).toHaveBeenCalledWith({
         where: { botId_id: { botId: 'bot-1', id: 0 } },
       });
+    });
+  });
+
+  describe('start() with name collision', () => {
+    const bot: Bot = {
+      id: 'bot-1',
+      token: 'discord-token',
+      totalShards: 1,
+    } as unknown as Bot;
+
+    const cluster: Cluster = {
+      botId: 'bot-1',
+      id: 0,
+      containerId: null,
+      shardIds: [0],
+      status: 'STOPPED',
+    };
+
+    it('cleans up the stale container and retries when create returns 409', async () => {
+      configService.getOrThrow.mockReturnValue('ENV_NAME');
+      prismaService.dockerImage.findUnique.mockResolvedValue({
+        botId: 'bot-1',
+        serverName: 'docker.io',
+        image: 'foo/bar',
+        tag: 'latest',
+        username: null,
+        password: null,
+      });
+
+      // Image pull succeeds
+      // First create attempt fails with 409. Cleanup succeeds.
+      // Second create attempt succeeds. Then start succeeds.
+      dockerSocket.apiCall
+        .mockResolvedValueOnce(undefined) // pull
+        .mockRejectedValueOnce(new DockerAPIHttpError(409, 'name already in use')) // create #1
+        .mockResolvedValueOnce(undefined) // stop the stale one
+        .mockResolvedValueOnce(undefined) // remove the stale one
+        .mockResolvedValueOnce({ Id: 'new-container-id' } as never) // create #2
+        .mockResolvedValueOnce(undefined); // start
+
+      await expect(service.start(bot, cluster)).resolves.toBe('new-container-id');
     });
   });
 });

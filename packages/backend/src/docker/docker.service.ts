@@ -1,6 +1,13 @@
 import type { Readable } from 'node:stream';
 
-import { DockerContainersAPI, DockerImagesAPI, DockerSocket, DockerAPIHttpError } from '@hallmaster/docker.js';
+import {
+  DockerContainersAPI,
+  DockerImagesAPI,
+  DockerSocket,
+  DockerAPIHttpError,
+  type DockerContainerCreated,
+  type DockerContainerCreationBody,
+} from '@hallmaster/docker.js';
 import { Bot, Cluster, DockerImage } from '@hallmaster/prisma-client';
 import { BadRequestException, Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -16,8 +23,12 @@ export class DockerService {
     private readonly dockerSocket: DockerSocket,
   ) {}
 
+  private isDockerApiError(error: unknown, status: number): boolean {
+    return error instanceof DockerAPIHttpError && error.status === status;
+  }
+
   private isContainerNotFound(error: unknown): boolean {
-    return error instanceof DockerAPIHttpError && error.status === 404;
+    return this.isDockerApiError(error, 404);
   }
 
   private async clearContainerId(cluster: Cluster): Promise<void> {
@@ -25,6 +36,37 @@ export class DockerService {
       where: { botId_id: { botId: cluster.botId, id: cluster.id } },
       data: { containerId: null },
     });
+  }
+
+  private async cleanupStaleContainerByName(name: string): Promise<void> {
+    const api = new DockerContainersAPI(this.dockerSocket);
+
+    try {
+      await api.stop(name);
+    } catch {
+      // proceed to remove even if stop fails
+    }
+
+    try {
+      await api.remove(name);
+    } catch (e) {
+      // Any 404 is treated as success: the container is gone, which is the goal.
+      if (!this.isContainerNotFound(e)) throw e;
+    }
+  }
+
+  private async createContainerOrCleanup(
+    api: DockerContainersAPI,
+    body: Partial<DockerContainerCreationBody>,
+    name: string,
+  ): Promise<DockerContainerCreated> {
+    try {
+      return await api.create(body, name);
+    } catch (e) {
+      if (!this.isDockerApiError(e, 409)) throw e;
+      await this.cleanupStaleContainerByName(name);
+      return await api.create(body, name);
+    }
   }
 
   async verifyImage(dockerImage: {
@@ -140,7 +182,8 @@ export class DockerService {
     if (null === containerId) {
       await this.pullDockerImage(cluster, dockerImage);
       try {
-        const container = await dockerContainersAPI.create(
+        const container = await this.createContainerOrCleanup(
+          dockerContainersAPI,
           {
             Env: [
               `${discordBotTokenEnvName}=${bot.token}`,
