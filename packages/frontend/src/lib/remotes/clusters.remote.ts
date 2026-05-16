@@ -1,6 +1,7 @@
 import { command, getRequestEvent, query } from "$app/server";
 import { env } from "$env/dynamic/private";
 import {
+  type GetAggregateStatsDto,
   type GetClusterDto,
   type GetClusterLogsDto,
   type GetClusterStatsDto,
@@ -226,3 +227,34 @@ export const getClusterStatsLive = query.live(
     }
   },
 );
+
+export const getClustersStatsLive = query.live(async function* () {
+  const token = getRequestEvent().cookies.get("token");
+
+  const response = await fetch(new URL("/clusters/stats/stream?interval=2", env.API_URL), {
+    headers: {
+      Accept: "text/event-stream",
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  switch (response.status) {
+    case 200: {
+      if (!response.body) return error(500, "An error occurred");
+
+      const chunks = response.body
+        .pipeThrough(new TextDecoderStream())
+        .pipeThrough(new EventSourceParserStream())
+        // @ts-ignore svelte-check false positive
+        .values();
+
+      for await (const chunk of chunks) yield JSON.parse(chunk.data) as GetAggregateStatsDto;
+      break;
+    }
+    case 401:
+      return error(401, "Unauthorized");
+
+    default:
+      return error(500, "An error occurred");
+  }
+});

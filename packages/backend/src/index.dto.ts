@@ -13,3 +13,4 @@ export {
   type GetClusterLogsDto,
 } from './clusters/dto/get-cluster-logs.dto.js';
 export { GetClusterStatsSchema, type GetClusterStatsDto } from './clusters/dto/get-cluster-stats.dto.js';
+export { type GetAggregateStatsDto } from './clusters/dto/get-aggregate-stats.dto.js';
