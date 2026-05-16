@@ -6,6 +6,8 @@ import { BadRequestException, Injectable, NotFoundException } from '@nestjs/comm
 import { DockerService } from '../docker/docker.service.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 
+import { GetAggregateStatsDto } from './dto/get-aggregate-stats.dto.js';
+
 @Injectable()
 export class ClustersService {
   constructor(
@@ -143,5 +145,30 @@ export class ClustersService {
     }
 
     return await this.dockerService.getContainerStats(resource.containerId);
+  }
+
+  async aggregateStats(): Promise<GetAggregateStatsDto> {
+    const clusters = await this.prismaService.cluster.findMany({
+      where: { status: 'RUNNING', containerId: { not: null } },
+      select: { id: true, containerId: true },
+    });
+
+    const runnable = clusters.filter((c): c is { id: number; containerId: string } => c.containerId !== null);
+
+    const results = await Promise.allSettled(
+      runnable.map(async (c) => ({
+        id: c.id,
+        stats: await this.dockerService.getContainerStats(c.containerId),
+      })),
+    );
+
+    const aggregate: GetAggregateStatsDto = {};
+    for (const result of results) {
+      if (result.status === 'fulfilled') {
+        aggregate[result.value.id] = result.value.stats;
+      }
+    }
+
+    return aggregate;
   }
 }
