@@ -22,7 +22,8 @@ export const createBot = form(CreateBotSchema, async (data) => {
       return error(401, "Unauthorized");
     case 409:
       return error(409, "A bot already exists");
+
     default:
-      return error(500, "An error occured");
+      return error(500, "An error occurred");
   }
 });

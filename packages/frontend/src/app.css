@@ -3,14 +3,11 @@
 @import "@skeletonlabs/skeleton";
 @import "@skeletonlabs/skeleton-svelte";
 
-@import "$lib/styles/theme.css";
-@import "$lib/styles/utilities.css";
+@import "./lib/styles/theme.css";
+@import "./lib/styles/utilities.css";
+
+@import "layerchart/skeleton-4.css";
 
 input:focus {
   outline: none;
-}
-
-body {
-  background-image: radial-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px);
-  background-size: 15px 15px;
 }

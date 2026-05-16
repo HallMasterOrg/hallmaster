@@ -1,26 +1,26 @@
 <script lang="ts">
-import {
-  ChevronRightIcon,
-  RectangleEllipsisIcon,
-  TextCursorIcon,
-  UserIcon,
-} from "@lucide/svelte";
-import LabeledInput from "$lib/components/LabeledInput.svelte";
-import { login } from "$lib/remotes/auth.remote";
-import toaster from "$lib/utils/toaster";
+  import LabeledInput from "$lib/components/LabeledInput.svelte";
+  import { login } from "$lib/remotes/auth.remote";
+  import toaster from "$lib/utils/toaster";
+  import {
+    ChevronRightIcon,
+    RectangleEllipsisIcon,
+    TextCursorIcon,
+    UserIcon,
+  } from "@lucide/svelte";
 </script>
 
 <form
   class="card preset-filled-surface-100-900"
-  {...login.enhance(({ submit }) =>
+  {...login.enhance(({ submit }) => {
     submit().catch((error) => {
       toaster.create({
         type: "error",
         title: "Error",
         description: JSON.parse(error).message,
       });
-    }),
-  )}
+    });
+  })}
 >
   <UserIcon size={64} />
 
