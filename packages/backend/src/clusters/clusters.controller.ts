@@ -29,6 +29,7 @@ import { Observable, timer, exhaustMap, map, from } from 'rxjs';
 import { AuthGuard } from '../auth/guards/jwt.guard.js';
 
 import { ClustersService } from './clusters.service.js';
+import { GetAggregateStatsZodDto } from './dto/get-aggregate-stats.dto.js';
 import { GetClusterLogsQueryZodDto, GetClusterLogsZodDto } from './dto/get-cluster-logs.dto.js';
 import { GetClusterStatsZodDto } from './dto/get-cluster-stats.dto.js';
 import { GetClusterZodDto } from './dto/get-cluster.dto.js';
@@ -65,6 +66,20 @@ export class ClustersController {
     return timer(0, query.interval * 1000).pipe(
       exhaustMap(() => from(this.clustersService.findAll())),
       map((clusters) => ({ data: clusters }) as MessageEvent),
+    );
+  }
+
+  @Sse('stats/stream')
+  @ApiOkResponse({
+    description:
+      'SSE stream that emits the stats of every running cluster at a configurable interval (default 5s). Clusters whose stats failed to fetch are omitted.',
+    type: GetAggregateStatsZodDto,
+  })
+  @ApiProduces('text/event-stream')
+  streamAggregateStats(@Query() query: SseIntervalQueryZodDto): Observable<MessageEvent> {
+    return timer(0, query.interval * 1000).pipe(
+      exhaustMap(() => from(this.clustersService.aggregateStats())),
+      map((stats) => ({ data: stats }) as MessageEvent),
     );
   }
 
