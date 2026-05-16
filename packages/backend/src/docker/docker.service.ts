@@ -279,7 +279,6 @@ export class DockerService {
             cause: e,
           });
         }
-        // Container already gone — proceed to delete the DB row.
       }
     }
 
