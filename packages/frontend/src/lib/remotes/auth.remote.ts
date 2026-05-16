@@ -45,7 +45,7 @@ export const login = form(loginSchema, async (data, issue) => {
       const { token } = await response.json();
 
       cookies.set("token", token, { path: "/" });
-      return redirect(303, "/");
+      return redirect(303, "/clusters");
     }
     case 400:
       return error(400, "Invalid fields");
