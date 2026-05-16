@@ -5,7 +5,7 @@ import { error, redirect } from "@sveltejs/kit";
 
 import { getClusters } from "./clusters.remote";
 
-export const createBot = form(CreateBotSchema, async (data) => {
+export const createBot = form(CreateBotSchema, async (payload) => {
   const token = getRequestEvent().cookies.get("token");
 
   const response = await fetch(`${env.API_URL}/bot`, {
@@ -14,7 +14,7 @@ export const createBot = form(CreateBotSchema, async (data) => {
       "Content-Type": "application/json",
       Authorization: `Bearer ${token}`,
     },
-    body: JSON.stringify(data),
+    body: JSON.stringify(payload),
   });
 
   switch (response.status) {
@@ -50,20 +50,47 @@ export const getBot = query<GetBotDto>(async () => {
       return error(404, "Bot not found");
 
     default:
-      return error(500, "An error occured");
+      return error(500, "An error occurred");
   }
 });
 
-export const updateBotToken = form(UpdateBotSchema.pick({ token: true }), async (token) => {
-  const userToken = getRequestEvent().cookies.get("token");
+export const updateBotToken = form(UpdateBotSchema.pick({ token: true }), async (payload) => {
+  const token = getRequestEvent().cookies.get("token");
 
   const response = await fetch(new URL("/bot", env.API_URL), {
     method: "PATCH",
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${userToken}`,
+      Authorization: `Bearer ${token}`,
     },
-    body: JSON.stringify(token),
+    body: JSON.stringify(payload),
+  });
+
+  switch (response.status) {
+    case 202:
+      getBot().set(await response.json());
+      return;
+    case 401:
+      return error(401, "Unauthorized");
+    case 404:
+      return error(404, "Bot not found");
+
+    default:
+      console.error(await response.text());
+      return error(500, "An error occurred");
+  }
+});
+
+export const updateBotImage = form(UpdateBotSchema.pick({ dockerImage: true }), async (payload) => {
+  const token = getRequestEvent().cookies.get("token");
+
+  const response = await fetch(new URL("/bot", env.API_URL), {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(payload),
   });
 
   switch (response.status) {
@@ -81,37 +108,7 @@ export const updateBotToken = form(UpdateBotSchema.pick({ token: true }), async 
   }
 });
 
-export const updateBotImage = form(
-  UpdateBotSchema.pick({ dockerImage: true }),
-  async (dockerImage) => {
-    const token = getRequestEvent().cookies.get("token");
-
-    const response = await fetch(new URL("/bot", env.API_URL), {
-      method: "PATCH",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify(dockerImage),
-    });
-
-    switch (response.status) {
-      case 202:
-        getBot().set(await response.json());
-        return;
-      case 401:
-        return error(401, "Unauthorized");
-      case 404:
-        return error(404, "Bot not found");
-
-      default:
-        console.error(await response.text());
-        return error(500, "An error occured");
-    }
-  },
-);
-
-export const updateBotLayout = command(UpdateBotSchema.pick({ layout: true }), async (layout) => {
+export const updateBotLayout = command(UpdateBotSchema.pick({ layout: true }), async (payload) => {
   const token = getRequestEvent().cookies.get("token");
 
   const response = await fetch(new URL("/bot", env.API_URL), {
@@ -120,7 +117,7 @@ export const updateBotLayout = command(UpdateBotSchema.pick({ layout: true }), a
       "Content-Type": "application/json",
       Authorization: `Bearer ${token}`,
     },
-    body: JSON.stringify(layout),
+    body: JSON.stringify(payload),
   });
 
   switch (response.status) {

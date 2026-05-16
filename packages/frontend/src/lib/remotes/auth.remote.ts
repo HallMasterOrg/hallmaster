@@ -3,13 +3,13 @@ import { env } from "$env/dynamic/private";
 import { loginSchema, registerSchema } from "@hallmaster/backend/dto";
 import { error, invalid, redirect } from "@sveltejs/kit";
 
-export const register = form(registerSchema, async (data) => {
+export const register = form(registerSchema, async (payload) => {
   const response = await fetch(`${env.API_URL}/auth/register`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
     },
-    body: JSON.stringify(data),
+    body: JSON.stringify(payload),
   });
 
   switch (response.status) {
@@ -30,13 +30,13 @@ export const register = form(registerSchema, async (data) => {
   }
 });
 
-export const login = form(loginSchema, async (data, issue) => {
+export const login = form(loginSchema, async (payload, issue) => {
   const response = await fetch(`${env.API_URL}/auth/login`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
     },
-    body: JSON.stringify(data),
+    body: JSON.stringify(payload),
   });
 
   switch (response.status) {
