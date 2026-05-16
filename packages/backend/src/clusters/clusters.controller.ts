@@ -24,7 +24,7 @@ import {
   ApiTags,
   ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
-import { Observable, timer, switchMap, from } from 'rxjs';
+import { Observable, timer, exhaustMap, map, from } from 'rxjs';
 
 import { AuthGuard } from '../auth/guards/jwt.guard.js';
 
@@ -63,8 +63,8 @@ export class ClustersController {
   @ApiProduces('text/event-stream')
   streamAll(@Query() query: SseIntervalQueryZodDto): Observable<MessageEvent> {
     return timer(0, query.interval * 1000).pipe(
-      switchMap(() => from(this.clustersService.findAll())),
-      switchMap((clusters) => [{ data: clusters } as MessageEvent]),
+      exhaustMap(() => from(this.clustersService.findAll())),
+      map((clusters) => ({ data: clusters }) as MessageEvent),
     );
   }
 
@@ -202,8 +202,8 @@ export class ClustersController {
   })
   streamStats(@Param('id', ParseIntPipe) id: number, @Query() query: SseIntervalQueryZodDto): Observable<MessageEvent> {
     return timer(0, query.interval * 1000).pipe(
-      switchMap(() => from(this.clustersService.stats(id))),
-      switchMap((stats) => [{ data: stats } as MessageEvent]),
+      exhaustMap(() => from(this.clustersService.stats(id))),
+      map((stats) => ({ data: stats }) as MessageEvent),
     );
   }
 }
