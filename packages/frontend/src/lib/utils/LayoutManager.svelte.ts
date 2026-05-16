@@ -32,6 +32,8 @@ class Cluster {
   }
 
   public add() {
+    if (this.mutation === "deleted") return;
+
     this.shards.push(new Shard(this.manager.maxShardId + 1, "added"));
   }
 
@@ -102,7 +104,7 @@ export class LayoutManager {
 
   public export(): NonNullable<UpdateBotDto["layout"]> {
     return this.clusters
-      .filter((cluster) => cluster.mutation !== "deleted")
+      .filter((cluster) => cluster.mutation !== "deleted" && cluster.shards.length !== 0)
       .map((cluster) => ({
         id: cluster.id,
         shardIds: cluster.shards

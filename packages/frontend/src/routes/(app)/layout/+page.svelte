@@ -33,6 +33,7 @@
         });
       });
     }}
+    disabled={!!updateBotLayout.pending}
   >
     {#if updateBotLayout.pending}
       <LoaderCircleIcon class="animate-spin" strokeWidth={1.5} />
@@ -103,13 +104,15 @@
           </button>
         {/each}
 
-        <button
-          class="btn text-surface-700-300 hover:text-primary-700-300 hover:bg-surface-100-900"
-          style:font-size="clamp(0px, 40cqw, 2em)"
-          onclick={() => cluster.add()}
-        >
-          <PlusIcon />
-        </button>
+        {#if cluster.mutation !== "deleted"}
+          <button
+            class="btn text-surface-700-300 hover:text-primary-700-300 hover:bg-surface-100-900"
+            style:font-size="clamp(0px, 40cqw, 2em)"
+            onclick={() => cluster.add()}
+          >
+            <PlusIcon />
+          </button>
+        {/if}
       </div>
     </div>
   {/each}

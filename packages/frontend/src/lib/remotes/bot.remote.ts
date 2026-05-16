@@ -51,6 +51,6 @@ export const updateBotLayout = command(UpdateBotSchema.pick({ layout: true }), a
       return error(404, "Bot not found");
 
     default:
-      return error(500, "An error occured");
+      return error(500, "An error occurred");
   }
 });
