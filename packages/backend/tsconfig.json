@@ -28,10 +28,10 @@
 
     "target": "ES2023",
     "lib": ["ES2023"],
+    "types": ["jest", "mocha"],
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true,
 
-    "baseUrl": "./",
     "incremental": true,
     "skipLibCheck": true
   }

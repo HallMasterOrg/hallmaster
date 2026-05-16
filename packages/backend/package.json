@@ -10,9 +10,9 @@
   },
   "scripts": {
     "build": "nest build",
-    "start": "dotenv -e .env.development.local -- nest start",
-    "start:dev": "dotenv -e .env.development.local -- nest start --watch",
-    "start:debug": "dotenv -e .env.development.local -- nest start --debug --watch",
+    "start": "dotenv -e .env -- nest start",
+    "start:dev": "dotenv -e .env -- nest start --watch",
+    "start:debug": "dotenv -e .env -- nest start --debug --watch",
     "start:prod": "prisma migrate deploy && node dist/src/main",
     "lint": "eslint \"src/**/*.ts\"",
     "lint:fix": "eslint --fix \"src/**/*.ts\"",
@@ -23,12 +23,12 @@
     "test:watch": "NODE_OPTIONS=--experimental-vm-modules jest --watch",
     "test:cov": "NODE_OPTIONS=--experimental-vm-modules jest --coverage",
     "test:debug": "NODE_OPTIONS=--experimental-vm-modules node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
-    "prisma:reset": "dotenv -e .env.development.local -- prisma migrate reset",
-    "prisma:migrate": "dotenv -e .env.development.local -- prisma migrate dev",
+    "prisma:reset": "dotenv -e .env -- prisma migrate reset",
+    "prisma:migrate": "dotenv -e .env -- prisma migrate dev",
     "prisma:generate": "DATABASE_URL=postgres://null:null@null:5432/null prisma generate",
-    "prisma:deploy": "dotenv -e .env.development.local -- prisma migrate deploy",
-    "prisma:studio": "dotenv -e .env.development.local -- prisma studio",
-    "prisma:format": "dotenv -e .env.development.local -- prisma format"
+    "prisma:deploy": "dotenv -e .env -- prisma migrate deploy",
+    "prisma:studio": "dotenv -e .env -- prisma studio",
+    "prisma:format": "dotenv -e .env -- prisma format"
   },
   "dependencies": {
     "@fastify/compress": "8.3.1",
@@ -64,6 +64,7 @@
     "@swc/cli": "0.6.0",
     "@swc/core": "1.15.11",
     "@types/jest": "30.0.0",
+    "@types/mocha": "^10.0.10",
     "@types/node": "22.19.11",
     "@types/pg": "8.16.0",
     "@types/supertest": "6.0.3",

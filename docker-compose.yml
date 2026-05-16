@@ -5,7 +5,7 @@ services:
     shm_size: 128mb
     restart: unless-stopped
     env_file:
-      - .env.production.local
+      - secrets/database/.env.production
     volumes:
       - hallmaster-database:/var/lib/postgresql/data:rw
     ports:
@@ -24,13 +24,13 @@ services:
         condition: service_healthy
     image: hallmaster-backend
     build:
-      context: ../..
+      context: .
       dockerfile: packages/backend/Dockerfile
     container_name: hallmaster-backend
     ports:
       - "3000:3000"
     env_file:
-      - .env.production.local
+      - secrets/backend/.env.production
     networks:
       - hallmaster-network
     volumes:
