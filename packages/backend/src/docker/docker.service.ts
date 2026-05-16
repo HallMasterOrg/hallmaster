@@ -16,6 +16,17 @@ export class DockerService {
     private readonly dockerSocket: DockerSocket,
   ) {}
 
+  private isContainerNotFound(error: unknown): boolean {
+    return error instanceof DockerAPIHttpError && error.status === 404;
+  }
+
+  private async clearContainerId(cluster: Cluster): Promise<void> {
+    await this.prismaService.cluster.update({
+      where: { botId_id: { botId: cluster.botId, id: cluster.id } },
+      data: { containerId: null },
+    });
+  }
+
   async verifyImage(dockerImage: {
     serverName: string;
     image: string;
@@ -102,6 +113,29 @@ export class DockerService {
 
     const dockerContainersAPI = new DockerContainersAPI(this.dockerSocket);
     let containerId: null | string = cluster.containerId;
+
+    // If we have a containerId in DB but Docker no longer knows about it
+    // (e.g. user removed it manually), clear the stale reference and fall
+    // through to the create path.
+    if (containerId !== null) {
+      try {
+        await dockerContainersAPI.get(containerId);
+      } catch (e) {
+        if (this.isContainerNotFound(e)) {
+          await this.clearContainerId(cluster);
+          containerId = null;
+        } else {
+          await this.prismaService.cluster.update({
+            where: { botId_id: { botId: bot.id, id: cluster.id } },
+            data: { status: 'ERROR' },
+          });
+          throw new BadRequestException('Unable to inspect the cluster container', {
+            description: `An error occurred while inspecting the Docker container: ${e instanceof Error ? e.message : String(e)}`,
+            cause: e,
+          });
+        }
+      }
+    }
 
     if (null === containerId) {
       await this.pullDockerImage(cluster, dockerImage);
@@ -192,13 +226,15 @@ export class DockerService {
     }
 
     const dockerContainersAPI = new DockerContainersAPI(this.dockerSocket);
+    let containerVanished = false;
 
     try {
-      const container = await dockerContainersAPI.get(cluster.containerId);
-
-      await dockerContainersAPI.stop(container.Id);
+      await dockerContainersAPI.stop(cluster.containerId);
     } catch (e) {
-      if (!(e instanceof DockerAPIHttpError) || e.message !== `no such container: ${cluster.containerId}`) {
+      if (this.isContainerNotFound(e)) {
+        // Container was removed out-of-band — treat stop as already done.
+        containerVanished = true;
+      } else {
         await this.prismaService.cluster.update({
           where: {
             botId_id: { botId: cluster.botId, id: cluster.id },
@@ -209,7 +245,7 @@ export class DockerService {
         });
 
         throw new BadRequestException('Unable to stop the cluster', {
-          description: `An error occurred while removing the Docker container: ${e instanceof Error ? e.message : String(e)}`,
+          description: `An error occurred while stopping the Docker container: ${e instanceof Error ? e.message : String(e)}`,
           cause: e,
         });
       }
@@ -221,6 +257,7 @@ export class DockerService {
       },
       data: {
         status: 'STOPPED',
+        ...(containerVanished && { containerId: null }),
       },
     });
   }
@@ -236,10 +273,13 @@ export class DockerService {
       try {
         await dockerContainersAPI.remove(cluster.containerId);
       } catch (e) {
-        throw new BadRequestException('Unable to remove the cluster', {
-          description: `An error occurred while removing the Docker container: ${e instanceof Error ? e.message : String(e)}`,
-          cause: e,
-        });
+        if (!this.isContainerNotFound(e)) {
+          throw new BadRequestException('Unable to remove the cluster', {
+            description: `An error occurred while removing the Docker container: ${e instanceof Error ? e.message : String(e)}`,
+            cause: e,
+          });
+        }
+        // Container already gone — proceed to delete the DB row.
       }
     }
 
