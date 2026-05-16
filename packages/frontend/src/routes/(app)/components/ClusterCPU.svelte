@@ -14,7 +14,7 @@
   let { id }: Props = $props();
 
   let cpu: {
-    percentage: GetClusterStatsDto["memory"]["usage"];
+    percentage: GetClusterStatsDto["cpuPercentage"];
     date: Date;
   }[] = $state([]);
 
@@ -24,7 +24,7 @@
         percentage: stats.cpuPercentage,
         date: new Date(),
       });
-      if (cpu[0].date.getTime() < Date.now() - 60000) cpu.shift();
+      while (cpu.length && cpu[0].date.getTime() <= Date.now() - 60000) cpu.shift();
     });
   });
 </script>

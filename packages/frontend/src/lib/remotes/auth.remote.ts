@@ -26,7 +26,7 @@ export const register = form(registerSchema, async (data) => {
       return error(409, "A user is already registered");
 
     default:
-      return error(500, "An error occured");
+      return error(500, "An error occurred");
   }
 });
 
@@ -56,6 +56,6 @@ export const login = form(loginSchema, async (data, issue) => {
       );
 
     default:
-      return error(500, "An error occured");
+      return error(500, "An error occurred");
   }
 });

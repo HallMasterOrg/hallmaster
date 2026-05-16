@@ -25,7 +25,7 @@
         usage: stats.memory.usage,
         date: new Date(),
       });
-      if (memory[0].date.getTime() < Date.now() - 60000) memory.shift();
+      while (memory.length && memory[0].date.getTime() <= Date.now() - 60000) memory.shift();
     });
   });
 </script>

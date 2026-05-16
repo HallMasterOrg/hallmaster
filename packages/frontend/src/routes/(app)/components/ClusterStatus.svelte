@@ -17,5 +17,5 @@
     "preset-filled-error-500": status === "ERROR",
   }}
 >
-  {status.toLocaleLowerCase()}
+  {status.toLowerCase()}
 </div>
