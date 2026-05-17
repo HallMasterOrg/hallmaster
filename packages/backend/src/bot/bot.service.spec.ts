@@ -6,10 +6,9 @@ import { PrismaClientKnownRequestError } from '@prisma/client/runtime/client';
 import type { DeepMockProxy } from 'jest-mock-extended';
 import { mockDeep } from 'jest-mock-extended';
 
-import type { CreateBotDto, UpdateBotDto } from 'src/index.dto.js';
-
 import { ClustersService } from '../clusters/clusters.service.js';
 import { DockerService } from '../docker/docker.service.js';
+import type { CreateBotDto, UpdateBotDto } from '../index.dto.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 
 import { BotService } from './bot.service.js';
