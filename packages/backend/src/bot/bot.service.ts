@@ -29,7 +29,7 @@ export class BotService {
   ) {}
 
   private parseDockerImage(image: string): { serverName: string; image: string; tag: string } {
-    const [serverName, ...path] = image.split('/');
+    const [serverName, ...path] = image.trim().split('/');
     const [imageName, tag] = path.join('/').split(':');
     return { serverName, image: imageName, tag };
   }
