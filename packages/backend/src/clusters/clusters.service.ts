@@ -36,14 +36,24 @@ export class ClustersService {
   }
 
   async findAll() {
-    return await this.prismaService.cluster.findMany({
+    const clusters = await this.prismaService.cluster.findMany({
       select: {
         id: true,
         shardIds: true,
         status: true,
+        botId: true,
+        containerId: true,
       },
       orderBy: { id: 'asc' },
     });
+
+    return await Promise.all(
+      clusters.map(async (c) => ({
+        id: c.id,
+        shardIds: c.shardIds,
+        status: await this.dockerService.reconcileClusterStatus(c),
+      })),
+    );
   }
 
   async findOne(id: number) {
@@ -52,6 +62,8 @@ export class ClustersService {
         id: true,
         shardIds: true,
         status: true,
+        botId: true,
+        containerId: true,
       },
       where: { id },
     });
@@ -60,7 +72,11 @@ export class ClustersService {
       throw new NotFoundException();
     }
 
-    return resource;
+    return {
+      id: resource.id,
+      shardIds: resource.shardIds,
+      status: await this.dockerService.reconcileClusterStatus(resource),
+    };
   }
 
   async remove(id: number) {

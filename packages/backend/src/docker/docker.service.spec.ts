@@ -109,4 +109,58 @@ describe('DockerService', () => {
       await expect(service.start(bot, cluster)).resolves.toBe('new-container-id');
     });
   });
+
+  describe('reconcileClusterStatus', () => {
+    const baseCluster = { id: 0, botId: 'bot-1', containerId: 'container-id' };
+
+    it('flips DB RUNNING→STOPPED when the container has been stopped out-of-band', async () => {
+      dockerSocket.apiCall.mockResolvedValueOnce({ State: { Running: false } } as never);
+
+      const status = await service.reconcileClusterStatus({ ...baseCluster, status: 'RUNNING' });
+
+      expect(status).toBe('STOPPED');
+      expect(prismaService.cluster.update).toHaveBeenCalledWith({
+        where: { botId_id: { botId: 'bot-1', id: 0 } },
+        data: { status: 'STOPPED' },
+      });
+    });
+
+    it('clears containerId and marks STOPPED when the container has vanished (404)', async () => {
+      dockerSocket.apiCall.mockRejectedValueOnce(new DockerAPIHttpError(404, 'no such container'));
+
+      const status = await service.reconcileClusterStatus({ ...baseCluster, status: 'RUNNING' });
+
+      expect(status).toBe('STOPPED');
+      expect(prismaService.cluster.update).toHaveBeenCalledWith({
+        where: { botId_id: { botId: 'bot-1', id: 0 } },
+        data: { status: 'STOPPED', containerId: null },
+      });
+    });
+
+    it('does not touch DB when the actual state matches the stored one', async () => {
+      dockerSocket.apiCall.mockResolvedValueOnce({ State: { Running: true } } as never);
+
+      const status = await service.reconcileClusterStatus({ ...baseCluster, status: 'RUNNING' });
+
+      expect(status).toBe('RUNNING');
+      expect(prismaService.cluster.update).not.toHaveBeenCalled();
+    });
+
+    it('skips transient states (STARTING/UPDATING/ERROR) without hitting Docker', async () => {
+      const status = await service.reconcileClusterStatus({ ...baseCluster, status: 'STARTING' });
+
+      expect(status).toBe('STARTING');
+      expect(dockerSocket.apiCall).not.toHaveBeenCalled();
+      expect(prismaService.cluster.update).not.toHaveBeenCalled();
+    });
+
+    it('returns current status without throwing when Docker is unreachable', async () => {
+      dockerSocket.apiCall.mockRejectedValueOnce(new DockerAPIHttpError(500, 'socket error'));
+
+      const status = await service.reconcileClusterStatus({ ...baseCluster, status: 'RUNNING' });
+
+      expect(status).toBe('RUNNING');
+      expect(prismaService.cluster.update).not.toHaveBeenCalled();
+    });
+  });
 });

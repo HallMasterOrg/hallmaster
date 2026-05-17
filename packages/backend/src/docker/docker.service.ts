@@ -8,7 +8,7 @@ import {
   type DockerContainerCreated,
   type DockerContainerCreationBody,
 } from '@hallmaster/docker.js';
-import { Bot, Cluster, DockerImage } from '@hallmaster/prisma-client';
+import { Bot, Cluster, ClusterStatus, DockerImage } from '@hallmaster/prisma-client';
 import { BadRequestException, Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 
@@ -66,6 +66,44 @@ export class DockerService {
       if (!this.isDockerApiError(e, 409)) throw e;
       await this.cleanupStaleContainerByName(name);
       return await api.create(body, name);
+    }
+  }
+
+  async reconcileClusterStatus(cluster: {
+    id: number;
+    botId: string;
+    containerId: string | null;
+    status: ClusterStatus;
+  }): Promise<ClusterStatus> {
+    if (cluster.status !== 'RUNNING' && cluster.status !== 'STOPPED') {
+      return cluster.status;
+    }
+    if (cluster.containerId === null) {
+      return cluster.status;
+    }
+
+    const api = new DockerContainersAPI(this.dockerSocket);
+
+    try {
+      const container = await api.get(cluster.containerId);
+      const actual: ClusterStatus = container.State.Running ? 'RUNNING' : 'STOPPED';
+
+      if (actual !== cluster.status) {
+        await this.prismaService.cluster.update({
+          where: { botId_id: { botId: cluster.botId, id: cluster.id } },
+          data: { status: actual },
+        });
+      }
+      return actual;
+    } catch (e) {
+      if (this.isContainerNotFound(e)) {
+        await this.prismaService.cluster.update({
+          where: { botId_id: { botId: cluster.botId, id: cluster.id } },
+          data: { status: 'STOPPED', containerId: null },
+        });
+        return 'STOPPED';
+      }
+      return cluster.status;
     }
   }
 
