@@ -4,15 +4,14 @@ on:
   push:
     branches:
       - main
-    paths:
+    paths: &backend-paths
+      - "docker/backend.Dockerfile"
+      - "secrets/backend/**"
       - "packages/backend/**"
       - "packages/prisma-client/**"
       - ".github/workflows/backend-ci.yaml"
   pull_request:
-    paths:
-      - "packages/backend/**"
-      - "packages/prisma-client/**"
-      - ".github/workflows/backend-ci.yaml"
+    paths: *backend-paths
 
 concurrency:
   group: docker-build-${{ github.ref }}
@@ -115,7 +114,7 @@ jobs:
         uses: docker/build-push-action@v6.19.2
         with:
           context: .
-          file: packages/backend/Dockerfile
+          file: docker/backend.Dockerfile
           push: true
           platforms: linux/amd64 #,linux/arm64
           tags: ${{ steps.meta.outputs.tags }}
