@@ -29,6 +29,7 @@ import { Observable, timer, exhaustMap, map, from } from 'rxjs';
 import { AuthGuard } from '../auth/guards/jwt.guard.js';
 
 import { ClustersService } from './clusters.service.js';
+import { ClusterBulkActionResultZodDto } from './dto/cluster-bulk-action-result.dto.js';
 import { GetAggregateStatsZodDto } from './dto/get-aggregate-stats.dto.js';
 import { GetClusterLogsQueryZodDto, GetClusterLogsZodDto } from './dto/get-cluster-logs.dto.js';
 import { GetClusterStatsZodDto } from './dto/get-cluster-stats.dto.js';
@@ -67,6 +68,39 @@ export class ClustersController {
       exhaustMap(() => from(this.clustersService.findAll())),
       map((clusters) => ({ data: clusters }) as MessageEvent),
     );
+  }
+
+  @Post('start')
+  @HttpCode(HttpStatus.OK)
+  @ApiOkResponse({
+    type: ClusterBulkActionResultZodDto,
+    description:
+      'Start every cluster in parallel. Already-running clusters are no-ops. The response lists clusters that succeeded and those that failed, with the failure reason.',
+  })
+  async startAll() {
+    return await this.clustersService.startAll();
+  }
+
+  @Post('stop')
+  @HttpCode(HttpStatus.OK)
+  @ApiOkResponse({
+    type: ClusterBulkActionResultZodDto,
+    description:
+      'Stop every cluster in parallel. Already-stopped clusters are no-ops. The response lists clusters that succeeded and those that failed, with the failure reason.',
+  })
+  async stopAll() {
+    return await this.clustersService.stopAll();
+  }
+
+  @Post('restart')
+  @HttpCode(HttpStatus.OK)
+  @ApiOkResponse({
+    type: ClusterBulkActionResultZodDto,
+    description:
+      'Restart every cluster in parallel (stop + start). Stopped clusters are simply started. The response lists clusters that succeeded and those that failed, with the failure reason.',
+  })
+  async restartAll() {
+    return await this.clustersService.restartAll();
   }
 
   @Sse('stats/stream')
