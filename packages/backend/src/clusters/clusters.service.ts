@@ -6,6 +6,7 @@ import { BadRequestException, Injectable, NotFoundException } from '@nestjs/comm
 import { DockerService } from '../docker/docker.service.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 
+import { ClusterBulkActionResultDto } from './dto/cluster-bulk-action-result.dto.js';
 import { GetAggregateStatsDto } from './dto/get-aggregate-stats.dto.js';
 
 @Injectable()
@@ -161,6 +162,42 @@ export class ClustersService {
     }
 
     return await this.dockerService.getContainerStats(resource.containerId);
+  }
+
+  async startAll(): Promise<ClusterBulkActionResultDto> {
+    return await this.runBulkAction((id) => this.start(id));
+  }
+
+  async stopAll(): Promise<ClusterBulkActionResultDto> {
+    return await this.runBulkAction((id) => this.stop(id));
+  }
+
+  async restartAll(): Promise<ClusterBulkActionResultDto> {
+    return await this.runBulkAction((id) => this.restart(id));
+  }
+
+  private async runBulkAction(action: (id: number) => Promise<unknown>): Promise<ClusterBulkActionResultDto> {
+    const clusters = await this.prismaService.cluster.findMany({
+      select: { id: true },
+      orderBy: { id: 'asc' },
+    });
+
+    const settled = await Promise.allSettled(clusters.map((c) => action(c.id)));
+
+    const succeeded: number[] = [];
+    const failed: Array<{ id: number; reason: string }> = [];
+
+    settled.forEach((result, index) => {
+      const id = clusters[index].id;
+      if (result.status === 'fulfilled') {
+        succeeded.push(id);
+      } else {
+        const reason = result.reason instanceof Error ? result.reason.message : String(result.reason);
+        failed.push({ id, reason });
+      }
+    });
+
+    return { succeeded, failed };
   }
 
   async aggregateStats(): Promise<GetAggregateStatsDto> {
