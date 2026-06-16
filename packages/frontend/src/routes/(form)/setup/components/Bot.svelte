@@ -19,9 +19,9 @@
 </script>
 
 <form
-  {...createBot.enhance(async ({ submit, form }) => {
+  {...createBot.enhance(async ({ submit, element }) => {
     await submit()
-      .then(() => form.reset())
+      .then(() => element.reset())
       .catch((error) =>
         toaster.create({
           type: "error",
