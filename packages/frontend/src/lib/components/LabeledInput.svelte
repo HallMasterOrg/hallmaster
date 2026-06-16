@@ -31,7 +31,7 @@
     </span>
   </div>
 
-  <div class="input flex items-center gap-1">
+  <div class="input flex items-center gap-1 overflow-hidden">
     <input class="grow" {...props} />
     {@render suffix?.()}
   </div>

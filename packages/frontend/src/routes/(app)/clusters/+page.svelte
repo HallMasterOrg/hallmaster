@@ -1,6 +1,6 @@
 <script lang="ts">
   import { getClusters, getClustersLive } from "$lib/remotes/clusters.remote";
-  import { ChevronRightIcon } from "@lucide/svelte";
+  import { ChevronRightIcon, EyeOffIcon, SquareArrowOutUpRight } from "@lucide/svelte";
   import { Collapsible } from "@skeletonlabs/skeleton-svelte";
   import { slide } from "svelte/transition";
   import ClusterActions from "./components/ClusterActions.svelte";
@@ -54,12 +54,23 @@
             >
               <ClusterShards shards={shardIds} />
               <ClusterLogs {id} />
-              <ClusterCPU {id} />
-              <ClusterMemory {id} />
+              {#if status !== "STOPPED"}
+                <ClusterCPU {id} />
+                <ClusterMemory {id} />
+              {/if}
             </div>
             {/if}
           {/snippet}
         </Collapsible.Content>
     </Collapsible>
+    {:else}
+      <div class="self-center flex flex-col items-center">
+        <EyeOffIcon size={48} class="text-primary-600-400" />
+        <p class="text-lg font-bold">No clusters</p>
+        <a href="/layout" class="btn btn-sm preset-filled-primary-500">
+          <span>Setup</span>
+          <SquareArrowOutUpRight size={16} />
+        </a>
+      </div>
   {/each}
 </div>
