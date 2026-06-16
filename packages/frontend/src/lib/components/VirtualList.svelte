@@ -52,7 +52,7 @@
     let y = 0;
 
     for (; i < length; y += heightMap[i] ?? average, i++) {
-      if (y + (heightMap[i] ?? average) < scrollTop) continue;
+      if (y + heightMap[i] < scrollTop) continue;
 
       start = i;
       paddingTop = y;

@@ -56,7 +56,7 @@
   {#snippet failed(error, reset)}
     <div class="m-auto">
       <h1 class="h1 text-surface-500">{(error as HttpError).status ?? 500}</h1>
-      <h5 class="h5">{(error as HttpError).body.message ?? "An error occurred"}</h5>
+      <h5 class="h5">{(error as HttpError).body.message ?? "An error occured"}</h5>
       <button type="button" class="btn btn-sm preset-filled-primary-500" onclick={reset}>
         <RotateCcwIcon size={16} />
         <span>Retry</span>

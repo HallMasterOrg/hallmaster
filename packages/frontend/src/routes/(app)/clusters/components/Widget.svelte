@@ -23,7 +23,7 @@
     <h3 class="font-bold text-surface-800-200">
       {title}
 
-      {#if value !== undefined}
+      {#if value}
         <span class="text-surface-500 text-sm">
           ({value})
         </span>
