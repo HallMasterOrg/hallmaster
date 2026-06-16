@@ -28,7 +28,7 @@
           untrack(() => data)[0]?.date.getTime(),
         ),
       ),
-      untrack(() => data)[untrack(() => data).length - 1]?.date,
+      untrack(() => data).at(-1)?.date ?? new Date(),
     ];
   });
 </script>

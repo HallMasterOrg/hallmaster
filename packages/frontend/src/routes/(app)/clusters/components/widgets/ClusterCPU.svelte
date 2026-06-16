@@ -1,12 +1,12 @@
 <script lang="ts">
+  import LiveAreaChart from "$lib/components/LiveAreaChart.svelte";
   import { getClusterStatsLive } from "$lib/remotes/clusters.remote";
   import type {
-      GetClusterDto,
-      GetClusterStatsDto,
+    GetClusterDto,
+    GetClusterStatsDto,
   } from "@hallmaster/backend/dto";
   import { CpuIcon } from "@lucide/svelte";
   import { curveCatmullRom } from "d3-shape";
-  import LiveAreaChart from "../../../../../lib/components/LiveAreaChart.svelte";
   import Widget from "../Widget.svelte";
 
   interface Props {
