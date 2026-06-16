@@ -45,9 +45,9 @@ export const getBot = query<GetBotDto>(async () => {
     case 200:
       return response.json();
     case 401:
-      return error(401, "Unauthorized");
+      return redirect(303, "/login");
     case 404:
-      return error(404, "Bot not found");
+      return redirect(303, "/setup");
 
     default:
       return error(500, "An error occurred");
@@ -71,9 +71,9 @@ export const updateBotToken = form(UpdateBotSchema.pick({ token: true }), async 
       getBot().set(await response.json());
       return;
     case 401:
-      return error(401, "Unauthorized");
+      return redirect(303, "/login");
     case 404:
-      return error(404, "Bot not found");
+      return redirect(303, "/setup");
 
     default:
       console.error(await response.text());
@@ -98,9 +98,9 @@ export const updateBotImage = form(UpdateBotSchema.pick({ dockerImage: true }), 
       getBot().set(await response.json());
       return;
     case 401:
-      return error(401, "Unauthorized");
+      return redirect(303, "/login");
     case 404:
-      return error(404, "Bot not found");
+      return redirect(303, "/setup");
 
     default:
       console.error(await response.text());
@@ -125,11 +125,12 @@ export const updateBotLayout = command(UpdateBotSchema.pick({ layout: true }), a
       await getClusters().refresh();
       return;
     case 401:
-      return error(401, "Unauthorized");
+      return redirect(303, "/login");
     case 404:
-      return error(404, "Bot not found");
+      return redirect(303, "/setup");
 
     default:
+      console.error(await response.text());
       return error(500, "An error occurred");
   }
 });

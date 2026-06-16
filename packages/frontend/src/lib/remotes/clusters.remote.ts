@@ -8,7 +8,7 @@ import {
   type GetClusterLogsDto,
   type GetClusterStatsDto,
 } from "@hallmaster/backend/dto";
-import { error } from "@sveltejs/kit";
+import { error, redirect } from "@sveltejs/kit";
 import { EventSourceParserStream } from "eventsource-parser/stream";
 
 export const getClusters = query(async (): Promise<GetClusterDto[]> => {
@@ -27,9 +27,10 @@ export const getClusters = query(async (): Promise<GetClusterDto[]> => {
       return clusters.sort((a, b) => a.id - b.id);
     }
     case 401:
-      return error(401, "Unauthorized");
+      return redirect(303, "/login");
 
     default:
+      console.error(await response.text());
       return error(500, "An error occurred");
   }
 });
@@ -46,7 +47,10 @@ export const getClustersLive = query.live(async function* () {
 
   switch (response.status) {
     case 200: {
-      if (!response.body) return error(500, "An error occurred");
+      if (!response.body) {
+        console.error(await response.text());
+        return error(500, "An error occurred");
+      }
 
       const chunks = response.body
         .pipeThrough(new TextDecoderStream())
@@ -59,9 +63,10 @@ export const getClustersLive = query.live(async function* () {
       break;
     }
     case 401:
-      return error(401, "Unauthorized");
+      return redirect(303, "/login");
 
     default:
+      console.error(await response.text());
       return error(500, "An error occurred");
   }
 });
@@ -80,11 +85,12 @@ export const startCluster = command("unchecked", async (id: number) => {
     case 204:
       return await getClusters().refresh();
     case 401:
-      return error(401, "Unauthorized");
+      return redirect(303, "/login");
     case 404:
       return error(404, "Cluster not found");
 
     default:
+      console.error(await response.text());
       return error(500, "An error occurred");
   }
 });
@@ -103,11 +109,12 @@ export const stopCluster = command("unchecked", async (id: number) => {
     case 204:
       return await getClusters().refresh();
     case 401:
-      return error(401, "Unauthorized");
+      return redirect(303, "/login");
     case 404:
       return error(404, "Cluster not found");
 
     default:
+      console.error(await response.text());
       return error(500, "An error occurred");
   }
 });
@@ -126,11 +133,12 @@ export const restartCluster = command("unchecked", async (id: number) => {
     case 204:
       return await getClusters().refresh();
     case 401:
-      return error(401, "Unauthorized");
+      return redirect(303, "/login");
     case 404:
       return error(404, "Cluster not found");
 
     default:
+      console.error(await response.text());
       return error(500, "An error occurred");
   }
 });
@@ -151,11 +159,12 @@ export const getClusterLogs = query(
         const logs: GetClusterLogsDto = await response.json();
         return logs.reverse();
       case 401:
-        return error(401, "Unauthorized");
+        return redirect(303, "/login");
       case 404:
         return error(404, "Cluster not found");
 
       default:
+        console.error(await response.text());
         return error(500, "An error occurred");
     }
   },
@@ -175,7 +184,10 @@ export const getClusterLogsLive = query.live(
 
     switch (response.status) {
       case 200: {
-        if (!response.body) return error(500, "An error occurred");
+        if (!response.body) {
+          console.error(await response.text());
+          return error(500, "An error occurred");
+        }
 
         const chunks = response.body
           .pipeThrough(new TextDecoderStream())
@@ -187,9 +199,10 @@ export const getClusterLogsLive = query.live(
         break;
       }
       case 401:
-        return error(401, "Unauthorized");
+        return redirect(303, "/login");
 
       default:
+        console.error(await response.text());
         return error(500, "An error occurred");
     }
   },
@@ -209,7 +222,10 @@ export const getClusterStatsLive = query.live(
 
     switch (response.status) {
       case 200: {
-        if (!response.body) return error(500, "An error occurred");
+        if (!response.body) {
+          console.error(await response.text());
+          return error(500, "An error occurred");
+        }
 
         const chunks = response.body
           .pipeThrough(new TextDecoderStream())
@@ -223,11 +239,12 @@ export const getClusterStatsLive = query.live(
       case 400:
         return error(400, "Cluster has no container or is not running");
       case 401:
-        return error(401, "Unauthorized");
+        return redirect(303, "/login");
       case 404:
         return error(404, "Cluster not found");
 
       default:
+        console.error(await response.text());
         return error(500, "An error occurred");
     }
   },
@@ -245,7 +262,10 @@ export const getClustersStatsLive = query.live(async function* () {
 
   switch (response.status) {
     case 200: {
-      if (!response.body) return error(500, "An error occurred");
+      if (!response.body) {
+        console.error(await response.text());
+        return error(500, "An error occurred");
+      }
 
       const chunks = response.body
         .pipeThrough(new TextDecoderStream())
@@ -257,9 +277,10 @@ export const getClustersStatsLive = query.live(async function* () {
       break;
     }
     case 401:
-      return error(401, "Unauthorized");
+      return redirect(303, "/login");
 
     default:
+      console.error(await response.text());
       return error(500, "An error occurred");
   }
 });
