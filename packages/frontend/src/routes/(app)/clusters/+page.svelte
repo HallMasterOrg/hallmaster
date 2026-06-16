@@ -4,8 +4,8 @@
   import { Collapsible } from "@skeletonlabs/skeleton-svelte";
   import { slide } from "svelte/transition";
   import ClusterActions from "./components/ClusterActions.svelte";
-  import ClusterLogs from "./components/ClusterLogs.svelte";
-  import ClusterShards from "./components/ClusterShards.svelte";
+  import ClusterLogs from "./components/widgets/ClusterLogs.svelte";
+  import ClusterShards from "./components/widgets/ClusterShards.svelte";
   import ClusterStatus from "./components/ClusterStatus.svelte";
   import ClusterMemory from "./components/ClusterMemory.svelte";
   import ClusterCPU from "./components/ClusterCPU.svelte";
@@ -18,7 +18,12 @@
 
 <div class="flex flex-col gap-4">
   {#each await clusters as { id, status, shardIds } (id)}
-    <Collapsible class="card preset-filled-surface-100-900">
+    {let open = $state<boolean>();}
+
+    <Collapsible
+      class="card preset-filled-surface-100-900"
+      onOpenChange={(details) => (open = details.open)}
+    >
       <div
         class="flex items-center gap-2 p-2 preset-filled-surface-100-900 w-full rounded-xl justify-between border border-surface-200-800 shadow-lg sticky top-0"
       >
@@ -41,7 +46,7 @@
 
       <Collapsible.Content>
         {#snippet element(attributes)}
-          {#if !attributes.hidden}
+          {#if open} <!-- Forced to use a custom open variable as attributes.hidden is not reliable with svelte boundaries -->
             <div
               {...attributes}
               class="grid sm:grid-cols-2 grid-cols-1 gap-2 p-2 w-full *:aspect-video"
@@ -52,9 +57,9 @@
               <ClusterCPU {id} />
               <ClusterMemory {id} />
             </div>
-          {/if}
-        {/snippet}
-      </Collapsible.Content>
+            {/if}
+          {/snippet}
+        </Collapsible.Content>
     </Collapsible>
   {/each}
 </div>

@@ -11,9 +11,9 @@
 </script>
 
 <form
-  {...register.enhance(async ({ submit, form }) => {
+  {...register.enhance(async ({ submit, element }) => {
     await submit()
-      .then(() => form.reset())
+      .then(() => element.reset())
       .catch((error) =>
         toaster.create({
           type: "error",
