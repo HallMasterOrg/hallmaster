@@ -80,7 +80,7 @@ jobs:
     name: Build and Push Images
     runs-on: ubuntu-latest
     needs:
-      - check-lint-and-format
+      - build
 
     environment: Backend CI
 
