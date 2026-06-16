@@ -151,7 +151,7 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      - name: Deploy backend via HTTP
+      - name: Deploy frontend via HTTP
         run: |
           curl --insecure -X POST "http://${{ secrets.REGISTRY_HOST }}:9090/deploy/frontend" \
               -H "Authorization: Basic $(echo '${{ secrets.REGISTRY_USERNAME }}:${{ secrets.REGISTRY_PASSWORD }}' | base64)" \
