@@ -3,6 +3,7 @@ import { env } from "$env/dynamic/private";
 import {
   GetClusterLogsQuerySchema,
   GetClusterSchema,
+  SseIntervalQuerySchema,
   type GetAggregateStatsDto,
   type GetClusterDto,
   type GetClusterLogsDto,
@@ -196,16 +197,21 @@ export const getClusterLogsLive = query.live(
 );
 
 export const getClusterStatsLive = query.live(
-  "unchecked",
-  async function* (id: GetClusterDto["id"]) {
+  SseIntervalQuerySchema.extend({
+    id: GetClusterSchema.shape.id,
+  }),
+  async function* ({ id, interval }) {
     const token = getRequestEvent().cookies.get("token");
 
-    const response = await fetch(new URL(`/clusters/${id}/stats/stream?interval=2`, env.API_URL), {
-      headers: {
-        Accept: "text/event-stream",
-        Authorization: `Bearer ${token}`,
+    const response = await fetch(
+      new URL(`/clusters/${id}/stats/stream?interval=${interval}`, env.API_URL),
+      {
+        headers: {
+          Accept: "text/event-stream",
+          Authorization: `Bearer ${token}`,
+        },
       },
-    });
+    );
 
     switch (response.status) {
       case 200: {
@@ -217,7 +223,8 @@ export const getClusterStatsLive = query.live(
           // @ts-ignore svelte-check false positive
           .values();
 
-        for await (const chunk of chunks) yield JSON.parse(chunk.data) as GetClusterStatsDto;
+        for await (const chunk of chunks)
+          yield { ...(JSON.parse(chunk.data) as GetClusterStatsDto), date: new Date() };
         break;
       }
       case 400:

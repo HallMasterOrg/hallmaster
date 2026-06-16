@@ -7,8 +7,8 @@
   import ClusterLogs from "./components/widgets/ClusterLogs.svelte";
   import ClusterShards from "./components/widgets/ClusterShards.svelte";
   import ClusterStatus from "./components/ClusterStatus.svelte";
-  import ClusterMemory from "./components/ClusterMemory.svelte";
-  import ClusterCPU from "./components/ClusterCPU.svelte";
+  import ClusterMemory from "./components/widgets/ClusterMemory.svelte";
+  import ClusterCPU from "./components/widgets/ClusterCPU.svelte";
 
   let clusters = getClusters();
   $effect(() => {
@@ -25,7 +25,7 @@
       onOpenChange={(details) => (open = details.open)}
     >
       <div
-        class="flex items-center gap-2 p-2 preset-filled-surface-100-900 w-full rounded-xl justify-between border border-surface-200-800 shadow-lg sticky top-0"
+        class="flex items-center gap-2 p-2 preset-filled-surface-100-900 w-full rounded-xl justify-between border border-surface-200-800 shadow-lg sticky top-0 z-10"
       >
         <Collapsible.Trigger class="btn grow justify-start">
           <Collapsible.Indicator class="group">
