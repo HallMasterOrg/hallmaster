@@ -1,6 +1,8 @@
 import { command, getRequestEvent, query } from "$app/server";
 import { env } from "$env/dynamic/private";
 import {
+  GetClusterLogsQuerySchema,
+  GetClusterSchema,
   type GetAggregateStatsDto,
   type GetClusterDto,
   type GetClusterLogsDto,
@@ -134,8 +136,10 @@ export const restartCluster = command("unchecked", async (id: number) => {
 });
 
 export const getClusterLogs = query(
-  "unchecked",
-  async (id: GetClusterDto["id"]): Promise<GetClusterLogsDto> => {
+  GetClusterLogsQuerySchema.extend({
+    id: GetClusterSchema.shape.id,
+  }),
+  async ({ id }): Promise<GetClusterLogsDto> => {
     const token = getRequestEvent().cookies.get("token");
 
     const response = await fetch(`${env.API_URL}/clusters/${id}/logs`, {
@@ -144,7 +148,8 @@ export const getClusterLogs = query(
 
     switch (response.status) {
       case 200:
-        return await response.json();
+        const logs: GetClusterLogsDto = await response.json();
+        return logs.reverse();
       case 401:
         return error(401, "Unauthorized");
       case 404:
