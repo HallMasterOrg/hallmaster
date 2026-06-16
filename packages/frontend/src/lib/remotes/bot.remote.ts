@@ -104,7 +104,7 @@ export const updateBotImage = form(UpdateBotSchema.pick({ dockerImage: true }), 
 
     default:
       console.error(await response.text());
-      return error(500, "An error occured");
+      return error(500, "An error occurred");
   }
 });
 
