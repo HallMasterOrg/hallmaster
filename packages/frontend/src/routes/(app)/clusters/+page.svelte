@@ -67,11 +67,9 @@
       <div class="self-center flex flex-col items-center">
         <EyeOffIcon size={48} class="text-primary-600-400" />
         <p class="text-lg font-bold">No clusters</p>
-        <a href="/layout">
-          <button class="btn btn-sm preset-filled-primary-500">
-            <span>Setup</span>
-            <SquareArrowOutUpRight size={16} />
-          </button>
+        <a href="/layout" class="btn btn-sm preset-filled-primary-500">
+          <span>Setup</span>
+          <SquareArrowOutUpRight size={16} />
         </a>
       </div>
   {/each}
