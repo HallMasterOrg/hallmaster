@@ -219,9 +219,15 @@ importers:
       '@tailwindcss/vite':
         specifier: ^4.3.1
         version: 4.3.1(vite@7.3.5(@types/node@22.19.11)(jiti@2.7.0)(lightningcss@1.32.0)(terser@5.46.0))
+      '@types/d3-shape':
+        specifier: ^3.1.8
+        version: 3.1.8
       '@types/node':
         specifier: ^22.19.11
         version: 22.19.11
+      d3-shape:
+        specifier: ^3.2.0
+        version: 3.2.0
       eventsource-parser:
         specifier: ^3.0.8
         version: 3.0.8
@@ -229,8 +235,8 @@ importers:
         specifier: ^16.5.0
         version: 16.5.0
       layerchart:
-        specifier: 2.0.0-next.63
-        version: 2.0.0-next.63(@sveltejs/kit@2.65.1(@sveltejs/vite-plugin-svelte@6.2.4(svelte@5.56.3(@typescript-eslint/types@8.56.0))(vite@7.3.5(@types/node@22.19.11)(jiti@2.7.0)(lightningcss@1.32.0)(terser@5.46.0)))(svelte@5.56.3(@typescript-eslint/types@8.56.0))(typescript@5.9.3)(vite@7.3.5(@types/node@22.19.11)(jiti@2.7.0)(lightningcss@1.32.0)(terser@5.46.0)))(svelte@5.56.3(@typescript-eslint/types@8.56.0))(zod@4.3.6)
+        specifier: 2.0.0-next.65
+        version: 2.0.0-next.65(@sveltejs/kit@2.65.1(@sveltejs/vite-plugin-svelte@6.2.4(svelte@5.56.3(@typescript-eslint/types@8.56.0))(vite@7.3.5(@types/node@22.19.11)(jiti@2.7.0)(lightningcss@1.32.0)(terser@5.46.0)))(svelte@5.56.3(@typescript-eslint/types@8.56.0))(typescript@5.9.3)(vite@7.3.5(@types/node@22.19.11)(jiti@2.7.0)(lightningcss@1.32.0)(terser@5.46.0)))(svelte@5.56.3(@typescript-eslint/types@8.56.0))(zod@4.3.6)
       oxfmt:
         specifier: ^0.41.0
         version: 0.41.0
@@ -886,20 +892,11 @@ packages:
   '@fastify/static@8.3.0':
     resolution: {integrity: sha512-yKxviR5PH1OKNnisIzZKmgZSus0r2OZb8qCSbqmw34aolT4g3UlzYfeBRym+HJ1J471CR8e2ldNub4PubD1coA==}
 
-  '@floating-ui/core@1.7.4':
-    resolution: {integrity: sha512-C3HlIdsBxszvm5McXlB8PeOEWfBhcGBTZGkGlWc2U0KFY5IwG5OQEuQ8rq52DZmcHDlPLd+YFBK+cZcytwIFWg==}
-
   '@floating-ui/core@1.7.5':
     resolution: {integrity: sha512-1Ih4WTWyw0+lKyFMcBHGbb5U5FtuHJuujoyyr5zTaWS5EYMeT6Jb2AuDeftsCsEuchO+mM2ij5+q9crhydzLhQ==}
 
-  '@floating-ui/dom@1.7.5':
-    resolution: {integrity: sha512-N0bD2kIPInNHUHehXhMke1rBGs1dwqvC9O9KYMyyjK7iXt7GAhnro7UlcuYcGdS/yYOlq0MAVgrow8IbWJwyqg==}
-
   '@floating-ui/dom@1.7.6':
     resolution: {integrity: sha512-9gZSAI5XM36880PPMm//9dfiEngYoC6Am2izES1FF406YFsjvyBMmeJ2g4SAju3xWwtuynNRFL2s9hgxpLI5SQ==}
-
-  '@floating-ui/utils@0.2.10':
-    resolution: {integrity: sha512-aGTxbpbg8/b5JfU1HXSrbH3wXZuLPJcNEcZQFMxLs3oSzgtVu6nFPkbbGGUvBcUjKV2YyB9Wxxabo+HEH9tcRQ==}
 
   '@floating-ui/utils@0.2.11':
     resolution: {integrity: sha512-RiB/yIh78pcIxl6lLMG0CgBXAZ2Y0eVHqMPYugu+9U0AeT6YBeiJpf7lbdJNIugFP5SIjwNRgo4DhR1Qxi26Gg==}
@@ -2377,6 +2374,12 @@ packages:
 
   '@types/d3-contour@3.0.6':
     resolution: {integrity: sha512-BjzLgXGnCWjUSYGfH1cpdo41/hgdWETu4YxpezoztawmqsvCeep+8QGfiY6YbDvfgHz/DkjeIkkZVJavB4a3rg==}
+
+  '@types/d3-path@3.1.1':
+    resolution: {integrity: sha512-VMZBYyQvbGmWyWVea0EHs/BwLgxc+MKi1zLDCONksozI4YJMcTt8ZEuIR4Sb1MMTE8MMW49v0IwI5+b7RmfWlg==}
+
+  '@types/d3-shape@3.1.8':
+    resolution: {integrity: sha512-lae0iWfcDeR7qt7rA88BNiqdvPS5pFVPpo5OfjElwNaT2yyekbM0C9vK+yqBqEmHr6lDkRnYNoTBYlAgJa7a4w==}
 
   '@types/eslint-scope@3.7.7':
     resolution: {integrity: sha512-MzMFlSLBqNF2gcHWO0G1vP/YQyfvrxZ0bF+u7mzUdZ1/xK4A4sru+nraZz5i3iEIk1l1uyicaDVTB4QbbEkAYg==}
@@ -4989,8 +4992,8 @@ packages:
   kuler@2.0.0:
     resolution: {integrity: sha512-Xq9nH7KlWZmXAtodXDDRE7vs6DU1gTU8zYDHDiWLSip45Egwq3plLHzPn27NgvzL2r1LMPC1vdqh98sQxtqj4A==}
 
-  layerchart@2.0.0-next.63:
-    resolution: {integrity: sha512-pX/mShq+cOTcdjLsLk0ILjBYxucOneeQcTuuYTE5fu9e3tUX7PwWvH36jXWiIMzRhn3m5Ojds8EVfeXiv4NXEg==}
+  layerchart@2.0.0-next.65:
+    resolution: {integrity: sha512-pyIpQwSrUDz5de/Es8JwrDuEg6VhpFVMlR1RGSGhOYVnDeOUO04v4ZKPNXEltYXldQt9VM7W7rmpwUuR4l7DOg==}
     peerDependencies:
       svelte: ^5.0.0
 
@@ -7552,25 +7555,14 @@ snapshots:
       glob: 11.1.0
     optional: true
 
-  '@floating-ui/core@1.7.4':
-    dependencies:
-      '@floating-ui/utils': 0.2.10
-
   '@floating-ui/core@1.7.5':
     dependencies:
       '@floating-ui/utils': 0.2.11
-
-  '@floating-ui/dom@1.7.5':
-    dependencies:
-      '@floating-ui/core': 1.7.4
-      '@floating-ui/utils': 0.2.10
 
   '@floating-ui/dom@1.7.6':
     dependencies:
       '@floating-ui/core': 1.7.5
       '@floating-ui/utils': 0.2.11
-
-  '@floating-ui/utils@0.2.10': {}
 
   '@floating-ui/utils@0.2.11': {}
 
@@ -8027,7 +8019,7 @@ snapshots:
 
   '@layerstack/svelte-actions@1.0.1-next.18':
     dependencies:
-      '@floating-ui/dom': 1.7.5
+      '@floating-ui/dom': 1.7.6
       '@layerstack/utils': 2.0.0-next.18
       d3-scale: 4.0.2
 
@@ -8996,6 +8988,12 @@ snapshots:
     dependencies:
       '@types/d3-array': 3.2.2
       '@types/geojson': 7946.0.16
+
+  '@types/d3-path@3.1.1': {}
+
+  '@types/d3-shape@3.1.8':
+    dependencies:
+      '@types/d3-path': 3.1.1
 
   '@types/eslint-scope@3.7.7':
     dependencies:
@@ -12308,7 +12306,7 @@ snapshots:
 
   kuler@2.0.0: {}
 
-  layerchart@2.0.0-next.63(@sveltejs/kit@2.65.1(@sveltejs/vite-plugin-svelte@6.2.4(svelte@5.56.3(@typescript-eslint/types@8.56.0))(vite@7.3.5(@types/node@22.19.11)(jiti@2.7.0)(lightningcss@1.32.0)(terser@5.46.0)))(svelte@5.56.3(@typescript-eslint/types@8.56.0))(typescript@5.9.3)(vite@7.3.5(@types/node@22.19.11)(jiti@2.7.0)(lightningcss@1.32.0)(terser@5.46.0)))(svelte@5.56.3(@typescript-eslint/types@8.56.0))(zod@4.3.6):
+  layerchart@2.0.0-next.65(@sveltejs/kit@2.65.1(@sveltejs/vite-plugin-svelte@6.2.4(svelte@5.56.3(@typescript-eslint/types@8.56.0))(vite@7.3.5(@types/node@22.19.11)(jiti@2.7.0)(lightningcss@1.32.0)(terser@5.46.0)))(svelte@5.56.3(@typescript-eslint/types@8.56.0))(typescript@5.9.3)(vite@7.3.5(@types/node@22.19.11)(jiti@2.7.0)(lightningcss@1.32.0)(terser@5.46.0)))(svelte@5.56.3(@typescript-eslint/types@8.56.0))(zod@4.3.6):
     dependencies:
       '@dagrejs/dagre': 2.0.4
       '@layerstack/svelte-actions': 1.0.1-next.18
