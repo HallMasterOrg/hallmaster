@@ -2,12 +2,14 @@ import type { Readable } from 'node:stream';
 
 import type { Cluster } from '@hallmaster/prisma-client';
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { Observable } from 'rxjs';
 
 import { DockerService } from '../docker/docker.service.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 
 import { ClusterBulkActionResultDto } from './dto/cluster-bulk-action-result.dto.js';
 import { GetAggregateStatsDto } from './dto/get-aggregate-stats.dto.js';
+import { GetClusterStatsDto } from './dto/get-cluster-stats.dto.js';
 
 @Injectable()
 export class ClustersService {
@@ -164,6 +166,20 @@ export class ClustersService {
     return await this.dockerService.getContainerStats(resource.containerId);
   }
 
+  async streamStats(id: number): Promise<Readable> {
+    const resource = await this.getFullResource(id);
+
+    if (null === resource.containerId) {
+      throw new BadRequestException('The cluster has no container ID.');
+    }
+
+    if (resource.status !== 'RUNNING') {
+      throw new BadRequestException('Unable to gather stats on a non-running cluster.');
+    }
+
+    return await this.dockerService.streamContainerStats(resource.containerId);
+  }
+
   async startAll(): Promise<ClusterBulkActionResultDto> {
     return await this.runBulkAction((id) => this.start(id));
   }
@@ -223,5 +239,89 @@ export class ClustersService {
     }
 
     return aggregate;
+  }
+
+  streamAggregateStats(intervalSeconds: number): Observable<GetAggregateStatsDto> {
+    return new Observable<GetAggregateStatsDto>((subscriber) => {
+      const streams = new Map<number, Readable>();
+      const latest = new Map<number, GetClusterStatsDto>();
+      let closed = false;
+
+      const removeStream = (id: number) => {
+        streams.get(id)?.destroy();
+        streams.delete(id);
+        latest.delete(id);
+      };
+
+      const addStream = async (id: number, containerId: string) => {
+        if (streams.has(id)) {
+          return;
+        }
+
+        try {
+          const stream = await this.dockerService.streamContainerStats(containerId);
+
+          if (closed) {
+            stream.destroy();
+            return;
+          }
+
+          streams.set(id, stream);
+          stream.on('data', (stats: GetClusterStatsDto) => latest.set(id, stats));
+          stream.on('error', () => removeStream(id));
+          stream.on('end', () => removeStream(id));
+        } catch {
+        }
+      };
+
+      const reconcile = async () => {
+        let clusters: Array<{ id: number; containerId: string | null }>;
+        try {
+          clusters = await this.prismaService.cluster.findMany({
+            where: { status: 'RUNNING', containerId: { not: null } },
+            select: { id: true, containerId: true },
+          });
+        } catch {
+          return;
+        }
+
+        const running = new Map(
+          clusters
+            .filter((c): c is { id: number; containerId: string } => c.containerId !== null)
+            .map((c) => [c.id, c.containerId] as const),
+        );
+
+        for (const id of [...streams.keys()]) {
+          if (!running.has(id)) {
+            removeStream(id);
+          }
+        }
+
+        for (const [id, containerId] of running) {
+          void addStream(id, containerId);
+        }
+      };
+
+      const emit = () => {
+        const snapshot: GetAggregateStatsDto = {};
+        for (const [id, stats] of latest) {
+          snapshot[id] = stats;
+        }
+        subscriber.next(snapshot);
+      };
+
+      void reconcile();
+      const reconcileTimer = setInterval(() => void reconcile(), intervalSeconds * 1000);
+      const emitTimer = setInterval(emit, intervalSeconds * 1000);
+
+      return () => {
+        closed = true;
+        clearInterval(reconcileTimer);
+        clearInterval(emitTimer);
+        for (const id of [...streams.keys()]) {
+          removeStream(id);
+        }
+      };
+    });
   }
 }
