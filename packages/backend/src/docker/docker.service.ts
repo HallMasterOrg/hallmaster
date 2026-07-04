@@ -1,4 +1,4 @@
-import type { Readable } from 'node:stream';
+import { Readable, Transform } from 'node:stream';
 
 import {
   DockerContainersAPI,
@@ -7,6 +7,7 @@ import {
   DockerAPIHttpError,
   type DockerContainerCreated,
   type DockerContainerCreationBody,
+  type DockerContainerStats,
 } from '@hallmaster/docker.js';
 import { Bot, Cluster, ClusterStatus, DockerImage } from '@hallmaster/prisma-client';
 import { BadRequestException, Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
@@ -415,6 +416,33 @@ export class DockerService {
       stream: false,
     });
 
+    return DockerService.toStatsDto(stats);
+  }
+
+  async streamContainerStats(id: string): Promise<Readable> {
+    const dockerContainersAPI = new DockerContainersAPI(this.dockerSocket);
+
+    const raw = await dockerContainersAPI.stats(id, { stream: true });
+
+    const transform = new Transform({
+      objectMode: true,
+      transform(stats: DockerContainerStats, _encoding, callback) {
+        if (stats.precpu_stats.system_cpu_usage === 0) {
+          callback();
+          return;
+        }
+
+        callback(null, DockerService.toStatsDto(stats));
+      },
+    });
+
+    raw.pipe(transform);
+    raw.on('error', (err) => transform.destroy(err));
+
+    return transform;
+  }
+
+  private static toStatsDto(stats: DockerContainerStats): GetClusterStatsZodDto {
     const cpuDelta = stats.cpu_stats.cpu_usage.total_usage - stats.precpu_stats.cpu_usage.total_usage;
 
     const systemDelta = stats.cpu_stats.system_cpu_usage - stats.precpu_stats.system_cpu_usage;

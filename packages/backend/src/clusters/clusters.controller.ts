@@ -32,7 +32,7 @@ import { ClustersService } from './clusters.service.js';
 import { ClusterBulkActionResultZodDto } from './dto/cluster-bulk-action-result.dto.js';
 import { GetAggregateStatsZodDto } from './dto/get-aggregate-stats.dto.js';
 import { GetClusterLogsQueryZodDto, GetClusterLogsZodDto } from './dto/get-cluster-logs.dto.js';
-import { GetClusterStatsZodDto } from './dto/get-cluster-stats.dto.js';
+import { GetClusterStatsDto, GetClusterStatsZodDto } from './dto/get-cluster-stats.dto.js';
 import { GetClusterZodDto } from './dto/get-cluster.dto.js';
 import { SseIntervalQueryZodDto } from './dto/sse-interval-query.dto.js';
 
@@ -111,10 +111,9 @@ export class ClustersController {
   })
   @ApiProduces('text/event-stream')
   streamAggregateStats(@Query() query: SseIntervalQueryZodDto): Observable<MessageEvent> {
-    return timer(0, query.interval * 1000).pipe(
-      exhaustMap(() => from(this.clustersService.aggregateStats())),
-      map((stats) => ({ data: stats }) as MessageEvent),
-    );
+    return this.clustersService
+      .streamAggregateStats(query.interval)
+      .pipe(map((stats) => ({ data: stats }) as MessageEvent));
   }
 
   @Get(':id')
@@ -239,7 +238,7 @@ export class ClustersController {
 
   @Sse(':id/stats/stream')
   @ApiOkResponse({
-    description: 'SSE stream that emits the stats of the cluster at a configurable interval (default 5s).',
+    description: 'SSE stream that emits the stats of the cluster.',
     type: GetClusterStatsZodDto,
   })
   @ApiProduces('text/event-stream')
@@ -249,10 +248,24 @@ export class ClustersController {
   @ApiBadRequestResponse({
     description: 'The requested cluster has no bound container or its not running.',
   })
-  streamStats(@Param('id', ParseIntPipe) id: number, @Query() query: SseIntervalQueryZodDto): Observable<MessageEvent> {
-    return timer(0, query.interval * 1000).pipe(
-      exhaustMap(() => from(this.clustersService.stats(id))),
-      map((stats) => ({ data: stats }) as MessageEvent),
-    );
+  streamStats(@Param('id', ParseIntPipe) id: number): Observable<MessageEvent> {
+    return new Observable((subscriber) => {
+      let stream: Readable | undefined;
+
+      this.clustersService
+        .streamStats(id)
+        .then((s) => {
+          stream = s;
+
+          stream.on('data', (stats: GetClusterStatsDto) => subscriber.next({ data: stats } as MessageEvent));
+          stream.on('end', () => subscriber.complete());
+          stream.on('error', (err) => subscriber.error(err));
+        })
+        .catch((err) => subscriber.error(err));
+
+      return () => {
+        stream?.destroy();
+      };
+    });
   }
 }
