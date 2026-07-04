@@ -9,6 +9,8 @@ import {
   ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
 
+import { ApiErrorZodDto } from '../common/dto/api-error.dto.js';
+
 import { AuthService } from './auth.service.js';
 import { LoginDto } from './dto/login.dto.js';
 import { RegisterDto } from './dto/register.dto.js';
@@ -17,9 +19,11 @@ import { UserTokenDto } from './entities/user-token.entity.js';
 @Controller('auth')
 @ApiTags('Authentication')
 @ApiInternalServerErrorResponse({
+  type: ApiErrorZodDto,
   description: 'This service is temporary unavailable.',
 })
 @ApiBadRequestResponse({
+  type: ApiErrorZodDto,
   description: 'The body of the request is invalid.',
 })
 export class AuthController {
@@ -32,6 +36,7 @@ export class AuthController {
     description: 'The Bearer token (JWT) for the new user.',
   })
   @ApiConflictResponse({
+    type: ApiErrorZodDto,
     description: 'A user is already registered.',
   })
   async register(@Body() body: RegisterDto): Promise<UserTokenDto> {
@@ -45,6 +50,7 @@ export class AuthController {
     description: 'The user token used to communicate with the API.',
   })
   @ApiUnauthorizedResponse({
+    type: ApiErrorZodDto,
     description: 'Either the email or the password is invalid.',
   })
   async login(@Body() body: LoginDto): Promise<UserTokenDto> {

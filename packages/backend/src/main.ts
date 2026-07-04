@@ -12,6 +12,7 @@ import { cleanupOpenApiDoc, ZodValidationPipe } from 'nestjs-zod';
 import { SwaggerTheme, SwaggerThemeNameEnum } from 'swagger-themes';
 
 import { AppModule } from './app.module.js';
+import { AllExceptionsFilter } from './common/filters/all-exceptions.filter.js';
 import { LoggerService } from './logger/logger.service.js';
 import { LoggingInterceptor } from './logger/logging.interceptor.js';
 
@@ -47,6 +48,7 @@ async function bootstrap() {
   Logger.overrideLogger(loggerService);
 
   app.useGlobalPipes(new ZodValidationPipe());
+  app.useGlobalFilters(new AllExceptionsFilter());
   if (logRequests) {
     app.useGlobalInterceptors(new LoggingInterceptor(loggerService));
   }

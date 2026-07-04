@@ -13,6 +13,7 @@ import {
 } from '@nestjs/swagger';
 
 import { AuthGuard } from '../auth/guards/jwt.guard.js';
+import { ApiErrorZodDto } from '../common/dto/api-error.dto.js';
 
 import { BotService } from './bot.service.js';
 import { CreateBotZodDto } from './dto/create-bot.dto.js';
@@ -25,6 +26,7 @@ import { UpdateBotZodDto } from './dto/update-bot.dto.js';
 @ApiBearerAuth('jwt')
 @UseGuards(AuthGuard)
 @ApiUnauthorizedResponse({
+  type: ApiErrorZodDto,
   description: 'This route is protected by an Authorization header that is either not provided or invalid.',
 })
 export class BotController {
@@ -36,12 +38,15 @@ export class BotController {
     type: GetRecommendedShardsZodDto,
   })
   @ApiNotFoundResponse({
+    type: ApiErrorZodDto,
     description: 'No bot created beforehand.',
   })
   @ApiUnauthorizedResponse({
+    type: ApiErrorZodDto,
     description: 'The Discord bot token stored in database is invalid.',
   })
   @ApiFailedDependencyResponse({
+    type: ApiErrorZodDto,
     description: 'Got an invalid response from the Discord API.',
   })
   getRecommendedShards() {
@@ -55,6 +60,7 @@ export class BotController {
     type: GetBotZodDto,
   })
   @ApiConflictResponse({
+    type: ApiErrorZodDto,
     description: 'The bot is already created.',
   })
   create(@Body() createBotDto: CreateBotZodDto) {
@@ -67,6 +73,7 @@ export class BotController {
     type: GetBotZodDto,
   })
   @ApiNotFoundResponse({
+    type: ApiErrorZodDto,
     description: 'No bot created beforehand.',
   })
   findOne() {
@@ -80,6 +87,7 @@ export class BotController {
     type: GetBotZodDto,
   })
   @ApiNotFoundResponse({
+    type: ApiErrorZodDto,
     description: 'No bot to update.',
   })
   update(@Body() updateBotDto: UpdateBotZodDto) {
@@ -92,6 +100,7 @@ export class BotController {
     description: 'The bot is deleted.',
   })
   @ApiNotFoundResponse({
+    type: ApiErrorZodDto,
     description: 'No bot to update.',
   })
   async remove() {
