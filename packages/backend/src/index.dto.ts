@@ -8,6 +8,7 @@ export { UpdateBotSchema, type UpdateBotDto } from './bot/dto/update-bot.dto.js'
 export { GetBotSchema, type GetBotDto } from './bot/dto/get-bot.dto.js';
 
 export { SseIntervalQuerySchema } from './clusters/dto/sse-interval-query.dto.js';
+export { ClusterIdParamSchema, type ClusterIdParamDto } from './clusters/dto/cluster-id-param.dto.js';
 export { GetClusterSchema, type GetClusterDto } from './clusters/dto/get-cluster.dto.js';
 export {
   GetClusterLogsQuerySchema,
