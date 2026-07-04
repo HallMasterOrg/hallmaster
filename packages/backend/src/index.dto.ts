@@ -1,3 +1,5 @@
+export { ApiErrorSchema, type ApiErrorDto } from './common/dto/api-error.dto.js';
+
 export { registerSchema } from './auth/schemas/register.schema.js';
 export { loginSchema } from './auth/schemas/login.schema.js';
 

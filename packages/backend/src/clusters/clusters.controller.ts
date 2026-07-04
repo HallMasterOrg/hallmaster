@@ -27,6 +27,7 @@ import {
 import { Observable, timer, exhaustMap, map, from } from 'rxjs';
 
 import { AuthGuard } from '../auth/guards/jwt.guard.js';
+import { ApiErrorZodDto } from '../common/dto/api-error.dto.js';
 
 import { ClustersService } from './clusters.service.js';
 import { ClusterBulkActionResultZodDto } from './dto/cluster-bulk-action-result.dto.js';
@@ -41,6 +42,7 @@ import { SseIntervalQueryZodDto } from './dto/sse-interval-query.dto.js';
 @ApiBearerAuth('jwt')
 @UseGuards(AuthGuard)
 @ApiUnauthorizedResponse({
+  type: ApiErrorZodDto,
   description: 'This route is protected by an Authorization header that is either not provided or invalid.',
 })
 export class ClustersController {
@@ -122,6 +124,7 @@ export class ClustersController {
     type: GetClusterZodDto,
   })
   @ApiNotFoundResponse({
+    type: ApiErrorZodDto,
     description: 'The ID points to an unresolved cluster.',
   })
   findOne(@Param('id', ParseIntPipe) id: number) {
@@ -134,6 +137,7 @@ export class ClustersController {
     description: 'The cluster with the given ID has been deleted.',
   })
   @ApiNotFoundResponse({
+    type: ApiErrorZodDto,
     description: 'The ID points to an unresolved cluster.',
   })
   async remove(@Param('id', ParseIntPipe) id: number) {
@@ -146,6 +150,7 @@ export class ClustersController {
     description: 'The cluster with the given ID is starting.',
   })
   @ApiNotFoundResponse({
+    type: ApiErrorZodDto,
     description: 'The ID points to an unresolved cluster.',
   })
   async start(@Param('id', ParseIntPipe) id: number) {
@@ -158,6 +163,7 @@ export class ClustersController {
     description: 'The cluster with the given ID has been stopped.',
   })
   @ApiNotFoundResponse({
+    type: ApiErrorZodDto,
     description: 'The ID points to an unresolved cluster.',
   })
   async stop(@Param('id', ParseIntPipe) id: number) {
@@ -170,6 +176,7 @@ export class ClustersController {
     description: 'The cluster with the given ID is restarting.',
   })
   @ApiNotFoundResponse({
+    type: ApiErrorZodDto,
     description: 'The ID points to an unresolved cluster.',
   })
   async restart(@Param('id', ParseIntPipe) id: number) {
@@ -183,6 +190,7 @@ export class ClustersController {
     description: 'The logs of the cluster.',
   })
   @ApiNotFoundResponse({
+    type: ApiErrorZodDto,
     description: 'The ID points to an unresolved cluster.',
   })
   async getLogs(@Param('id', ParseIntPipe) id: number, @Query() query: GetClusterLogsQueryZodDto) {
@@ -227,9 +235,11 @@ export class ClustersController {
     description: 'The stats of the cluster.',
   })
   @ApiNotFoundResponse({
+    type: ApiErrorZodDto,
     description: 'The ID points to an unresolved cluster.',
   })
   @ApiBadRequestResponse({
+    type: ApiErrorZodDto,
     description: 'The requested cluster has no bound container or its not running.',
   })
   async getStats(@Param('id', ParseIntPipe) id: number) {
@@ -243,9 +253,11 @@ export class ClustersController {
   })
   @ApiProduces('text/event-stream')
   @ApiNotFoundResponse({
+    type: ApiErrorZodDto,
     description: 'The ID points to an unresolved cluster.',
   })
   @ApiBadRequestResponse({
+    type: ApiErrorZodDto,
     description: 'The requested cluster has no bound container or its not running.',
   })
   streamStats(@Param('id', ParseIntPipe) id: number): Observable<MessageEvent> {
