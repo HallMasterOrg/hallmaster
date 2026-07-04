@@ -271,6 +271,7 @@ export class ClustersService {
           stream.on('error', () => removeStream(id));
           stream.on('end', () => removeStream(id));
         } catch {
+          // the next reconcile tick will retry opening this stream
         }
       };
 

@@ -32,7 +32,7 @@ import { ClustersService } from './clusters.service.js';
 import { ClusterBulkActionResultZodDto } from './dto/cluster-bulk-action-result.dto.js';
 import { GetAggregateStatsZodDto } from './dto/get-aggregate-stats.dto.js';
 import { GetClusterLogsQueryZodDto, GetClusterLogsZodDto } from './dto/get-cluster-logs.dto.js';
-import { GetClusterStatsZodDto } from './dto/get-cluster-stats.dto.js';
+import { GetClusterStatsDto, GetClusterStatsZodDto } from './dto/get-cluster-stats.dto.js';
 import { GetClusterZodDto } from './dto/get-cluster.dto.js';
 import { SseIntervalQueryZodDto } from './dto/sse-interval-query.dto.js';
 
@@ -238,8 +238,7 @@ export class ClustersController {
 
   @Sse(':id/stats/stream')
   @ApiOkResponse({
-    description:
-      'SSE stream that emits the stats of the cluster.',
+    description: 'SSE stream that emits the stats of the cluster.',
     type: GetClusterStatsZodDto,
   })
   @ApiProduces('text/event-stream')
@@ -258,7 +257,7 @@ export class ClustersController {
         .then((s) => {
           stream = s;
 
-          stream.on('data', (stats) => subscriber.next({ data: stats } as MessageEvent));
+          stream.on('data', (stats: GetClusterStatsDto) => subscriber.next({ data: stats } as MessageEvent));
           stream.on('end', () => subscriber.complete());
           stream.on('error', (err) => subscriber.error(err));
         })
