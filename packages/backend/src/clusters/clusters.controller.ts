@@ -8,7 +8,6 @@ import {
   HttpStatus,
   MessageEvent,
   Param,
-  ParseIntPipe,
   Post,
   Query,
   Sse,
@@ -31,6 +30,7 @@ import { ApiErrorZodDto } from '../common/dto/api-error.dto.js';
 
 import { ClustersService } from './clusters.service.js';
 import { ClusterBulkActionResultZodDto } from './dto/cluster-bulk-action-result.dto.js';
+import { ClusterIdParamZodDto } from './dto/cluster-id-param.dto.js';
 import { GetAggregateStatsZodDto } from './dto/get-aggregate-stats.dto.js';
 import { GetClusterLogsQueryZodDto, GetClusterLogsZodDto } from './dto/get-cluster-logs.dto.js';
 import { GetClusterStatsDto, GetClusterStatsZodDto } from './dto/get-cluster-stats.dto.js';
@@ -127,7 +127,7 @@ export class ClustersController {
     type: ApiErrorZodDto,
     description: 'The ID points to an unresolved cluster.',
   })
-  findOne(@Param('id', ParseIntPipe) id: number) {
+  findOne(@Param() { id }: ClusterIdParamZodDto) {
     return this.clustersService.findOne(id);
   }
 
@@ -140,7 +140,7 @@ export class ClustersController {
     type: ApiErrorZodDto,
     description: 'The ID points to an unresolved cluster.',
   })
-  async remove(@Param('id', ParseIntPipe) id: number) {
+  async remove(@Param() { id }: ClusterIdParamZodDto) {
     await this.clustersService.remove(id);
   }
 
@@ -153,7 +153,7 @@ export class ClustersController {
     type: ApiErrorZodDto,
     description: 'The ID points to an unresolved cluster.',
   })
-  async start(@Param('id', ParseIntPipe) id: number) {
+  async start(@Param() { id }: ClusterIdParamZodDto) {
     await this.clustersService.start(id);
   }
 
@@ -166,7 +166,7 @@ export class ClustersController {
     type: ApiErrorZodDto,
     description: 'The ID points to an unresolved cluster.',
   })
-  async stop(@Param('id', ParseIntPipe) id: number) {
+  async stop(@Param() { id }: ClusterIdParamZodDto) {
     await this.clustersService.stop(id);
   }
 
@@ -179,7 +179,7 @@ export class ClustersController {
     type: ApiErrorZodDto,
     description: 'The ID points to an unresolved cluster.',
   })
-  async restart(@Param('id', ParseIntPipe) id: number) {
+  async restart(@Param() { id }: ClusterIdParamZodDto) {
     await this.clustersService.restart(id);
   }
 
@@ -193,7 +193,7 @@ export class ClustersController {
     type: ApiErrorZodDto,
     description: 'The ID points to an unresolved cluster.',
   })
-  async getLogs(@Param('id', ParseIntPipe) id: number, @Query() query: GetClusterLogsQueryZodDto) {
+  async getLogs(@Param() { id }: ClusterIdParamZodDto, @Query() query: GetClusterLogsQueryZodDto) {
     return await this.clustersService.logs(
       id,
       query.since ? new Date(query.since) : undefined,
@@ -205,7 +205,7 @@ export class ClustersController {
   @Sse(':id/logs/stream')
   @ApiProduces('text/event-stream')
   @UseGuards(AuthGuard)
-  streamLogs(@Param('id', ParseIntPipe) id: number): Observable<MessageEvent> {
+  streamLogs(@Param() { id }: ClusterIdParamZodDto): Observable<MessageEvent> {
     return new Observable((subscriber) => {
       let stream: Readable | undefined;
 
@@ -242,7 +242,7 @@ export class ClustersController {
     type: ApiErrorZodDto,
     description: 'The requested cluster has no bound container or its not running.',
   })
-  async getStats(@Param('id', ParseIntPipe) id: number) {
+  async getStats(@Param() { id }: ClusterIdParamZodDto) {
     return await this.clustersService.stats(id);
   }
 
@@ -260,7 +260,7 @@ export class ClustersController {
     type: ApiErrorZodDto,
     description: 'The requested cluster has no bound container or its not running.',
   })
-  streamStats(@Param('id', ParseIntPipe) id: number): Observable<MessageEvent> {
+  streamStats(@Param() { id }: ClusterIdParamZodDto): Observable<MessageEvent> {
     return new Observable((subscriber) => {
       let stream: Readable | undefined;
 
