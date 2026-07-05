@@ -1,6 +1,7 @@
 import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Patch, Post, UseGuards } from '@nestjs/common';
 import {
   ApiAcceptedResponse,
+  ApiBadRequestResponse,
   ApiBearerAuth,
   ApiConflictResponse,
   ApiCreatedResponse,
@@ -63,6 +64,14 @@ export class BotController {
     type: ApiErrorZodDto,
     description: 'The bot is already created.',
   })
+  @ApiBadRequestResponse({
+    type: ApiErrorZodDto,
+    description: 'The request body is invalid, or the Docker image could not be pulled.',
+  })
+  @ApiFailedDependencyResponse({
+    type: ApiErrorZodDto,
+    description: 'Got an invalid response from the Discord API.',
+  })
   create(@Body() createBotDto: CreateBotZodDto) {
     return this.botService.create(createBotDto);
   }
@@ -89,6 +98,14 @@ export class BotController {
   @ApiNotFoundResponse({
     type: ApiErrorZodDto,
     description: 'No bot to update.',
+  })
+  @ApiBadRequestResponse({
+    type: ApiErrorZodDto,
+    description: 'The request body or cluster layout is invalid, or the Docker image could not be pulled.',
+  })
+  @ApiFailedDependencyResponse({
+    type: ApiErrorZodDto,
+    description: 'Got an invalid response from the Discord API.',
   })
   update(@Body() updateBotDto: UpdateBotZodDto) {
     return this.botService.update(updateBotDto);
