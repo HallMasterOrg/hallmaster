@@ -11,10 +11,7 @@
 <span>
   <style>
     body {
-      background-image: radial-gradient(
-        rgba(255, 255, 255, 0.05) 1px,
-        transparent 1px
-      );
+      background-image: radial-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px);
       background-size: 15px 15px;
       background-attachment: fixed;
     }

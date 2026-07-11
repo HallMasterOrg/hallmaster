@@ -40,7 +40,7 @@
     issues={login.fields.password.issues()}
   />
 
-  <button class="btn text-sm preset-filled-primary-500">
+  <button class="btn preset-filled-primary-500 text-sm">
     Login
     <ChevronRightIcon />
   </button>
