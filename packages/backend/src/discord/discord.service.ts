@@ -1,9 +1,24 @@
 import { HttpException, HttpStatus, Injectable, UnauthorizedException } from '@nestjs/common';
+import { z } from 'zod';
 
 const DISCORD_API_VERSION = 'v10';
 const DISCORD_API_BASE_URL = `https://discord.com/api/${DISCORD_API_VERSION}`;
 const DISCORD_CDN_BASE_URL = 'https://cdn.discordapp.com';
 const DISCORD_REQUEST_TIMEOUT_MS = 10_000;
+
+const DiscordGatewayBotSchema = z.object({
+  shards: z.number().int().nonnegative(),
+});
+
+const DiscordUserSchema = z.object({
+  id: z.string(),
+  username: z.string(),
+  global_name: z.string().nullish(),
+  discriminator: z.string(),
+  avatar: z.string().nullish(),
+  banner: z.string().nullish(),
+  accent_color: z.number().int().nullish(),
+});
 
 export interface DiscordGatewayBot {
   shards: number;
@@ -18,19 +33,9 @@ export interface DiscordProfile {
   accentColor: number | null;
 }
 
-interface DiscordUser {
-  id: string;
-  username: string;
-  global_name: string | null;
-  discriminator: string;
-  avatar: string | null;
-  banner: string | null;
-  accent_color: number | null;
-}
-
 @Injectable()
 export class DiscordService {
-  private async request<T>(path: string, token: string): Promise<T> {
+  private async request<S extends z.ZodType>(path: string, token: string, schema: S): Promise<z.infer<S>> {
     let response: Response;
     try {
       response = await fetch(`${DISCORD_API_BASE_URL}${path}`, {
@@ -52,28 +57,28 @@ export class DiscordService {
       );
     }
 
-    return (await response.json()) as T;
+    const payload: unknown = await response.json().catch(() => undefined);
+    const parsed = schema.safeParse(payload);
+    if (!parsed.success) {
+      throw new HttpException('The Discord API returned an unexpected response.', HttpStatus.FAILED_DEPENDENCY);
+    }
+
+    return parsed.data;
   }
 
   async getGatewayBot(token: string): Promise<DiscordGatewayBot> {
-    const data = await this.request<{ shards?: number }>('/gateway/bot', token);
-
-    if (typeof data.shards !== 'number') {
-      throw new HttpException('Got an invalid response from the Discord API.', HttpStatus.FAILED_DEPENDENCY);
-    }
-
-    return { shards: data.shards };
+    return await this.request('/gateway/bot', token, DiscordGatewayBotSchema);
   }
 
   async getCurrentUser(token: string): Promise<DiscordProfile> {
-    const user = await this.request<DiscordUser>('/users/@me', token);
+    const user = await this.request('/users/@me', token, DiscordUserSchema);
 
     return {
       name: user.username,
       displayName: user.global_name ?? null,
       discriminator: user.discriminator,
-      avatarUrl: DiscordService.buildCdnUrl('avatars', user.id, user.avatar),
-      bannerUrl: DiscordService.buildCdnUrl('banners', user.id, user.banner),
+      avatarUrl: DiscordService.buildCdnUrl('avatars', user.id, user.avatar ?? null),
+      bannerUrl: DiscordService.buildCdnUrl('banners', user.id, user.banner ?? null),
       accentColor: user.accent_color ?? null,
     };
   }

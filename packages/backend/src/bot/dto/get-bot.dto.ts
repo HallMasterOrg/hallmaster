@@ -54,8 +54,7 @@ export const GetBotSchema = z.object({
     description: 'The Docker image configuration associated with the bot.',
   }),
   discord: GetBotDiscordSchema.nullable().optional().meta({
-    description:
-      "The bot's Discord profile.",
+    description: "The bot's Discord profile.",
   }),
 });
 
