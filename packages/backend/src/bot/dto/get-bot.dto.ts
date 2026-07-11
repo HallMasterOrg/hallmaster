@@ -19,6 +19,27 @@ export const GetBotLayoutClusterSchema = z.object({
   }),
 });
 
+export const GetBotDiscordSchema = z.object({
+  name: z.string().meta({
+    description: 'The Discord username of the bot.',
+  }),
+  displayName: z.string().nullable().meta({
+    description: 'The Discord display name (global name) of the bot, or null if none is set.',
+  }),
+  discriminator: z.string().meta({
+    description: 'The Discord discriminator.',
+  }),
+  avatarUrl: z.string().nullable().meta({
+    description: 'URL of the bot avatar on the Discord CDN, or null if none is set.',
+  }),
+  bannerUrl: z.string().nullable().meta({
+    description: 'URL of the bot banner on the Discord CDN, or null if none is set.',
+  }),
+  accentColor: z.number().int().nullable().meta({
+    description: 'The bot profile accent color as an integer (0xRRGGBB), usable as a fallback when no banner is set.',
+  }),
+});
+
 export const GetBotSchema = z.object({
   id: z.string().meta({
     description: 'The bot ID.',
@@ -31,6 +52,10 @@ export const GetBotSchema = z.object({
   }),
   dockerImage: GetBotDockerImageSchema.meta({
     description: 'The Docker image configuration associated with the bot.',
+  }),
+  discord: GetBotDiscordSchema.nullable().optional().meta({
+    description:
+      "The bot's Discord profile.",
   }),
 });
 
