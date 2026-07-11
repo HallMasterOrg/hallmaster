@@ -243,12 +243,10 @@ export const getClustersLive = query.live(async function* () {
 });
 
 export const getClustersStatsLive = query.live(async function* () {
-  const token = getRequestEvent().cookies.get("token");
-
-  const response = await fetch(new URL("/clusters/stats/stream?interval=2", env.API_URL), {
+  const response = await fetch(new URL("/clusters/stats/stream?interval=1", env.API_URL), {
     headers: {
       Accept: "text/event-stream",
-      Authorization: `Bearer ${token}`,
+      Authorization: `Bearer ${getRequestEvent().cookies.get("token")}`,
     },
   });
 
@@ -265,7 +263,8 @@ export const getClustersStatsLive = query.live(async function* () {
         // @ts-ignore svelte-check false positive
         .values();
 
-      for await (const chunk of chunks) yield JSON.parse(chunk.data) as GetAggregateStatsDto;
+      for await (const chunk of chunks)
+        yield { ...(JSON.parse(chunk.data) as GetAggregateStatsDto), date: new Date() };
       return;
     }
     case 401:
