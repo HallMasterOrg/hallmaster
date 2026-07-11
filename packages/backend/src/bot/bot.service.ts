@@ -105,11 +105,17 @@ export class BotService {
   }
 
   private async fetchDiscordGatewayBot(token: string): Promise<{ shards: number }> {
-    const response = await fetch('https://discord.com/api/v10/gateway/bot', {
-      headers: {
-        Authorization: `Bot ${token}`,
-      },
-    });
+    let response: Response;
+    try {
+      response = await fetch('https://discord.com/api/v10/gateway/bot', {
+        headers: {
+          Authorization: `Bot ${token}`,
+        },
+        signal: AbortSignal.timeout(10_000),
+      });
+    } catch {
+      throw new HttpException('The Discord API is unreachable or timed out.', HttpStatus.FAILED_DEPENDENCY);
+    }
 
     if (response.status === 401) {
       throw new UnauthorizedException('Invalid Discord bot token.');

@@ -451,24 +451,26 @@ export class DockerService {
 
     const cpuPercentage = systemDelta > 0 ? (cpuDelta / systemDelta) * onlineCPUs * 100 : 0;
 
-    const processesUsage = stats.pids_stats.current;
-    const processesPercentage = (processesUsage / stats.pids_stats.limit) * 100;
+    const processesUsage = stats.pids_stats?.current ?? 0;
+    const processesLimit = stats.pids_stats?.limit ?? 0;
+    const processesPercentage = processesLimit > 0 ? (processesUsage / processesLimit) * 100 : 0;
 
     const memoryUsage =
-      stats.memory_stats.usage -
-      (stats.memory_stats.stats?.inactive_file ?? 0) -
-      (stats.memory_stats.stats?.slab_reclaimable ?? 0);
+      (stats.memory_stats?.usage ?? 0) -
+      (stats.memory_stats?.stats?.inactive_file ?? 0) -
+      (stats.memory_stats?.stats?.slab_reclaimable ?? 0);
 
-    const memoryPercentage = (memoryUsage / stats.memory_stats.limit) * 100;
+    const memoryLimit = stats.memory_stats?.limit ?? 0;
+    const memoryPercentage = memoryLimit > 0 ? (memoryUsage / memoryLimit) * 100 : 0;
 
-    const diskRead = stats.blkio_stats.io_service_bytes_recursive
+    const diskRead = stats.blkio_stats?.io_service_bytes_recursive
       ?.filter((service) => service.op === 'read')
       ?.reduce((acc, cur) => acc + cur.value, 0);
-    const diskWrite = stats.blkio_stats.io_service_bytes_recursive
+    const diskWrite = stats.blkio_stats?.io_service_bytes_recursive
       ?.filter((service) => service.op === 'write')
       ?.reduce((acc, cur) => acc + cur.value, 0);
 
-    const networks = Object.entries(stats.networks).map(([interfaceName, data]) => ({
+    const networks = Object.entries(stats.networks ?? {}).map(([interfaceName, data]) => ({
       interface: interfaceName,
       transmitted: data.tx_bytes,
       received: data.rx_bytes,
