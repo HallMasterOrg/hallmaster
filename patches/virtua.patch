@@ -1,0 +1,13 @@
+diff --git a/lib/svelte/ListItem.svelte b/lib/svelte/ListItem.svelte
+index 922c2d3b48ad62d14868c69ac9b0945f2cddbb0b..6a4ac5cc35a915854f1d2779a1c6857318ce9e69 100644
+--- a/lib/svelte/ListItem.svelte
++++ b/lib/svelte/ListItem.svelte
+@@ -42,7 +42,7 @@
+ 
+   let style: string = $derived.by(() => {
+     const _style: Record<string, string | undefined> = {
+-      contain: "layout style",
++      contain: "style",
+       position: "absolute",
+       [horizontal ? "height" : "width"]: "100%",
+       [horizontal ? "top" : "left"]: "0px",
