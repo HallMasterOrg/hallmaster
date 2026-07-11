@@ -8,3 +8,5 @@ export const GetRecommendedShardsSchema = z.object({
 });
 
 export class GetRecommendedShardsZodDto extends createZodDto(GetRecommendedShardsSchema) {}
+
+export type GetRecommendedShardsDto = z.infer<typeof GetRecommendedShardsSchema>;
