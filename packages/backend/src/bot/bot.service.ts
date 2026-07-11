@@ -1,15 +1,8 @@
-import {
-  BadRequestException,
-  ConflictException,
-  HttpException,
-  HttpStatus,
-  Injectable,
-  NotFoundException,
-  UnauthorizedException,
-} from '@nestjs/common';
+import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaClientKnownRequestError } from '@prisma/client/runtime/client';
 
 import { ClustersService } from '../clusters/clusters.service.js';
+import { DiscordService, type DiscordProfile } from '../discord/discord.service.js';
 import { DockerService } from '../docker/docker.service.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 
@@ -26,6 +19,7 @@ export class BotService {
     private readonly prismaService: PrismaService,
     private readonly clustersService: ClustersService,
     private readonly dockerService: DockerService,
+    private readonly discordService: DiscordService,
   ) {}
 
   private parseDockerImage(image: string): { serverName: string; image: string; tag: string } {
@@ -104,37 +98,12 @@ export class BotService {
     });
   }
 
-  private async fetchDiscordGatewayBot(token: string): Promise<{ shards: number }> {
-    let response: Response;
+  private async fetchDiscordProfile(token: string): Promise<DiscordProfile | null> {
     try {
-      response = await fetch('https://discord.com/api/v10/gateway/bot', {
-        headers: {
-          Authorization: `Bot ${token}`,
-        },
-        signal: AbortSignal.timeout(10_000),
-      });
+      return await this.discordService.getCurrentUser(token);
     } catch {
-      throw new HttpException('The Discord API is unreachable or timed out.', HttpStatus.FAILED_DEPENDENCY);
+      return null;
     }
-
-    if (response.status === 401) {
-      throw new UnauthorizedException('Invalid Discord bot token.');
-    }
-
-    if (!response.ok) {
-      throw new HttpException(
-        `Discord API returned ${response.status}: ${response.statusText}`,
-        HttpStatus.FAILED_DEPENDENCY,
-      );
-    }
-
-    const data = (await response.json()) as { shards?: number };
-
-    if (!data.shards || typeof data.shards !== 'number') {
-      throw new HttpException('Got an invalid response from the Discord API.', HttpStatus.FAILED_DEPENDENCY);
-    }
-
-    return { shards: data.shards };
   }
 
   async getRecommendedShards(): Promise<{ shards: number }> {
@@ -146,11 +115,11 @@ export class BotService {
       throw new NotFoundException('No bot created.');
     }
 
-    return await this.fetchDiscordGatewayBot(bot.token);
+    return await this.discordService.getGatewayBot(bot.token);
   }
 
   async create(createBotDto: CreateBotZodDto): Promise<GetBotZodDto> {
-    await this.fetchDiscordGatewayBot(createBotDto.token);
+    await this.discordService.getGatewayBot(createBotDto.token);
 
     const { serverName, image, tag } = this.parseDockerImage(createBotDto.dockerImage.image);
 
@@ -197,7 +166,7 @@ export class BotService {
 
   async findOne(): Promise<GetBotZodDto> {
     const bot = await this.prismaService.bot.findFirst({
-      select: BotService.BOT_SELECT,
+      select: { ...BotService.BOT_SELECT, token: true },
     });
 
     if (null === bot) {
@@ -209,6 +178,7 @@ export class BotService {
       shards: bot.totalShards,
       layout: bot.clusters.map((c) => ({ id: c.id, shardIds: c.shardIds })),
       dockerImage: formatDockerImage(bot.dockerImage),
+      discord: await this.fetchDiscordProfile(bot.token),
     };
   }
 
@@ -295,7 +265,7 @@ export class BotService {
     const tokenChanged = newToken !== null;
 
     if (newToken !== null) {
-      await this.fetchDiscordGatewayBot(newToken);
+      await this.discordService.getGatewayBot(newToken);
     }
 
     const dockerImageUpdate = this.buildDockerImageUpdate(updateBotDto.dockerImage, bot.dockerImage);

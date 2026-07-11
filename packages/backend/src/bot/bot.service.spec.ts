@@ -7,6 +7,7 @@ import type { DeepMockProxy } from 'jest-mock-extended';
 import { mockDeep } from 'jest-mock-extended';
 
 import { ClustersService } from '../clusters/clusters.service.js';
+import { DiscordService } from '../discord/discord.service.js';
 import { DockerService } from '../docker/docker.service.js';
 import type { CreateBotDto, UpdateBotDto } from '../index.dto.js';
 import { PrismaService } from '../prisma/prisma.service.js';
@@ -36,6 +37,28 @@ const mockDiscordGatewayBotResponse = (status = 200, body: unknown = { shards: 1
     json: () => Promise.resolve(body),
   }) as Response;
 
+const DISCORD_USER = {
+  id: HALLMASTER_BOT_ID,
+  username: 'HallMaster',
+  global_name: 'HallMaster Bot',
+  discriminator: '0',
+  avatar: 'abc123',
+  banner: 'a_def456',
+  accent_color: 5793266,
+};
+
+const EXPECTED_DISCORD_PROFILE = {
+  name: 'HallMaster',
+  displayName: 'HallMaster Bot',
+  discriminator: '0',
+  avatarUrl: `https://cdn.discordapp.com/avatars/${HALLMASTER_BOT_ID}/abc123.png`,
+  bannerUrl: `https://cdn.discordapp.com/banners/${HALLMASTER_BOT_ID}/a_def456.gif`,
+  accentColor: 5793266,
+};
+
+const mockDiscordUserResponse = (body: unknown = DISCORD_USER) =>
+  ({ ok: true, status: 200, statusText: 'OK', json: () => Promise.resolve(body) }) as Response;
+
 describe('BotService', () => {
   let service: BotService;
   const originalFetch = globalThis.fetch;
@@ -64,6 +87,7 @@ describe('BotService', () => {
         { provide: PrismaService, useValue: prismaService },
         { provide: ClustersService, useValue: clustersService },
         { provide: DockerService, useValue: dockerService },
+        DiscordService,
       ],
     }).compile();
 
@@ -149,16 +173,18 @@ describe('BotService', () => {
     expect(prismaService.bot.create).not.toHaveBeenCalled();
   });
 
-  it('should find the bot', async () => {
+  it('should find the bot with its Discord profile', async () => {
     (prismaService.bot.findFirst as jest.Mock).mockResolvedValueOnce({
       id: HALLMASTER_BOT_ID,
       totalShards: 6,
+      token: DISCORD_BOT_TOKEN,
       clusters: [
         { id: 0, status: 'RUNNING', shardIds: [0, 1, 2] },
         { id: 1, status: 'RUNNING', shardIds: [3, 4, 5] },
       ],
       dockerImage: MOCK_DOCKER_IMAGE,
     });
+    fetchMock.mockResolvedValueOnce(mockDiscordUserResponse());
 
     const data = await service.findOne();
 
@@ -170,6 +196,7 @@ describe('BotService', () => {
         { id: 1, shardIds: [3, 4, 5] },
       ],
       dockerImage: EXPECTED_DOCKER_IMAGE,
+      discord: EXPECTED_DISCORD_PROFILE,
     });
   });
 
@@ -177,9 +204,11 @@ describe('BotService', () => {
     (prismaService.bot.findFirst as jest.Mock).mockResolvedValueOnce({
       id: HALLMASTER_BOT_ID,
       totalShards: 0,
+      token: DISCORD_BOT_TOKEN,
       clusters: [],
       dockerImage: MOCK_DOCKER_IMAGE,
     });
+    fetchMock.mockResolvedValueOnce(mockDiscordUserResponse());
 
     const data = await service.findOne();
 
@@ -188,7 +217,23 @@ describe('BotService', () => {
       shards: 0,
       layout: [],
       dockerImage: EXPECTED_DOCKER_IMAGE,
+      discord: EXPECTED_DISCORD_PROFILE,
     });
+  });
+
+  it('should return a null Discord profile when Discord is unreachable', async () => {
+    (prismaService.bot.findFirst as jest.Mock).mockResolvedValueOnce({
+      id: HALLMASTER_BOT_ID,
+      totalShards: 0,
+      token: DISCORD_BOT_TOKEN,
+      clusters: [],
+      dockerImage: MOCK_DOCKER_IMAGE,
+    });
+    fetchMock.mockRejectedValueOnce(new Error('network down'));
+
+    const data = await service.findOne();
+
+    expect(data.discord).toBeNull();
   });
 
   it('should throw NotFoundException when no bot exists', async () => {

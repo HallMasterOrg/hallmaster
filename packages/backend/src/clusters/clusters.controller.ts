@@ -16,6 +16,7 @@ import {
 import {
   ApiBadRequestResponse,
   ApiBearerAuth,
+  ApiInternalServerErrorResponse,
   ApiNoContentResponse,
   ApiNotFoundResponse,
   ApiOkResponse,
@@ -140,6 +141,10 @@ export class ClustersController {
     type: ApiErrorZodDto,
     description: 'The ID points to an unresolved cluster.',
   })
+  @ApiBadRequestResponse({
+    type: ApiErrorZodDto,
+    description: 'Unable to stop or remove the cluster container.',
+  })
   async remove(@Param() { id }: ClusterIdParamZodDto) {
     await this.clustersService.remove(id);
   }
@@ -151,7 +156,15 @@ export class ClustersController {
   })
   @ApiNotFoundResponse({
     type: ApiErrorZodDto,
-    description: 'The ID points to an unresolved cluster.',
+    description: 'The cluster ID is unresolved, or the bot has no Docker image configured.',
+  })
+  @ApiBadRequestResponse({
+    type: ApiErrorZodDto,
+    description: 'Unable to provision or start the cluster container.',
+  })
+  @ApiInternalServerErrorResponse({
+    type: ApiErrorZodDto,
+    description: 'An unexpected error occurred while starting the cluster.',
   })
   async start(@Param() { id }: ClusterIdParamZodDto) {
     await this.clustersService.start(id);
@@ -166,6 +179,10 @@ export class ClustersController {
     type: ApiErrorZodDto,
     description: 'The ID points to an unresolved cluster.',
   })
+  @ApiBadRequestResponse({
+    type: ApiErrorZodDto,
+    description: 'Unable to stop the cluster container.',
+  })
   async stop(@Param() { id }: ClusterIdParamZodDto) {
     await this.clustersService.stop(id);
   }
@@ -177,7 +194,15 @@ export class ClustersController {
   })
   @ApiNotFoundResponse({
     type: ApiErrorZodDto,
-    description: 'The ID points to an unresolved cluster.',
+    description: 'The cluster ID is unresolved, or the bot has no Docker image configured.',
+  })
+  @ApiBadRequestResponse({
+    type: ApiErrorZodDto,
+    description: 'Unable to restart the cluster container.',
+  })
+  @ApiInternalServerErrorResponse({
+    type: ApiErrorZodDto,
+    description: 'An unexpected error occurred while restarting the cluster.',
   })
   async restart(@Param() { id }: ClusterIdParamZodDto) {
     await this.clustersService.restart(id);
@@ -193,6 +218,10 @@ export class ClustersController {
     type: ApiErrorZodDto,
     description: 'The ID points to an unresolved cluster.',
   })
+  @ApiBadRequestResponse({
+    type: ApiErrorZodDto,
+    description: 'The cluster has no bound container.',
+  })
   async getLogs(@Param() { id }: ClusterIdParamZodDto, @Query() query: GetClusterLogsQueryZodDto) {
     return await this.clustersService.logs(
       id,
@@ -205,6 +234,14 @@ export class ClustersController {
   @Sse(':id/logs/stream')
   @ApiProduces('text/event-stream')
   @UseGuards(AuthGuard)
+  @ApiNotFoundResponse({
+    type: ApiErrorZodDto,
+    description: 'The ID points to an unresolved cluster.',
+  })
+  @ApiBadRequestResponse({
+    type: ApiErrorZodDto,
+    description: 'The cluster has no bound container.',
+  })
   streamLogs(@Param() { id }: ClusterIdParamZodDto): Observable<MessageEvent> {
     return new Observable((subscriber) => {
       let stream: Readable | undefined;
