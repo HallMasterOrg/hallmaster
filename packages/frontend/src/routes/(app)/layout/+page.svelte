@@ -17,7 +17,7 @@
 {/snippet}
 
 <svelte:boundary>
-  {let data = $state(await getClusters())}
+  {let data = $derived(await getClusters())}
   {let layout = $derived(new LayoutManager(data))}
 
   {@render actionRow(layout)}
