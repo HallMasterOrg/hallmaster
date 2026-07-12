@@ -17,6 +17,10 @@
   </div>
 
   <form {...logout}>
-    <ConfirmButton disabled={!!logout.pending} icon={{ icon: LogOutIcon }} class="hover:text-error-500" />
+    <ConfirmButton
+      disabled={!!logout.pending}
+      icon={{ icon: LogOutIcon }}
+      class="hover:text-error-500"
+    />
   </form>
 </div>

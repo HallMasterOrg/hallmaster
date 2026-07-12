@@ -13,7 +13,11 @@
   let confirm = $state(false);
 
   let timer: NodeJS.Timeout | undefined;
-  const reset = () => timer ??= setTimeout(() => { confirm = false; timer = undefined; }, 1500);
+  const reset = () =>
+    (timer ??= setTimeout(() => {
+      confirm = false;
+      timer = undefined;
+    }, 1500));
 </script>
 
 {#if !confirm}
@@ -34,8 +38,8 @@
     {/if}
   </button>
 {:else}
-<!-- svelte-ignore a11y_autofocus -->
-<button
+  <!-- svelte-ignore a11y_autofocus -->
+  <button
     {...props}
     aria-label="Confirm action"
     class={["preset-tonal-error", props.class]}
