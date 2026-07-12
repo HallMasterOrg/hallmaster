@@ -6,6 +6,7 @@ export { loginSchema } from './auth/schemas/login.schema.js';
 export { CreateBotSchema, type CreateBotDto } from './bot/dto/create-bot.dto.js';
 export { UpdateBotSchema, type UpdateBotDto } from './bot/dto/update-bot.dto.js';
 export { GetBotSchema, type GetBotDto } from './bot/dto/get-bot.dto.js';
+export { GetRecommendedShardsSchema, type GetRecommendedShardsDto } from './bot/dto/get-recommended-shards.dto.js';
 
 export { SseIntervalQuerySchema } from './clusters/dto/sse-interval-query.dto.js';
 export { ClusterIdParamSchema, type ClusterIdParamDto } from './clusters/dto/cluster-id-param.dto.js';

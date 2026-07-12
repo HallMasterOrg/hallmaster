@@ -1,115 +1,117 @@
 import type { GetClusterDto, UpdateBotDto } from "@hallmaster/backend/dto";
 
-class Shard {
-  public id: GetClusterDto["shardIds"][number];
-  public mutation: "unchanged" | "added" | "deleted" | "moved";
-
-  constructor(id: typeof this.id, mutation: typeof this.mutation = "unchanged") {
-    this.id = $state(id);
-    this.mutation = $state(mutation);
-  }
-}
-
 class Cluster {
-  public readonly shards: Shard[];
-  public mutation: "unchanged" | "added" | "deleted" = $state("unchanged");
+  public current: Set<number>;
+  public readonly previous: Set<number>;
+  public shards = $state<Map<number, "unchanged" | "deleted" | "moved" | "added">>();
+  public state = $state<"unchanged" | "changed" | "deleted" | "added">("unchanged");
 
   constructor(
     private readonly manager: LayoutManager,
-    shards: Shard[],
-    public readonly id?: number,
+    shards: NonNullable<typeof this.shards>,
+    public readonly id?: GetClusterDto["id"],
   ) {
-    this.shards = $state(shards);
+    const ids = shards.keys().toArray();
+    this.current = new Set(ids);
+
+    if (id === undefined) {
+      this.previous = new Set();
+      this.state = "added";
+    } else this.previous = new Set(ids);
+
+    this.shards = shards;
   }
 
-  private findById(id: GetClusterDto["shardIds"][number]) {
-    const index = this.shards.findIndex((shard) => shard.id === id && shard.mutation !== "deleted");
+  public update() {
+    const unchanged = this.current.intersection(this.previous);
+    const deleted = this.previous.difference(this.current);
+    const moved = this.manager.clusters
+      .filter((cluster) => cluster !== this)
+      .map((cluster) => cluster.previous.intersection(this.current))
+      .flatMap((set) => Array.from(set));
+    const added = this.current.difference(new Set([...unchanged, ...moved]));
 
-    return {
-      index,
-      shard: index !== -1 ? this.shards[index] : undefined,
-    };
+    const entries = [
+      ...unchanged.values().map((id) => [id, "unchanged"] as const),
+      ...deleted.values().map((id) => [id, "deleted"] as const),
+      ...moved.map((id) => [id, "moved"] as const),
+      ...added.values().map((id) => [id, "added"] as const),
+    ].sort((a, b) => a[0] - b[0]);
+
+    this.shards = new Map(entries);
+
+    if (this.current.size === 0) this.state = "deleted";
+    else if (this.previous.size === 0) this.state = "added";
+    else if (deleted.size + moved.length + added.size !== 0) this.state = "changed";
+    else this.state = "unchanged";
   }
 
   public add() {
-    if (this.mutation === "deleted") return;
-
-    this.shards.push(new Shard(this.manager.maxShardId + 1, "added"));
+    this.current.add(this.manager.maxShardId + 1);
+    this.update();
   }
 
-  public remove(id: GetClusterDto["shardIds"][number]) {
-    const { shard, index } = this.findById(id);
-    if (!shard) return;
+  public pop(update: boolean = true) {
+    const id = Math.max(...this.current);
+    this.current.delete(id);
 
-    if (shard.mutation === "added") this.shards.splice(index, 1);
-    else {
-      shard.id = 0;
-      shard.mutation = "deleted";
+    for (const cluster of this.manager.clusters) {
+      cluster.decrement(id);
+      if (update) cluster.update();
     }
-
-    for (const shard of this.manager.shards) if (shard.id > id) shard.id--;
   }
 
-  public move(id: GetClusterDto["shardIds"][number], cluster: number) {
-    const { shard, index } = this.findById(id);
-    if (!shard) return;
+  public decrement(id: GetClusterDto["shardIds"][number]) {
+    this.current = new Set(this.current.values().map((shard) => (shard > id ? shard - 1 : shard)));
+  }
 
-    shard.mutation = "moved";
-    this.manager.clusters[cluster].shards.push(this.shards.splice(index, 1)[0]);
+  public clear() {
+    while (this.current.size) this.pop(false);
+
+    for (const cluster of this.manager.clusters) cluster.update();
   }
 }
 
 export class LayoutManager {
-  public clusters: Cluster[] = $state([]);
+  public clusters: Cluster[];
 
-  constructor(data: Omit<GetClusterDto, "status">[]) {
-    this.clusters = data
-      .map(
-        (cluster) =>
-          new Cluster(
-            this,
-            cluster.shardIds.map((id) => new Shard(id)),
-            cluster.id,
-          ),
-      )
-      .sort((a, b) => (a.id ?? 0) - (b.id ?? 0));
-  }
-
-  public get maxShardId(): number {
-    return Math.max(
-      ...this.clusters.flatMap((cluster) => cluster.shards.map((shard) => shard.id)),
-      -1,
+  constructor(private readonly data: Omit<GetClusterDto, "status">[]) {
+    this.clusters = $state(
+      this.data.map(
+        ({ id, shardIds }) =>
+          new Cluster(this, new Map(shardIds.map((id) => [id, "unchanged"])), id),
+      ),
     );
   }
 
-  public get shards(): Shard[] {
-    return this.clusters.flatMap((cluster) => cluster.shards);
+  public get maxShardId(): number {
+    return Math.max(...this.clusters.flatMap(({ current }) => Array.from(current)), -1);
   }
 
-  public add() {
-    const cluster = new Cluster(this, [new Shard(this.maxShardId + 1, "added")]);
-    cluster.mutation = "added";
-
-    this.clusters.push(cluster);
+  public add(length: number = 1) {
+    const max = this.maxShardId + 1;
+    this.clusters.push(
+      new Cluster(this, new Map(Array.from({ length }).map((_, index) => [max + index, "added"]))),
+    );
   }
 
   public remove(index: number) {
     const cluster = this.clusters[index];
+    const isAdded = cluster.state === "added";
 
-    for (const { id } of cluster.shards.toReversed()) cluster.remove(id);
+    cluster.clear();
+    if (isAdded) this.clusters.splice(index, 1);
+  }
 
-    if (cluster.mutation === "added") this.clusters.splice(index, 1);
-    else cluster.mutation = "deleted";
+  public reset() {
+    this.clusters = this.data.map(
+      ({ id, shardIds }) => new Cluster(this, new Map(shardIds.map((id) => [id, "unchanged"])), id),
+    );
   }
 
   public export(): NonNullable<UpdateBotDto["layout"]> {
     return this.clusters
-      .filter((cluster) => cluster.mutation !== "deleted" && cluster.shards.length !== 0)
-      .map((cluster) => ({
-        id: cluster.id,
-        shardIds: cluster.shards
-          .filter((shard) => shard.mutation !== "deleted")
-          .map((shard) => shard.id),
-      }));
+      .filter((cluster) => cluster.state !== "deleted")
+      .map(({ id, current }) => ({ id, shardIds: Array.from(current) }));
   }
 }
