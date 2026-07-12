@@ -13,6 +13,9 @@ COPY package.json \
     pnpm-workspace.yaml \
     ./
 
+# Required by pnpm-workspace.yaml `patchedDependencies`
+COPY patches/ patches/
+
 # Install packages for Prisma
 COPY packages/prisma-client/package.json \
     packages/prisma-client/
