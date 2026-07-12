@@ -5,6 +5,7 @@ import {
   ClusterIdParamSchema,
   GetClusterLogsQuerySchema,
   GetClusterSchema,
+  SseIntervalQuerySchema,
   type GetAggregateStatsDto,
   type GetClusterDto,
   type GetClusterLogsDto,
@@ -242,40 +243,45 @@ export const getClustersLive = query.live(async function* () {
   }
 });
 
-export const getClustersStatsLive = query.live(async function* () {
-  const token = getRequestEvent().cookies.get("token");
+export const getClustersStatsLive = query.live(
+  SseIntervalQuerySchema,
+  async function* ({ interval }) {
+    const response = await fetch(
+      new URL(`/clusters/stats/stream?interval=${interval}`, env.API_URL),
+      {
+        headers: {
+          Accept: "text/event-stream",
+          Authorization: `Bearer ${getRequestEvent().cookies.get("token")}`,
+        },
+      },
+    );
 
-  const response = await fetch(new URL("/clusters/stats/stream?interval=2", env.API_URL), {
-    headers: {
-      Accept: "text/event-stream",
-      Authorization: `Bearer ${token}`,
-    },
-  });
+    switch (response.status) {
+      case 200: {
+        if (!response.body) {
+          console.error(await response.text());
+          return error(500, "An error occurred");
+        }
 
-  switch (response.status) {
-    case 200: {
-      if (!response.body) {
+        const chunks = response.body
+          .pipeThrough(new TextDecoderStream())
+          .pipeThrough(new EventSourceParserStream())
+          // @ts-ignore svelte-check false positive
+          .values();
+
+        for await (const chunk of chunks)
+          yield { ...(JSON.parse(chunk.data) as GetAggregateStatsDto), date: new Date() };
+        return;
+      }
+      case 401:
+        return redirect(303, "/login");
+
+      default:
         console.error(await response.text());
         return error(500, "An error occurred");
-      }
-
-      const chunks = response.body
-        .pipeThrough(new TextDecoderStream())
-        .pipeThrough(new EventSourceParserStream())
-        // @ts-ignore svelte-check false positive
-        .values();
-
-      for await (const chunk of chunks) yield JSON.parse(chunk.data) as GetAggregateStatsDto;
-      return;
     }
-    case 401:
-      return redirect(303, "/login");
-
-    default:
-      console.error(await response.text());
-      return error(500, "An error occurred");
-  }
-});
+  },
+);
 
 export const startClusters = query.batch(
   "unchecked",
