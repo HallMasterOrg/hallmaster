@@ -1,4 +1,4 @@
-import { DockerAPIHttpError, DockerSocket } from '@hallmaster/docker.js';
+import { DockerAPIHttpError, DockerSocket, type DockerContainerStats } from '@hallmaster/docker.js';
 import type { Bot, Cluster } from '@hallmaster/prisma-client';
 import { ConfigService } from '@nestjs/config';
 import type { TestingModule } from '@nestjs/testing';
@@ -161,6 +161,45 @@ describe('DockerService', () => {
 
       expect(status).toBe('RUNNING');
       expect(prismaService.cluster.update).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('getContainerStats CPU percentage', () => {
+    const buildStats = (cpuTotal: number, precpuTotal: number) =>
+      ({
+        cpu_stats: {
+          cpu_usage: { total_usage: cpuTotal, percpu_usage: [0], usage_in_kernelmode: 0, usage_in_usermode: 0 },
+          system_cpu_usage: 2_000_000,
+          online_cpus: 1,
+          throttling_data: { periods: 0, throttled_periods: 0, throttled_time: 0 },
+        },
+        precpu_stats: {
+          cpu_usage: { total_usage: precpuTotal, percpu_usage: [0], usage_in_kernelmode: 0, usage_in_usermode: 0 },
+          system_cpu_usage: 1_000_000,
+          online_cpus: 1,
+          throttling_data: { periods: 0, throttled_periods: 0, throttled_time: 0 },
+        },
+        pids_stats: { current: 1, limit: 10 },
+        memory_stats: { usage: 100, limit: 1000, stats: {} },
+        blkio_stats: { io_service_bytes_recursive: [] },
+        networks: {},
+      }) as unknown as DockerContainerStats;
+
+    it('clamps CPU to 0 when the delta is negative (counter reset on restart)', async () => {
+      dockerSocket.apiCall.mockResolvedValueOnce(buildStats(100, 1000));
+
+      const stats = await service.getContainerStats('container-1');
+
+      expect(stats.cpuPercentage).toBe(0);
+    });
+
+    it('computes the CPU percentage from a positive delta', async () => {
+      dockerSocket.apiCall.mockResolvedValueOnce(buildStats(1500, 1000));
+
+      const stats = await service.getContainerStats('container-1');
+
+      // cpuDelta 500 / systemDelta 1_000_000 * 1 online cpu * 100
+      expect(stats.cpuPercentage).toBeCloseTo(0.05);
     });
   });
 });

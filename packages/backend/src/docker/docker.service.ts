@@ -449,7 +449,7 @@ export class DockerService {
 
     const onlineCPUs = stats.cpu_stats.online_cpus ?? stats.cpu_stats.cpu_usage.percpu_usage?.length ?? 1;
 
-    const cpuPercentage = systemDelta > 0 ? (cpuDelta / systemDelta) * onlineCPUs * 100 : 0;
+    const cpuPercentage = systemDelta > 0 && cpuDelta > 0 ? (cpuDelta / systemDelta) * onlineCPUs * 100 : 0;
 
     const processesUsage = stats.pids_stats?.current ?? 0;
     const processesLimit = stats.pids_stats?.limit ?? 0;
