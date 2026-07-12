@@ -10,5 +10,8 @@ onlyBuiltDependencies:
   - prisma
   - esbuild
 
+# virtua patch is frontend-only; unused when deploying the backend subset
+allowUnusedPatches: true
+
 patchedDependencies:
   virtua: patches/virtua.patch
