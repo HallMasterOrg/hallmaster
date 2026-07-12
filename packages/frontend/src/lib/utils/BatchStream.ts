@@ -13,6 +13,7 @@ export default class BatchStream<T> extends TransformStream<T, T[]> {
         }, this.interval);
       },
       flush: (controller) => {
+        if (this.timer) clearTimeout(this.timer);
         this.flush(controller);
       },
     });

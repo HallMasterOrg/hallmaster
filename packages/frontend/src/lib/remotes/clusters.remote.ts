@@ -137,6 +137,8 @@ export const getClusterLogsLive = query.live(ClusterIdParamSchema.shape.id, asyn
       }
       return;
     }
+    case 400:
+      return error(400, "Cluster has no bound container");
     case 401:
       return redirect(303, "/login");
 
@@ -169,7 +171,7 @@ export const getClusterStatsLive = query.live(ClusterIdParamSchema.shape.id, asy
 
       for await (const chunk of chunks)
         yield { ...(JSON.parse(chunk.data) as GetClusterStatsDto), date: new Date() };
-      break;
+      return;
     }
     case 400:
       return error(400, "Cluster has no container or is not running");
@@ -229,7 +231,7 @@ export const getClustersLive = query.live(async function* () {
 
       for await (const clusters of chunks)
         yield (JSON.parse(clusters.data) as GetClusterDto[]).sort((a, b) => a.id - b.id);
-      break;
+      return;
     }
     case 401:
       return redirect(303, "/login");
@@ -264,7 +266,7 @@ export const getClustersStatsLive = query.live(async function* () {
         .values();
 
       for await (const chunk of chunks) yield JSON.parse(chunk.data) as GetAggregateStatsDto;
-      break;
+      return;
     }
     case 401:
       return redirect(303, "/login");
