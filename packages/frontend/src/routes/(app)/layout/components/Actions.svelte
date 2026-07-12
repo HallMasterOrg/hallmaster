@@ -19,7 +19,6 @@
     icon={{ icon: SaveIcon, strokeWidth: 1.5, size: 16 }}
     label="Save changes"
     class="preset-filled-primary-500 btn-sm"
-    // @ts-expect-error
     disabled={!changed || !!updateBotLayout.pending}
     onclick={() => {
       toaster.promise(updateBotLayout({ layout: layout!.export() }), {

@@ -1,7 +1,7 @@
 <script lang="ts">
   import Widget from "$lib/components/Widget.svelte";
   import { LayoutManager } from "$lib/utils/LayoutManager.svelte";
-  import { BoxesIcon, CopyIcon, MinusIcon, PlusIcon } from "@lucide/svelte";
+  import { ContainerIcon, CopyIcon, MinusIcon, PlusIcon } from "@lucide/svelte";
 
   import Shard from "./Shard.svelte";
 
@@ -18,7 +18,7 @@
 {const rows = $derived(Math.ceil((cluster.shards!.size + 1) / columns))}
 
 <Widget
-  icon={BoxesIcon}
+  icon={ContainerIcon}
   title={`Cluster ${String(index).padStart(2, "0")}`}
   value={cluster
     .shards!.values()
