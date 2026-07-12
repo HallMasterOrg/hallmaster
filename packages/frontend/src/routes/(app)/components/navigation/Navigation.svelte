@@ -1,6 +1,8 @@
 <script lang="ts">
+  import { page } from "$app/state";
   import type { Icon } from "@lucide/svelte";
   import { Navigation } from "@skeletonlabs/skeleton-svelte";
+
   import Footer from "./Footer.svelte";
   import Header from "./Header.svelte";
 
@@ -14,23 +16,26 @@
 <div class="flex">
   <Navigation
     layout="sidebar"
-    class="sticky top-0 h-screen grid grid-rows-[auto_1fr_auto] gap-4 bg-surface-50-950"
+    class="sticky top-0 grid h-screen grid-rows-[auto_1fr_auto] gap-4 bg-surface-50-950"
   >
     <Navigation.Header class="flex items-center gap-2">
       <Header />
     </Navigation.Header>
 
     <Navigation.Content>
-      {#each Object.entries(items) as [category, links], index}
+      {#each Object.entries(items) as [category, links]}
         <Navigation.Group>
-          <Navigation.Label class="capitalize pl-2">
+          <Navigation.Label class="pl-2 capitalize">
             {category}
           </Navigation.Label>
 
           <Navigation.Menu>
             {#each links as { icon, label, path }}
               {@const Icon = icon}
-              <Navigation.TriggerAnchor href={path}>
+              <Navigation.TriggerAnchor
+                href={path}
+                class={{ "preset-filled-surface-100-900": page.url.pathname.startsWith(path) }}
+              >
                 <Icon class="size-4" />
                 <Navigation.TriggerText>{label}</Navigation.TriggerText>
               </Navigation.TriggerAnchor>

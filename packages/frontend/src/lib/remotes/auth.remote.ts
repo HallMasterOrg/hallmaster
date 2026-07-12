@@ -61,3 +61,8 @@ export const login = form(loginSchema, async (payload, issue) => {
       return error(500, "An error occurred");
   }
 });
+
+export const logout = form(async () => {
+  getRequestEvent().cookies.delete("token", { path: "/" });
+  redirect(303, "/login");
+});
