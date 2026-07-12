@@ -19,7 +19,7 @@
     {#if issues}
       <TriangleAlertIcon size={16} />
     {:else if icon}
-      {@const Icon = icon}
+      {const Icon = icon}
       <Icon size={16} />
     {/if}
 

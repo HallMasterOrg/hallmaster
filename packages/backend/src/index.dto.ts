@@ -1,7 +1,8 @@
 export { ApiErrorSchema, type ApiErrorDto } from './common/dto/api-error.dto.js';
 
-export { registerSchema } from './auth/schemas/register.schema.js';
+export { registerSchema, type Register } from './auth/schemas/register.schema.js';
 export { loginSchema } from './auth/schemas/login.schema.js';
+export { type UserToken } from './auth/schemas/user-token.schema.js';
 
 export { CreateBotSchema, type CreateBotDto } from './bot/dto/create-bot.dto.js';
 export { UpdateBotSchema, type UpdateBotDto } from './bot/dto/update-bot.dto.js';

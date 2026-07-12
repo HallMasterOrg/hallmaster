@@ -80,10 +80,7 @@
     issues={token.issues()}
   />
 
-  <button
-    class="btn text-sm preset-filled-primary-500"
-    disabled={!!createBot.pending}
-  >
+  <button class="btn preset-filled-primary-500 text-sm" disabled={!!createBot.pending}>
     Register bot
     {#if createBot.pending}
       <LoaderCircleIcon class="animate-spin" />

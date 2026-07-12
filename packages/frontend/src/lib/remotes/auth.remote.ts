@@ -1,10 +1,10 @@
 import { form, getRequestEvent } from "$app/server";
 import { env } from "$env/dynamic/private";
-import { loginSchema, registerSchema } from "@hallmaster/backend/dto";
+import { loginSchema, registerSchema, type UserToken } from "@hallmaster/backend/dto";
 import { error, invalid, redirect } from "@sveltejs/kit";
 
 export const register = form(registerSchema, async (payload) => {
-  const response = await fetch(`${env.API_URL}/auth/register`, {
+  const response = await fetch(new URL("/auth/register", env.API_URL), {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -14,10 +14,9 @@ export const register = form(registerSchema, async (payload) => {
 
   switch (response.status) {
     case 201: {
-      const { cookies } = getRequestEvent();
-      const { token } = await response.json();
+      const { token } = (await response.json()) as UserToken;
+      getRequestEvent().cookies.set("token", token, { path: "/" });
 
-      cookies.set("token", token, { path: "/" });
       return redirect(303, "/setup#bot");
     }
     case 400:
@@ -32,7 +31,7 @@ export const register = form(registerSchema, async (payload) => {
 });
 
 export const login = form(loginSchema, async (payload, issue) => {
-  const response = await fetch(`${env.API_URL}/auth/login`, {
+  const response = await fetch(new URL("/auth/login", env.API_URL), {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -42,10 +41,9 @@ export const login = form(loginSchema, async (payload, issue) => {
 
   switch (response.status) {
     case 200: {
-      const { cookies } = getRequestEvent();
-      const { token } = await response.json();
+      const { token } = (await response.json()) as UserToken;
+      getRequestEvent().cookies.set("token", token, { path: "/" });
 
-      cookies.set("token", token, { path: "/" });
       return redirect(303, "/clusters");
     }
     case 400:

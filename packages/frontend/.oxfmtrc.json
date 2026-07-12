@@ -3,5 +3,6 @@
   "sortImports": {},
   "sortTailwindcss": {
     "stylesheet": "src/app.css"
-  }
+  },
+  "svelte": true
 }

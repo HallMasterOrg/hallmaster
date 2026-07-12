@@ -38,10 +38,7 @@
     issues={register.fields.password.issues()}
   />
 
-  <button
-    class="btn text-sm preset-filled-primary-500"
-    disabled={!!register.pending}
-  >
+  <button class="btn preset-filled-primary-500 text-sm" disabled={!!register.pending}>
     Create account
     {#if register.pending}
       <LoaderCircleIcon class="animate-spin" />
