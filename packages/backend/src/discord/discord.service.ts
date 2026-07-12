@@ -7,7 +7,7 @@ const DISCORD_CDN_BASE_URL = 'https://cdn.discordapp.com';
 const DISCORD_REQUEST_TIMEOUT_MS = 10_000;
 
 const DiscordGatewayBotSchema = z.object({
-  shards: z.number().int().nonnegative(),
+  shards: z.int().positive(),
 });
 
 const DiscordUserSchema = z.object({

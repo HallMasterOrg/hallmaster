@@ -2,7 +2,7 @@ import { createZodDto } from 'nestjs-zod';
 import { z } from 'zod';
 
 export const GetRecommendedShardsSchema = z.object({
-  shards: z.number().positive().meta({
+  shards: z.int().positive().meta({
     description: 'The recommended number of shards for the bot.',
   }),
 });
