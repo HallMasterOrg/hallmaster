@@ -1,16 +1,19 @@
 <script lang="ts">
   import { CheckIcon, type Icon } from "@lucide/svelte";
   import type { ComponentProps } from "svelte";
-  import type { HTMLAttributes } from "svelte/elements";
+  import type { HTMLButtonAttributes } from "svelte/elements";
 
   type IconProps = ComponentProps<typeof Icon> & { icon: typeof Icon };
 
-  type Props = HTMLAttributes<HTMLButtonElement> &
+  type Props = HTMLButtonAttributes &
     ({ icon: IconProps; label?: string } | { icon?: IconProps; label: string });
 
   let { icon, label, ...props }: Props = $props();
 
   let confirm = $state(false);
+
+  let timer: NodeJS.Timeout | undefined;
+  const reset = () => timer ??= setTimeout(() => { confirm = false; timer = undefined; }, 1500);
 </script>
 
 {#if !confirm}
@@ -31,12 +34,21 @@
     {/if}
   </button>
 {:else}
-  <button
+<!-- svelte-ignore a11y_autofocus -->
+<button
     {...props}
+    aria-label="Confirm action"
     class={["preset-tonal-error", props.class]}
     class:btn={!!label}
     class:btn-icon={!label}
-    onmouseleave={() => setTimeout(() => (confirm = false), 1000)}
+    autofocus
+    onfocusout={reset}
+    onblur={reset}
+    onmouseout={reset}
+    onmouseover={() => {
+      clearTimeout(timer);
+      timer = undefined;
+    }}
   >
     {#if icon}
       {const { icon: _, ...props } = icon}

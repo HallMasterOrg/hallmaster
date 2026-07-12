@@ -34,7 +34,7 @@
               {@const Icon = icon}
               <Navigation.TriggerAnchor
                 href={path}
-                class={{ "preset-filled-surface-100-900": path === page.url.pathname }}
+                class={{ "preset-filled-surface-100-900": page.url.pathname.startsWith(path) }}
               >
                 <Icon class="size-4" />
                 <Navigation.TriggerText>{label}</Navigation.TriggerText>
