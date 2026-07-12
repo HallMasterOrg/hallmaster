@@ -27,6 +27,7 @@ services:
       context: .
       dockerfile: docker/backend.Dockerfile
     container_name: hallmaster-backend
+    restart: unless-stopped
     ports:
       - "3000:3000"
     env_file:
