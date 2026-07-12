@@ -12,8 +12,7 @@
   onMount(() => {
     let unmounted = false;
     (async () => {
-      for await (const { date, ...stats } of getClustersStatsLive()) {
-        console.log(unmounted);
+      for await (const { date, ...stats } of getClustersStatsLive({ interval: 1 })) {
         if (unmounted) break;
         value = Object.fromEntries(
           Object.entries(stats as GetAggregateStatsDto).map(([key, { cpuPercentage }]) => [

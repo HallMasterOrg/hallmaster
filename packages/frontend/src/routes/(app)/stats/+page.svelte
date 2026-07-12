@@ -8,7 +8,7 @@
 
 <div class="flex flex-col gap-4">
   <div class="flex justify-end px-4">
-    <LiveQueryPing query={getClustersStatsLive()} />
+    <LiveQueryPing query={getClustersStatsLive({ interval: 1 })} />
   </div>
 
   <div
