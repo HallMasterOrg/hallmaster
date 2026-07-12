@@ -8,3 +8,12 @@
 
   @apply flex flex-col items-center gap-4 p-6 *:w-full;
 }
+
+.text-2xs {
+  font-size: 0.625rem;
+  line-height: 0.75rem;
+}
+.text-3xs {
+  font-size: 0.5rem;
+  line-height: 0.5rem;
+}

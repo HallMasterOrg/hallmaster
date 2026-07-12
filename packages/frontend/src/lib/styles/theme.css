@@ -205,7 +205,3 @@
   --color-surface-contrast-900: var(--color-surface-contrast-light);
   --color-surface-contrast-950: var(--color-surface-contrast-light);
 }
-
-@theme {
-  --text-tiny: 0.625rem;
-}

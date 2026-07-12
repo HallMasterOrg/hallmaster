@@ -9,3 +9,6 @@ onlyBuiltDependencies:
   - argon2
   - prisma
   - esbuild
+
+patchedDependencies:
+  virtua: patches/virtua.patch
