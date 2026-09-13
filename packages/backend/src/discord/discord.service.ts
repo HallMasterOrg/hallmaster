@@ -1,4 +1,4 @@
-import { HttpException, HttpStatus, Injectable, UnauthorizedException } from '@nestjs/common';
+import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { z } from 'zod';
 
 const DISCORD_API_VERSION = 'v10';
@@ -47,7 +47,7 @@ export class DiscordService {
     }
 
     if (response.status === 401) {
-      throw new UnauthorizedException('Invalid Discord bot token.');
+      throw new HttpException('Invalid Discord bot token.', HttpStatus.FAILED_DEPENDENCY);
     }
 
     if (!response.ok) {
