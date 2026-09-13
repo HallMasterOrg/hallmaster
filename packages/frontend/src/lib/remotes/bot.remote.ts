@@ -27,6 +27,8 @@ export const createBot = form(CreateBotSchema, async (payload) => {
       return error(401, "Unauthorized");
     case 409:
       return error(409, "A bot already exists");
+    case 424:
+      return error(424, "Invalid Discord bot token");
 
     default:
       console.error(await response.text());
@@ -72,6 +74,8 @@ export const getRecommendedShards = query<GetRecommendedShardsDto["shards"]>(asy
       return redirect(303, "/login");
     case 404:
       return redirect(303, "/setup");
+    case 424:
+      return error(424, "Invalid Discord bot token");
 
     default:
       console.error(await response.text());
@@ -97,6 +101,8 @@ export const updateBotToken = form(UpdateBotSchema.pick({ token: true }), async 
       return redirect(303, "/login");
     case 404:
       return redirect(303, "/setup");
+    case 424:
+      return error(424, "Invalid Discord bot token");
 
     default:
       console.error(await response.text());

@@ -1,5 +1,5 @@
 import { jest } from '@jest/globals';
-import { HttpException, HttpStatus, UnauthorizedException } from '@nestjs/common';
+import { HttpException, HttpStatus } from '@nestjs/common';
 
 import { DiscordService } from './discord.service.js';
 
@@ -38,10 +38,13 @@ describe('DiscordService', () => {
       await expect(service.getGatewayBot(TOKEN)).resolves.toEqual({ shards: 4 });
     });
 
-    it('throws UnauthorizedException on a 401 (invalid token)', async () => {
+    it('throws a 424 on a 401 (invalid token)', async () => {
       fetchMock.mockResolvedValueOnce(jsonResponse(401, {}));
 
-      await expect(service.getGatewayBot(TOKEN)).rejects.toBeInstanceOf(UnauthorizedException);
+      await expect(service.getGatewayBot(TOKEN)).rejects.toMatchObject({
+        status: HttpStatus.FAILED_DEPENDENCY,
+        message: 'Invalid Discord bot token.',
+      });
     });
 
     it('throws a 424 when the Discord API errors', async () => {
