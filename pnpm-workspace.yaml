@@ -1,14 +1,15 @@
 packages:
   - packages/*
 
-onlyBuiltDependencies:
-  - '@nestjs/core'
-  - '@prisma/engines'
-  - '@scarf/scarf'
-  - '@swc/core'
-  - argon2
-  - prisma
-  - esbuild
+allowBuilds:
+  '@nestjs/core': true
+  '@prisma/engines': true
+  '@scarf/scarf': true
+  '@swc/core': true
+  argon2: true
+  esbuild: true
+  prisma: true
+  unrs-resolver: false
 
 # virtua patch is frontend-only; unused when deploying the backend subset
 allowUnusedPatches: true

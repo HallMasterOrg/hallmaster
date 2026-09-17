@@ -7,75 +7,54 @@ on:
   pull_request:
 
 jobs:
-  check:
-    name: Check
+  check-lint-format:
+    name: check, lint and format
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Setup Node.js & pnpm
-        uses: ./.github/actions/setup
+        uses: pnpm/setup@v2
+        with:
+          cache: true
+          install: false
 
       - name: Install dependencies
         run: pnpm --filter @hallmaster/frontend... install --frozen-lockfile --prefer-offline
 
-      - name: Check
-        run: pnpm --filter @hallmaster/frontend run check --fail-on-warnings
+      - parallel:
+        - name: Check
+          run: pnpm --filter @hallmaster/frontend run check --fail-on-warnings
 
-  lint:
-    name: Lint
-    runs-on: ubuntu-latest
+        - name: Lint
+          run: pnpm --filter @hallmaster/frontend run lint --format github
 
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v6
-
-      - name: Setup Node.js & pnpm
-        uses: ./.github/actions/setup
-
-      - name: Install dependencies
-        run: pnpm --filter @hallmaster/frontend... install --frozen-lockfile --prefer-offline
-
-      - name: Lint
-        run: pnpm --filter @hallmaster/frontend run lint --format github
-
-  format:
-    name: Format check
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v6
-
-      - name: Setup Node.js & pnpm
-        uses: ./.github/actions/setup
-
-      - name: Install dependencies
-        run: pnpm --filter @hallmaster/frontend... install --frozen-lockfile --prefer-offline
-
-      - name: Format check
-        run: pnpm --filter @hallmaster/frontend run format:check
+        - name: Format check
+          run: pnpm --filter @hallmaster/frontend run format:check
 
   build:
     name: Build
     runs-on: ubuntu-latest
-    needs: [check, lint, format]
+    needs: [check-lint-format]
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Setup Node.js & pnpm
-        uses: ./.github/actions/setup
+        uses: pnpm/setup@v2
+        with:
+          cache: true
+          install: false
 
       - name: Install dependencies
         run: pnpm --filter @hallmaster/frontend... install --frozen-lockfile --prefer-offline
 
       - name: Build
         run: pnpm --filter @hallmaster/frontend run build
-  
+
   build-and-push:
     name: Build and Push Images
     runs-on: ubuntu-latest
@@ -88,7 +67,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v6.0.2
+        uses: actions/checkout@v7
 
       - name: Install trusted certificat
         run: |
