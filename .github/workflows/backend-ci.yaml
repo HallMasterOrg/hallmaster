@@ -38,14 +38,15 @@ jobs:
       - name: Generate Prisma types
         run: pnpm --filter=@hallmaster/backend prisma:generate
 
-      - name: Run lint
-        run: pnpm --filter=@hallmaster/backend lint
+      - parallel:
+        - name: Run lint
+          run: pnpm --filter=@hallmaster/backend lint
 
-      - name: Run format check
-        run: pnpm --filter=@hallmaster/backend format
+        - name: Run format check
+          run: pnpm --filter=@hallmaster/backend format
 
-      - name: Test the build process
-        run: pnpm --filter=@hallmaster/backend build
+        - name: Test the build process
+          run: pnpm --filter=@hallmaster/backend build
 
       - name: Run the tests
         run: pnpm --filter=@hallmaster/backend test:cov
