@@ -67,7 +67,10 @@
         <button
           class="btn-icon rounded-r-none text-surface-700-300 hover:bg-surface-100-900 hover:text-error-700-300"
           style:font-size="clamp(0.625rem, 30cqw, 2em)"
-          onclick={() => cluster.pop()}
+          onclick={() => {
+            if (cluster.state === "added" && cluster.current.size === 1) layout.remove(index);
+            else cluster.pop();
+          }}
         >
           <MinusIcon />
         </button>
