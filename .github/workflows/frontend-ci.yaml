@@ -20,6 +20,7 @@ jobs:
         with:
           cache: true
           install: false
+          version: 12.6.0
 
       - name: Install dependencies
         run: pnpm --filter @hallmaster/frontend... install --frozen-lockfile --prefer-offline
@@ -48,6 +49,7 @@ jobs:
         with:
           cache: true
           install: false
+          version: 12.6.0
 
       - name: Install dependencies
         run: pnpm --filter @hallmaster/frontend... install --frozen-lockfile --prefer-offline
