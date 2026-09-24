@@ -24,10 +24,13 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Setup Node.js & pnpm
-        uses: ./.github/actions/setup
+        uses: pnpm/setup@v2
+        with:
+          cache: true
+          install: false
 
       - name: Install dependencies
         run: pnpm install --filter=@hallmaster/backend... --frozen-lockfile
@@ -35,14 +38,15 @@ jobs:
       - name: Generate Prisma types
         run: pnpm --filter=@hallmaster/backend prisma:generate
 
-      - name: Run lint
-        run: pnpm --filter=@hallmaster/backend lint
+      - parallel:
+        - name: Run lint
+          run: pnpm --filter=@hallmaster/backend lint
 
-      - name: Run format check
-        run: pnpm --filter=@hallmaster/backend format
+        - name: Run format check
+          run: pnpm --filter=@hallmaster/backend format
 
-      - name: Test the build process
-        run: pnpm --filter=@hallmaster/backend build
+        - name: Test the build process
+          run: pnpm --filter=@hallmaster/backend build
 
       - name: Run the tests
         run: pnpm --filter=@hallmaster/backend test:cov
@@ -59,7 +63,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v6.0.2
+        uses: actions/checkout@v7
 
       - name: Install trusted certificat
         run: |
