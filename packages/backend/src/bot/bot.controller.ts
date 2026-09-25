@@ -42,13 +42,9 @@ export class BotController {
     type: ApiErrorZodDto,
     description: 'No bot created beforehand.',
   })
-  @ApiUnauthorizedResponse({
-    type: ApiErrorZodDto,
-    description: 'The Discord bot token stored in database is invalid.',
-  })
   @ApiFailedDependencyResponse({
     type: ApiErrorZodDto,
-    description: 'Got an invalid response from the Discord API.',
+    description: 'The Discord bot token is invalid or got an invalid response from the Discord API.',
   })
   getRecommendedShards() {
     return this.botService.getRecommendedShards();
@@ -70,7 +66,7 @@ export class BotController {
   })
   @ApiFailedDependencyResponse({
     type: ApiErrorZodDto,
-    description: 'Got an invalid response from the Discord API.',
+    description: 'The Discord bot token is invalid or got an invalid response from the Discord API.',
   })
   create(@Body() createBotDto: CreateBotZodDto) {
     return this.botService.create(createBotDto);
@@ -105,7 +101,7 @@ export class BotController {
   })
   @ApiFailedDependencyResponse({
     type: ApiErrorZodDto,
-    description: 'Got an invalid response from the Discord API.',
+    description: 'The Discord bot token is invalid or got an invalid response from the Discord API.',
   })
   update(@Body() updateBotDto: UpdateBotZodDto) {
     return this.botService.update(updateBotDto);
