@@ -48,7 +48,9 @@ export default class DockerService {
     });
   }
 
-  public static async start(...options: MethodParameters<typeof DockerContainersAPI, "start">) {
+  public static async startContainer(
+    ...options: MethodParameters<typeof DockerContainersAPI, "start">
+  ) {
     return this.containers.start(...options).catch((error) => {
       if (!(error instanceof DockerAPIHttpError))
         throw new FailedDependancyException({
@@ -65,7 +67,9 @@ export default class DockerService {
     });
   }
 
-  public static async stop(...options: MethodParameters<typeof DockerContainersAPI, "stop">) {
+  public static async stopContainer(
+    ...options: MethodParameters<typeof DockerContainersAPI, "stop">
+  ) {
     return this.containers.stop(...options).catch((error) => {
       if (!(error instanceof DockerAPIHttpError))
         throw new FailedDependancyException({
@@ -82,7 +86,9 @@ export default class DockerService {
     });
   }
 
-  public static async restart(...options: MethodParameters<typeof DockerContainersAPI, "restart">) {
+  public static async restartContainer(
+    ...options: MethodParameters<typeof DockerContainersAPI, "restart">
+  ) {
     return this.containers.restart(...options).catch((error) => {
       if (!(error instanceof DockerAPIHttpError))
         throw new FailedDependancyException({
@@ -97,7 +103,9 @@ export default class DockerService {
     });
   }
 
-  public static async remove(...options: MethodParameters<typeof DockerContainersAPI, "remove">) {
+  public static async removeContainer(
+    ...options: MethodParameters<typeof DockerContainersAPI, "remove">
+  ) {
     return this.containers.remove(...options).catch((error) => {
       if (!(error instanceof DockerAPIHttpError))
         throw new FailedDependancyException({
@@ -106,6 +114,23 @@ export default class DockerService {
         });
 
       if (error.status === 404) return;
+
+      throw new FailedDependancyException({
+        message: `Docker Engine API returned a ${error.status} ${error.message}`,
+        cause: error,
+      });
+    });
+  }
+
+  public static async containerLogs(
+    ...options: MethodParameters<typeof DockerContainersAPI, "logs">
+  ) {
+    return this.containers.logs(...options).catch((error) => {
+      if (!(error instanceof DockerAPIHttpError))
+        throw new FailedDependancyException({
+          message: "Docker Engine API returned an unexpected response",
+          cause: error,
+        });
 
       throw new FailedDependancyException({
         message: `Docker Engine API returned a ${error.status} ${error.message}`,

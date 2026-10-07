@@ -33,7 +33,7 @@ const clusterController = new Hono()
           },
         },
         404: {
-          description: "No cluster found",
+          description: "Not Found",
           content: {
             "application/json": { example: "Clusters not found" },
           },
@@ -147,7 +147,7 @@ const clusterController = new Hono()
           },
         },
         404: {
-          description: "Not found",
+          description: "Not Found",
           content: {
             "text/plain": { example: "Cluster not found" },
           },
@@ -176,7 +176,10 @@ const clusterController = new Hono()
           },
         },
         404: {
-          description: "Cluster not found",
+          description: "Not Found",
+          content: {
+            "text/plain": { example: "Cluster not found" },
+          },
         },
       },
     }),
@@ -201,7 +204,18 @@ const clusterController = new Hono()
           },
         },
         404: {
-          description: "Cluster not found",
+          description: "Not Found",
+          content: {
+            "text/plain": { example: "Cluster not found" },
+          },
+        },
+        424: {
+          description: "Failed Dependency",
+          content: {
+            "text/plain": {
+              example: "Docker Engine API returned an unexpected response",
+            },
+          },
         },
       },
     }),
@@ -226,12 +240,31 @@ const clusterController = new Hono()
           },
         },
         404: {
-          description: "Cluster not found",
+          description: "Not Found",
+          content: {
+            "text/plain": { example: "Cluster not found" },
+          },
+        },
+        424: {
+          description: "Failed Dependency",
+          content: {
+            "text/plain": {
+              example: "Docker Engine API returned an unexpected response",
+            },
+          },
         },
       },
     }),
     validator("param", ClusterIdParamSchema),
     validator("query", ClusterLogsQuerySchema),
+    async (c) => {
+      const param = c.req.valid("param");
+      const query = c.req.valid("query");
+
+      const logs = await ClusterService.logs(param.id, query);
+
+      return c.json(logs, 200);
+    },
   )
   .get(
     "/:id/logs/sse",
@@ -246,7 +279,10 @@ const clusterController = new Hono()
           },
         },
         404: {
-          description: "Cluster not found",
+          description: "Not Found",
+          content: {
+            "text/plain": { example: "Cluster not found" },
+          },
         },
       },
     }),
@@ -265,7 +301,10 @@ const clusterController = new Hono()
           },
         },
         404: {
-          description: "Cluster not found",
+          description: "Not Found",
+          content: {
+            "text/plain": { example: "Cluster not found" },
+          },
         },
       },
     }),
@@ -284,7 +323,10 @@ const clusterController = new Hono()
           },
         },
         404: {
-          description: "Cluster not found",
+          description: "Not Found",
+          content: {
+            "text/plain": { example: "Cluster not found" },
+          },
         },
       },
     }),
@@ -304,7 +346,7 @@ const clusterController = new Hono()
           },
         },
         404: {
-          description: "Not found",
+          description: "Not Found",
           content: {
             "text/plain": { example: "Cluster not found" },
           },

@@ -83,16 +83,17 @@ export const ClusterIdParamSchema = z.object({
 });
 
 export const ClusterLogsQuerySchema = z.object({
-  since: z.iso.datetime().optional().meta({
+  since: z.coerce.date().optional().meta({
     description: "At which point in time does the logs collection start",
   }),
-  until: z.iso.datetime().optional().meta({
+  until: z.coerce.date().optional().meta({
     description: "At which point in time does the logs collection end",
   }),
   tail: z.coerce.number().positive().min(1).or(z.literal("all")).optional().default("all").meta({
     description: "How many logs to fetch from latest to oldest ('all' gets all the logs)",
   }),
 });
+export type ClusterLogsQuery = z.infer<typeof ClusterLogsQuerySchema>;
 
 export const ClusterLogSchema = z.object({
   content: z.string().meta({
