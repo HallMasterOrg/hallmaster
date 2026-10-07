@@ -7,13 +7,23 @@ import env from "../lib/env.js";
 import UserRepository from "../repositories/user.repository.js";
 
 export class AuthService {
+  private static async sign(sub: string) {
+    return await sign(
+      {
+        sub,
+        exp: Math.floor(Date.now() / 1000) + 3600 * 12, // 12 hours
+      },
+      env.SECRET,
+    );
+  }
+
   public static async register({ username, password }: User): Promise<UserTokenResponse> {
     const userCount = await prisma.user.count();
     if (userCount !== 0) throw new ConflictException({ message: "A user is already registered" });
 
     const user = await UserRepository.create({ username, passwordHash: await hash(password) });
 
-    return { token: await sign({ sub: user.username }, env.SECRET) };
+    return { token: await this.sign(user.username) };
   }
 
   public static async login({ username, password }: User): Promise<UserTokenResponse> {
@@ -22,8 +32,6 @@ export class AuthService {
     if (user === null || !(await verify(user.passwordHash, password)))
       throw new UnauthorizedException({ message: "Invalid username or password" });
 
-    return {
-      token: await sign({ sub: user.username }, env.SECRET),
-    };
+    return { token: await this.sign(user.username) };
   }
 }
