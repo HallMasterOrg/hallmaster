@@ -1,4 +1,5 @@
 import z from "zod";
+
 import { BotSchema } from "./bot.schema";
 
 export const DiscordGatewayBotSchema = BotSchema.pick({ shards: true });

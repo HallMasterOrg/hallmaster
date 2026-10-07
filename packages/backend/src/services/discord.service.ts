@@ -1,11 +1,12 @@
+import { HTTPException } from "hono/http-exception";
+import type z from "zod";
+
 import type { BotDiscordProfile } from "#schemas/bot.schema";
 import {
   DiscordGatewayBotSchema,
   DiscordUserSchema,
   type DiscordGatewayBot,
 } from "#schemas/discord.schema";
-import { HTTPException } from "hono/http-exception";
-import type z from "zod";
 
 export default class DiscordService {
   private static readonly DISCORD_API_BASE_URL = "https://discord.com/api/v10";

@@ -4,7 +4,8 @@ import {
   DockerImagesAPI,
   DockerSocket,
 } from "@hallmaster/docker.js";
-import { FailedDependancyException } from "../exceptions/http-exceptions";
+
+import { FailedDependancyException } from "#exceptions/http-exceptions";
 
 type MethodParameters<
   C extends abstract new (...args: any[]) => any,

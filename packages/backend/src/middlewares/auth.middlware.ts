@@ -1,6 +1,7 @@
-import env from "#lib/env";
 import { describeRoute } from "hono-openapi";
 import { jwt } from "hono/jwt";
+
+import env from "#lib/env";
 
 const authMiddlewares = [
   describeRoute({

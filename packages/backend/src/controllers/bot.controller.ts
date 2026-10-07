@@ -1,9 +1,10 @@
+import { Hono } from "hono";
+import { describeRoute, resolver, validator } from "hono-openapi";
+
+import authMiddlewares from "#middlewares/auth.middlware";
 import { BotSchema, ContainerImageSchema, CreateBotSchema } from "#schemas/bot.schema";
 import { DiscordUserSchema } from "#schemas/discord.schema";
 import BotService from "#services/bot.service";
-import { Hono } from "hono";
-import { describeRoute, resolver, validator } from "hono-openapi";
-import authMiddlewares from "../middlewares/auth.middlware";
 
 const tags = ["Bot"];
 

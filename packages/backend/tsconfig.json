@@ -15,13 +15,14 @@
     "rootDir": ".",
     "types": ["node"],
     "paths": {
-      "#prisma/client": ["./prisma/generated/prisma/client"],
       "#controllers/*": ["./src/controllers/*"],
-      "#middlewares/*": ["./src/middlewares/*"],
-      "#database/*": ["./src/database/*"],
+      "#exceptions/*": ["./src/exceptions/*"],
       "#lib/*": ["./src/lib/*"],
-      "#services/*": ["./src/services/*"],
-      "#schemas/*": ["./src/schemas/*"]
+      "#middlewares/*": ["./src/middlewares/*"],
+      "#prisma/client": ["./prisma/generated/prisma/client"],
+      "#repositories/*": ["./src/repositories/*"],
+      "#schemas/*": ["./src/schemas/*"],
+      "#services/*": ["./src/services/*"]
     }
   }
 }

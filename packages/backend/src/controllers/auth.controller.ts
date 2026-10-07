@@ -1,7 +1,8 @@
-import { UserSchema, UserTokenResponseSchema } from "#schemas/auth.schema.js";
-import { AuthService } from "#services/auth.service";
 import { Hono } from "hono";
 import { describeRoute, resolver, validator } from "hono-openapi";
+
+import { UserSchema, UserTokenResponseSchema } from "#schemas/auth.schema";
+import { AuthService } from "#services/auth.service";
 
 const tags = ["Authentication"];
 

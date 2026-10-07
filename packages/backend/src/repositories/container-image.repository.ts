@@ -1,6 +1,8 @@
+import { HTTPException } from "hono/http-exception";
+
 import prisma from "#lib/database";
 import type { ContainerImage } from "#prisma/client";
-import { HTTPException } from "hono/http-exception";
+
 import BotRepository from "./bot.repository";
 
 export default class ContainerImageRepository {

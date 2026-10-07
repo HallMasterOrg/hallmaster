@@ -1,10 +1,11 @@
-import prisma from "#lib/database.js";
-import type { User, UserTokenResponse } from "#schemas/auth.schema.js";
 import { hash, verify } from "argon2";
 import { sign } from "hono/jwt";
-import { ConflictException, UnauthorizedException } from "../exceptions/http-exceptions.js";
-import env from "../lib/env.js";
-import UserRepository from "../repositories/user.repository.js";
+
+import { ConflictException, UnauthorizedException } from "#exceptions/http-exceptions";
+import prisma from "#lib/database";
+import env from "#lib/env";
+import UserRepository from "#repositories/user.repository";
+import type { User, UserTokenResponse } from "#schemas/auth.schema";
 
 export class AuthService {
   private static async sign(sub: string) {
