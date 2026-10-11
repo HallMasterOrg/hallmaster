@@ -8,24 +8,16 @@ import DiscordService from "./discord.service";
 import DockerService from "./docker.service";
 
 export default class BotService {
-  // FIX this doesn't work for local images without a host (example: "hallmaster-bot:latest")
   private static parseContainerImage(url: ContainerImage["url"]) {
-    const [host, ...path] = url.trim().split("/");
-    const [image, tag = "latest"] = path.join("/").split(":");
+    const [first, ...rest] = url.trim().split("/");
+    const hasRegistry =
+      rest.length > 0 && (first.includes(".") || first.includes(":") || first === "localhost");
+    const host = hasRegistry ? first : "docker.io";
+    const path = hasRegistry ? rest : [first, ...rest];
+    const repository = host === "docker.io" && path.length === 1 ? ["library", ...path] : path;
+    const [image, tag = "latest"] = repository.join("/").split(":");
 
     return { host, image, tag };
-  }
-
-  private static registryAuth(
-    serveraddress: string,
-    username: string | null | undefined,
-    password: string | null | undefined,
-  ) {
-    if (!username || !password) {
-      return undefined;
-    }
-
-    return { serveraddress, username, password };
   }
 
   public static async create({ token }: CreateBot): Promise<Bot> {
@@ -100,11 +92,7 @@ export default class BotService {
   }: ContainerImage): Promise<Omit<ContainerImage, "password">> {
     const { host, image, tag } = this.parseContainerImage(url);
 
-    await DockerService.pullImage({
-      fromImage: [host, image].join("/"),
-      tag,
-      auth: this.registryAuth(host, username, password),
-    });
+    await DockerService.ensureImage({ serverName: host, image, tag, username, password });
 
     const containerImage = await ContainerImageRepository.create({
       image,
@@ -150,11 +138,7 @@ export default class BotService {
       password: password ?? (keepsCredentials ? current.password : null),
     };
 
-    await DockerService.pullImage({
-      fromImage: [host, image].join("/"),
-      tag,
-      auth: this.registryAuth(host, credentials.username, credentials.password),
-    });
+    await DockerService.ensureImage({ serverName: host, image, tag, ...credentials });
 
     const containerImage = await ContainerImageRepository.update({
       image,

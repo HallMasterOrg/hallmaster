@@ -292,6 +292,7 @@ export default class ClusterService {
     if (containerImage === null)
       throw new NotFoundException({ message: "Container image not found" });
 
+    await DockerService.ensureImage(containerImage);
     await this.stopAll();
     await this.removeAll();
 

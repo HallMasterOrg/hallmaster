@@ -19,6 +19,14 @@ type MethodParameters<
   P extends keyof InstanceType<C>,
 > = Parameters<Extract<InstanceType<C>[P], (...args: any[]) => any>>;
 
+type RegistryImage = {
+  serverName: string;
+  image: string;
+  tag: string;
+  username?: string | null;
+  password?: string | null;
+};
+
 const socket = new DockerSocket();
 await socket.init();
 
@@ -92,8 +100,46 @@ export default class DockerService {
     });
   }
 
-  public static async pullImage(...options: MethodParameters<typeof DockerImagesAPI, "create">) {
-    return this.call(this.images.create(...options));
+  private static registryAuth({ serverName, username, password }: RegistryImage) {
+    if (!username || !password) {
+      return undefined;
+    }
+
+    return { serveraddress: serverName, username, password };
+  }
+
+  private static familiarReference({ serverName, image, tag }: RegistryImage) {
+    if (serverName !== "docker.io") {
+      return `${serverName}/${image}:${tag}`;
+    }
+
+    return `${image.replace(/^library\//, "")}:${tag}`;
+  }
+
+  private static async pullImage(image: RegistryImage) {
+    return this.call(
+      this.images.create({
+        fromImage: `${image.serverName}/${image.image}`,
+        tag: image.tag,
+        auth: this.registryAuth(image),
+      }),
+    );
+  }
+
+  private static async hasImage(image: RegistryImage) {
+    const images = await this.call(
+      this.images.list({ filters: { reference: [this.familiarReference(image)] } }),
+    );
+
+    return images.length > 0;
+  }
+
+  public static async ensureImage(image: RegistryImage) {
+    if (await this.hasImage(image)) {
+      return;
+    }
+
+    await this.pullImage(image);
   }
 
   public static async create(...options: MethodParameters<typeof DockerContainersAPI, "create">) {
