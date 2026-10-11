@@ -6,12 +6,12 @@
     stopCluster,
   } from "$lib/remotes/clusters.remote";
   import toaster from "$lib/utils/toaster";
-  import type { GetClusterDto } from "@hallmaster/backend/dto";
+  import type { Cluster } from "@hallmaster/backend/schemas";
   import { PlayIcon, RotateCcwIcon, SquareIcon } from "@lucide/svelte";
 
   type Props = {
-    id: GetClusterDto["id"];
-    status: GetClusterDto["status"];
+    id: Cluster["id"];
+    status: Cluster["status"];
   };
 
   let { id, status }: Props = $props();
@@ -24,7 +24,7 @@
         label: "start",
         remote: startCluster,
         icon: PlayIcon,
-        require: "STOPPED",
+        require: ["STOPPED", "ERROR"],
         loading: {
           title: `Starting cluster ${paddedId}`,
         },
@@ -36,7 +36,7 @@
         label: "restart",
         remote: restartCluster,
         icon: RotateCcwIcon,
-        require: "RUNNING",
+        require: ["RUNNING"],
         loading: {
           title: `Restarting cluster ${paddedId}`,
         },
@@ -48,7 +48,7 @@
         label: "stop",
         remote: stopCluster,
         icon: SquareIcon,
-        require: "RUNNING",
+        require: ["RUNNING"],
         loading: {
           title: `Stopping cluster ${paddedId}`,
         },
@@ -62,7 +62,7 @@
 
 <div class="flex gap-1">
   {#each actions as { require, remote, icon, label, loading, success }}
-    {#if require === status}
+    {#if require.some((value) => value === status)}
       {let isLoading = $state(false)}
       {const Icon = icon}
 

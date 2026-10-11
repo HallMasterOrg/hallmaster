@@ -1,6 +1,6 @@
 <script lang="ts">
   import { getClusterLogs, getClusterLogsLive } from "$lib/remotes/clusters.remote";
-  import type { GetClusterDto, GetClusterLogsDto } from "@hallmaster/backend/dto";
+  import type { Cluster, ClusterLogs } from "@hallmaster/backend/schemas";
   import { Progress } from "@skeletonlabs/skeleton-svelte";
   import { onMount } from "svelte";
   import type { HTMLAttributes } from "svelte/elements";
@@ -10,12 +10,12 @@
   import ReversedVirtualList from "./ReversedVirtualList.svelte";
 
   interface Props extends Omit<HTMLAttributes<HTMLDivElement>, "id"> {
-    id: GetClusterDto["id"];
+    id: Cluster["id"];
   }
 
   let { id, ...props }: Props = $props();
 
-  let live = $state<GetClusterLogsDto>([]);
+  let live = $state<ClusterLogs>([]);
   onMount(() => {
     let unmounted = false;
     (async () => {

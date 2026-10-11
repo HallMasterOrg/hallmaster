@@ -1,10 +1,10 @@
 <script lang="ts">
   import Widget from "$lib/components/Widget.svelte";
-  import type { GetClusterDto } from "@hallmaster/backend/dto";
+  import type { Cluster } from "@hallmaster/backend/schemas";
   import { BoxIcon } from "@lucide/svelte";
 
   interface Props {
-    shards: GetClusterDto["shardIds"];
+    shards: Cluster["shardIds"];
   }
 
   let { shards }: Props = $props();

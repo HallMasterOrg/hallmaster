@@ -13,7 +13,7 @@
   import { Switch } from "@skeletonlabs/skeleton-svelte";
   import { slide } from "svelte/transition";
 
-  const { dockerImage, token } = createBot.fields;
+  const { url, username, password, token } = createBot.fields;
 
   let authentication: boolean = $state(false);
 </script>
@@ -36,8 +36,8 @@
     icon={ContainerIcon}
     placeholder="ghcr.io/image:tag"
     required
-    {...dockerImage.image.as("text")}
-    issues={dockerImage.image.issues()}
+    {...url.as("text")}
+    issues={url.issues()}
   />
 
   <Switch
@@ -57,16 +57,16 @@
         label="Username"
         icon={TextCursorIcon}
         required
-        {...dockerImage.username.as("text")}
-        issues={dockerImage.username.issues()}
+        {...username.as("text")}
+        issues={username.issues()}
       />
 
       <LabeledInput
         label="Password"
         icon={RectangleEllipsisIcon}
         required
-        {...dockerImage.password.as("password")}
-        issues={dockerImage.password.issues()}
+        {...password.as("password")}
+        issues={password.issues()}
       />
     </div>
   {/if}

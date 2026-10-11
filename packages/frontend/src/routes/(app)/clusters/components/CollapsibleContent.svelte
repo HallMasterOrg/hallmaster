@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { GetClusterDto } from "@hallmaster/backend/dto";
+  import type { Cluster } from "@hallmaster/backend/schemas";
   import { Collapsible } from "@skeletonlabs/skeleton-svelte";
   import { slide } from "svelte/transition";
 
@@ -9,7 +9,7 @@
   import ClusterShards from "./cluster/widgets/Shards.svelte";
 
   interface Props {
-    cluster: GetClusterDto;
+    cluster: Cluster;
     open: boolean;
   }
 

@@ -1,10 +1,10 @@
 import { form, getRequestEvent } from "$app/server";
 import { env } from "$env/dynamic/private";
-import { loginSchema, registerSchema, type UserToken } from "@hallmaster/backend/dto";
+import { UserSchema, type UserTokenResponse } from "@hallmaster/backend/schemas";
 import { error, invalid, redirect } from "@sveltejs/kit";
 
-export const register = form(registerSchema, async (payload) => {
-  const response = await fetch(new URL("/auth/register", env.API_URL), {
+export const register = form(UserSchema, async (payload) => {
+  const response = await fetch(new URL("/api/auth/register", env.API_URL), {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -14,7 +14,7 @@ export const register = form(registerSchema, async (payload) => {
 
   switch (response.status) {
     case 201: {
-      const { token } = (await response.json()) as UserToken;
+      const { token } = (await response.json()) as UserTokenResponse;
       getRequestEvent().cookies.set("token", token, { path: "/" });
 
       return redirect(303, "/setup#bot");
@@ -30,8 +30,8 @@ export const register = form(registerSchema, async (payload) => {
   }
 });
 
-export const login = form(loginSchema, async (payload, issue) => {
-  const response = await fetch(new URL("/auth/login", env.API_URL), {
+export const login = form(UserSchema, async (payload, issue) => {
+  const response = await fetch(new URL("/api/auth/login", env.API_URL), {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -41,7 +41,7 @@ export const login = form(loginSchema, async (payload, issue) => {
 
   switch (response.status) {
     case 200: {
-      const { token } = (await response.json()) as UserToken;
+      const { token } = (await response.json()) as UserTokenResponse;
       getRequestEvent().cookies.set("token", token, { path: "/" });
 
       return redirect(303, "/clusters");

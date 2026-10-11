@@ -3,19 +3,19 @@
   import Widget from "$lib/components/Widget.svelte";
   import { getClusterStatsLive } from "$lib/remotes/clusters.remote";
   import formatBytes from "$lib/utils/formatBytes";
-  import type { GetClusterDto, GetClusterStatsDto } from "@hallmaster/backend/dto";
+  import type { Cluster, ClusterStats } from "@hallmaster/backend/schemas";
   import { MemoryStickIcon } from "@lucide/svelte";
   import { onMount } from "svelte";
 
   interface Props {
-    id: GetClusterDto["id"];
+    id: Cluster["id"];
   }
 
   let { id }: Props = $props();
 
   let value = $state<{
     date: Date;
-    value: GetClusterStatsDto["memory"]["usage"];
+    value: ClusterStats["memory"]["usage"];
   }>();
 
   onMount(() => {

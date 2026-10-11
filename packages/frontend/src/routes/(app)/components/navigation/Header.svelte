@@ -1,11 +1,11 @@
 <script lang="ts">
-  import { getBot } from "$lib/remotes/bot.remote";
-  import { type GetBotDto } from "@hallmaster/backend/dto";
+  import { getBotProfile } from "$lib/remotes/bot.remote";
+  import type { BotDiscordProfile } from "@hallmaster/backend/schemas";
   import { BotIcon } from "@lucide/svelte";
   import { Avatar } from "@skeletonlabs/skeleton-svelte";
 </script>
 
-{#snippet component(data?: GetBotDto["discord"])}
+{#snippet component(data?: BotDiscordProfile)}
   <div class="flex w-full items-center gap-2">
     <Avatar class="size-12 rounded-2xl bg-surface-200-800">
       <Avatar.Image src={data?.avatarUrl} />
@@ -27,9 +27,9 @@
 {/snippet}
 
 <svelte:boundary>
-  {const { discord } = await getBot()}
+  {const profile = await getBotProfile()}
 
-  {@render component(discord)}
+  {@render component(profile)}
 
   {#snippet pending()}
     {@render component()}
