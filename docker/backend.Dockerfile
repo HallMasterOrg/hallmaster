@@ -6,7 +6,7 @@ WORKDIR /app
 
 ENV PNPM_HOME="/pnpm"
 ENV PATH="$PNPM_HOME:$PATH"
-RUN npm install --global pnpm@12.6.0
+RUN corepack enable
 
 COPY package.json \
     pnpm-lock.yaml \
