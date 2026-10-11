@@ -16,6 +16,18 @@ export default class BotService {
     return { host, image, tag };
   }
 
+  private static registryAuth(
+    serveraddress: string,
+    username: string | null | undefined,
+    password: string | null | undefined,
+  ) {
+    if (!username || !password) {
+      return undefined;
+    }
+
+    return { serveraddress, username, password };
+  }
+
   public static async create({ token }: CreateBot): Promise<Bot> {
     await DiscordService.getGatewayBot(token);
 
@@ -88,19 +100,10 @@ export default class BotService {
   }: ContainerImage): Promise<Omit<ContainerImage, "password">> {
     const { host, image, tag } = this.parseContainerImage(url);
 
-    const auth =
-      username && password
-        ? {
-            serveraddress: host,
-            username: username,
-            password: password,
-          }
-        : undefined;
-
     await DockerService.pullImage({
       fromImage: [host, image].join("/"),
       tag,
-      auth,
+      auth: this.registryAuth(host, username, password),
     });
 
     const containerImage = await ContainerImageRepository.create({
@@ -135,29 +138,29 @@ export default class BotService {
     username,
     password,
   }: ContainerImage): Promise<Omit<ContainerImage, "password">> {
-    const { host, image, tag } = this.parseContainerImage(url);
+    const current = await ContainerImageRepository.findFirst();
+    if (current === null) {
+      throw new NotFoundException({ message: "Container image not found" });
+    }
 
-    const auth =
-      username && password
-        ? {
-            serveraddress: host,
-            username: username,
-            password: password,
-          }
-        : undefined;
+    const { host, image, tag } = this.parseContainerImage(url);
+    const keepsCredentials = current.serverName === host && current.username === (username ?? null);
+    const credentials = {
+      username: username ?? null,
+      password: password ?? (keepsCredentials ? current.password : null),
+    };
 
     await DockerService.pullImage({
       fromImage: [host, image].join("/"),
       tag,
-      auth,
+      auth: this.registryAuth(host, credentials.username, credentials.password),
     });
 
     const containerImage = await ContainerImageRepository.update({
       image,
       tag,
       serverName: host,
-      username: username ?? null,
-      password: password ?? null,
+      ...credentials,
     });
 
     if (containerImage === null)
