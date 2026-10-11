@@ -109,9 +109,11 @@ const clusterController = new Hono()
       return streamSSE(c, async (stream) => {
         while (!stream.aborted) {
           const clusters = await ClusterService.getAll();
+
           await stream.writeSSE({
             data: JSON.stringify(clusters),
           });
+
           await stream.sleep(query.interval * 1000);
         }
       });
@@ -187,7 +189,7 @@ const clusterController = new Hono()
     validator("param", ClusterIdParamSchema),
     async (c) => {
       const param = c.req.valid("param");
-      const cluster = ClusterService.get(param.id);
+      const cluster = await ClusterService.get(param.id);
 
       return c.json(cluster, 200);
     },
@@ -288,6 +290,11 @@ const clusterController = new Hono()
       },
     }),
     validator("param", ClusterIdParamSchema),
+    async (c) => {
+      const param = c.req.valid("param");
+
+      await ClusterService.streamLogs(param.id);
+    },
   )
   .get(
     "/:id/stats",
@@ -340,7 +347,7 @@ const clusterController = new Hono()
       tags,
       description: "Start, stop or restart a cluster",
       responses: {
-        204: {
+        200: {
           description: "OK",
           content: {
             "application/json": { schema: resolver(ClusterSchema) },
