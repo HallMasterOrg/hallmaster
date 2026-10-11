@@ -1,6 +1,4 @@
-import { HTTPException } from "hono/http-exception";
-
-import { NotFoundException } from "#exceptions/http-exceptions";
+import { ConflictException, NotFoundException } from "#exceptions/http-exceptions";
 import BotRepository from "#repositories/bot.repository";
 import ContainerImageRepository from "#repositories/container-image.repository";
 import type { Bot, ContainerImage, CreateBot } from "#schemas/bot.schema";
@@ -22,7 +20,7 @@ export default class BotService {
     await DiscordService.getGatewayBot(token);
 
     const botCount = await BotRepository.count();
-    if (botCount !== 0) throw new HTTPException(409, { message: "A bot is already registered" });
+    if (botCount !== 0) throw new ConflictException({ message: "A bot is already registered" });
 
     const { id, totalShards } = await BotRepository.create({
       id: Buffer.from(token.split(".")[0], "base64").toString("ascii"),

@@ -1,6 +1,6 @@
-import { HTTPException } from "hono/http-exception";
 import type z from "zod";
 
+import { FailedDependancyException } from "#exceptions/http-exceptions";
 import type { BotDiscordProfile } from "#schemas/bot.schema";
 import {
   DiscordGatewayBotSchema,
@@ -21,14 +21,14 @@ export default class DiscordService {
       headers: { Authorization: `Bot ${token}` },
       signal: AbortSignal.timeout(10_000),
     }).catch(() => {
-      throw new HTTPException(424, { message: "Discord API is unreachable or timed out" });
+      throw new FailedDependancyException({ message: "Discord API is unreachable or timed out" });
     });
 
     if (response.status === 401)
-      throw new HTTPException(424, { message: "Invalid Discord bot token" });
+      throw new FailedDependancyException({ message: "Invalid Discord bot token" });
 
     if (!response.ok) {
-      throw new HTTPException(424, {
+      throw new FailedDependancyException({
         message: `Discord API returned a ${response.status} ${response.statusText}`,
       });
     }
@@ -36,7 +36,7 @@ export default class DiscordService {
     try {
       return schema.parse(await response.json());
     } catch (error) {
-      throw new HTTPException(424, {
+      throw new FailedDependancyException({
         message: "Discord API returned an unexpected response body",
         cause: error,
       });

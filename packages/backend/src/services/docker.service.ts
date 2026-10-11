@@ -139,4 +139,22 @@ export default class DockerService {
       });
     });
   }
+
+  public static async streamContainerLogs(
+    containerId: string,
+    options: Omit<NonNullable<MethodParameters<typeof DockerContainersAPI, "logs">[1]>, "follow">,
+  ) {
+    return this.containers.logs(containerId, { ...options, follow: true }).catch((error) => {
+      if (!(error instanceof DockerAPIHttpError))
+        throw new FailedDependancyException({
+          message: "Docker Engine API returned an unexpected response",
+          cause: error,
+        });
+
+      throw new FailedDependancyException({
+        message: `Docker Engine API returned a ${error.status} ${error.message}`,
+        cause: error,
+      });
+    });
+  }
 }

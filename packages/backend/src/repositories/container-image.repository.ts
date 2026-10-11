@@ -1,5 +1,4 @@
-import { HTTPException } from "hono/http-exception";
-
+import { ConflictException } from "#exceptions/http-exceptions";
 import prisma from "#lib/database";
 import type { ContainerImage } from "#prisma/client";
 
@@ -25,7 +24,7 @@ export default class ContainerImageRepository {
     if (bot === null) return null;
 
     if (await this.count())
-      throw new HTTPException(409, { message: "A container image is already registered" });
+      throw new ConflictException({ message: "A container image is already registered" });
 
     return prisma.containerImage.create({
       data: {

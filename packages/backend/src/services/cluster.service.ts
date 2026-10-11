@@ -62,6 +62,18 @@ export default class ClusterService {
     });
   }
 
+  public static async streamLogs(id: ClusterId) {
+    const cluster = await ClusterRepository.findFirstContainerIdById(id);
+    if (cluster === null) throw new NotFoundException({ message: `Cluster ${id} not found` });
+
+    return DockerService.containerLogs(cluster.containerId, {
+      tail: 0,
+      stdout: true,
+      stderr: true,
+      timestamps: true,
+    });
+  }
+
   public static async start(id: ClusterId) {
     const cluster = await ClusterRepository.findFirstContainerIdById(id);
     if (cluster === null) throw new NotFoundException({ message: `Cluster ${id} not found` });
@@ -149,7 +161,7 @@ export default class ClusterService {
 
   public static async removeAll() {
     const clusters = await ClusterRepository.findManyIdAndContainerId();
-    if (clusters.length === 0) throw new NotFoundException({ message: "Clusters not found" });
+    if (clusters.length === 0) return;
 
     await Promise.all(
       clusters.map(({ containerId }) => DockerService.removeContainer(containerId)),
@@ -204,7 +216,10 @@ export default class ClusterService {
     if (containerImage === null)
       throw new NotFoundException({ message: "Container image not found" });
 
-    await this.removeAll();
+    if (previous.length !== 0) {
+      await this.stopAll();
+      await this.removeAll();
+    }
 
     const previousStatuses = new Map(previous.map(({ id, status }) => [id, status]));
     const updated = await Promise.all(
