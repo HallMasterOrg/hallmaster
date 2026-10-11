@@ -8,7 +8,6 @@ on:
       - "docker/backend.Dockerfile"
       - "secrets/backend/**"
       - "packages/backend/**"
-      - "packages/prisma-client/**"
       - ".github/workflows/backend-ci.yaml"
   pull_request:
     paths: *backend-paths
@@ -43,7 +42,7 @@ jobs:
           run: pnpm --filter=@hallmaster/backend lint
 
         - name: Run format check
-          run: pnpm --filter=@hallmaster/backend format
+          run: pnpm --filter=@hallmaster/backend format:check
 
         - name: Test the build process
           run: pnpm --filter=@hallmaster/backend build
