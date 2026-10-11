@@ -78,7 +78,9 @@ export default class DockerService {
           cause: error,
         });
 
-      if (error.status === 304) return;
+      if (error.status === 304 || error.status === 404) {
+        return;
+      }
 
       throw new FailedDependancyException({
         message: `Docker Engine API returned a ${error.status} ${error.message}`,
