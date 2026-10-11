@@ -5,14 +5,17 @@ export const ClusterIdSchema = z.coerce.number().int().nonnegative().meta({
 });
 export type ClusterId = z.infer<typeof ClusterIdSchema>;
 
+export const ClusterStatusSchema = z
+  .enum(["STARTING", "RUNNING", "STOPPED", "ERROR", "UPDATING"])
+  .meta({ description: "Status of the cluster" });
+export type ClusterStatus = z.infer<typeof ClusterStatusSchema>;
+
 export const ClusterSchema = z.object({
   id: ClusterIdSchema,
   shardIds: z.array(z.number().nonnegative()).meta({
     description: "Shard IDs associated to that cluster",
   }),
-  status: z.enum(["STARTING", "RUNNING", "STOPPED", "ERROR", "UPDATING"]).meta({
-    description: "Status of the cluster",
-  }),
+  status: ClusterStatusSchema,
 });
 export type Cluster = z.infer<typeof ClusterSchema>;
 

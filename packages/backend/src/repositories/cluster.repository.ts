@@ -26,10 +26,6 @@ export default class ClusterRepository {
     });
   }
 
-  public static async findFirstById(id: Cluster["id"]) {
-    return prisma.cluster.findFirst({ where: { id }, select: this.DEFAULT_SELECT });
-  }
-
   public static async findFirstBotIdById(id: Cluster["id"]) {
     return prisma.cluster.findFirst({
       where: {
@@ -79,24 +75,15 @@ export default class ClusterRepository {
     });
   }
 
-  public static async findFirstContainerIdAndDesiredStatusById(id: Cluster["id"]) {
-    return prisma.cluster.findFirst({
-      where: { id },
-      select: { containerId: true, desiredStatus: true },
+  public static async findManyWithContainerId() {
+    return prisma.cluster.findMany({
+      select: { ...this.DEFAULT_SELECT, containerId: true },
+      orderBy: { id: "asc" },
     });
   }
 
   public static async findManyId() {
     return prisma.cluster.findMany({ select: { id: true }, orderBy: { id: "asc" } });
-  }
-
-  public static async findManyIdAndContainerIdByDesiredStatus(
-    desiredStatus: Cluster["desiredStatus"],
-  ) {
-    return prisma.cluster.findMany({
-      where: { desiredStatus },
-      select: { id: true, containerId: true },
-    });
   }
 
   public static async findManyIdAndContainerId() {

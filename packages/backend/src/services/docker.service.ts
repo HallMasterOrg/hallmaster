@@ -142,6 +142,18 @@ export default class DockerService {
     await this.pullImage(image);
   }
 
+  public static async containerStates(containerIds: string[]) {
+    if (containerIds.length === 0) {
+      return new Map<string, string>();
+    }
+
+    const containers = await this.call(
+      this.containers.list({ all: true, filters: { id: containerIds } }),
+    );
+
+    return new Map(containers.map(({ Id, State }) => [Id, State]));
+  }
+
   public static async create(...options: MethodParameters<typeof DockerContainersAPI, "create">) {
     return this.call(this.containers.create(...options));
   }
