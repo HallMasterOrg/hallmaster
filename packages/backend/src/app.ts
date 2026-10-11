@@ -1,6 +1,7 @@
 import { Scalar } from "@scalar/hono-api-reference";
 import { Hono } from "hono";
 import { openAPIRouteHandler } from "hono-openapi";
+import { cors } from "hono/cors";
 import { HTTPException } from "hono/http-exception";
 import { logger } from "hono/logger";
 import z from "zod";
@@ -14,6 +15,7 @@ import { ApiErrorSchema, type ApiError } from "#schemas/error.schema";
 const app = new Hono();
 
 app.use("/api/*", logger());
+app.use("/api/*", cors());
 
 app.onError((error, c) => {
   if (error instanceof ValidationException) {
