@@ -146,7 +146,9 @@ export default class ClusterService {
 
   public static async stopAll() {
     const clusters = await ClusterRepository.findManyIdAndContainerId();
-    if (clusters.length === 0) throw new NotFoundException({ message: "Clusters not found" });
+    if (clusters.length === 0) {
+      return;
+    }
 
     await Promise.all(clusters.map(({ containerId }) => DockerService.stopContainer(containerId)));
 
@@ -213,10 +215,8 @@ export default class ClusterService {
     if (containerImage === null)
       throw new NotFoundException({ message: "Container image not found" });
 
-    if (previous.length !== 0) {
-      await this.stopAll();
-      await this.removeAll();
-    }
+    await this.stopAll();
+    await this.removeAll();
 
     const previousStatuses = new Map(previous.map(({ id, status }) => [id, status]));
     const updated = await Promise.all(
