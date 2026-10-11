@@ -6,7 +6,7 @@ WORKDIR /app
 
 ENV PNPM_HOME="/pnpm"
 ENV PATH="$PNPM_HOME:$PATH"
-RUN corepack enable
+RUN npm install --global pnpm@12.6.0
 
 COPY package.json \
     pnpm-lock.yaml \
@@ -15,15 +15,6 @@ COPY package.json \
 
 # Required by pnpm-workspace.yaml `patchedDependencies`
 COPY patches/ patches/
-
-# Install packages for Prisma
-COPY packages/prisma-client/package.json \
-    packages/prisma-client/
-RUN --mount=type=cache,id=pnpm,target=/pnpm/store \
-    pnpm install \
-        --filter=@hallmaster/prisma-client \
-        --prefer-offline \
-        --frozen-lockfile
 
 # Install packages for the backend
 COPY packages/backend/package.json packages/backend/
@@ -38,10 +29,9 @@ COPY packages/backend/prisma/ packages/backend/prisma/
 COPY packages/backend/prisma.config.ts packages/backend/
 RUN pnpm --filter=@hallmaster/backend prisma:generate
 
-# Build NestJS application
-COPY packages/backend/tsconfig.build.json \
-    packages/backend/tsconfig.json \
-    packages/backend/nest-cli.json \
+# Build Hono application
+COPY packages/backend/tsconfig.json \
+    packages/backend/tsdown.config.ts \
     packages/backend/
 COPY packages/backend/src/ packages/backend/src/
 RUN pnpm --filter=@hallmaster/backend build
@@ -49,8 +39,8 @@ RUN pnpm --filter=@hallmaster/backend build
 # Cleanup the application
 RUN rm -rf packages/backend/src \
     packages/backend/tsconfig.json \
-    packages/backend/tsconfig.build.json \
-    packages/backend/nest-cli.json
+    packages/backend/tsdown.config.ts \
+    packages/backend/prisma/generated
 
 # Create the application package
 RUN pnpm deploy --filter=@hallmaster/backend --prod --legacy /prod-app
