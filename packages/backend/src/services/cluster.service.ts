@@ -204,12 +204,12 @@ export default class ClusterService {
       }
     }
 
-    let id = 0;
+    let nextId = 0;
     for (const cluster of clusters) {
       if (cluster.id !== undefined) continue;
 
-      while (ids.has(id)) id++;
-      cluster.id = id++;
+      while (ids.has(nextId)) nextId++;
+      cluster.id = nextId++;
     }
 
     const containerImage = await ContainerImageRepository.findFirst();
@@ -228,7 +228,7 @@ export default class ClusterService {
           {
             id: cluster.id!,
             shardIds: cluster.shardIds,
-            status: previousStatuses.get(id!) === "STOPPED" ? "STOPPED" : "UPDATING",
+            status: previousStatuses.get(cluster.id!) === "STOPPED" ? "STOPPED" : "UPDATING",
           },
           {
             ...bot,
