@@ -1,5 +1,5 @@
 import { BadRequestException, NotFoundException } from "#exceptions/http-exceptions";
-import type { Bot, ContainerImage } from "#prisma/client";
+import type { Bot, Cluster as ClusterRow, ContainerImage } from "#prisma/client";
 import BotRepository from "#repositories/bot.repository";
 import ClusterRepository from "#repositories/cluster.repository";
 import ContainerImageRepository from "#repositories/container-image.repository";
@@ -15,8 +15,16 @@ import type {
 import DockerService from "./docker.service";
 
 export default class ClusterService {
+  private static toCluster({
+    id,
+    shardIds,
+    desiredStatus,
+  }: Pick<ClusterRow, "id" | "shardIds" | "desiredStatus">): Cluster {
+    return { id, shardIds, status: desiredStatus };
+  }
+
   private static async create(
-    cluster: Pick<Cluster, "id" | "shardIds" | "status">,
+    cluster: Pick<ClusterRow, "id" | "shardIds" | "desiredStatus">,
     bot: Pick<Bot, "id" | "token" | "totalShards">,
     containerImage: Pick<ContainerImage, "serverName" | "image" | "tag">,
   ) {
@@ -38,22 +46,24 @@ export default class ClusterService {
       `${bot.id}-${cluster.id}`,
     );
 
-    return ClusterRepository.create({
+    await ClusterRepository.create({
       id: cluster.id,
       botId: bot.id,
       containerId: container.Id,
       shardIds: cluster.shardIds,
-      status: cluster.status,
+      desiredStatus: cluster.desiredStatus,
     });
+
+    return container.Id;
   }
 
   private static async findRunningContainerId(id: ClusterId) {
-    const cluster = await ClusterRepository.findFirstContainerIdAndStatusById(id);
+    const cluster = await ClusterRepository.findFirstContainerIdAndDesiredStatusById(id);
     if (cluster === null) {
       throw new NotFoundException({ message: `Cluster ${id} not found` });
     }
 
-    if (cluster.status !== "RUNNING") {
+    if (cluster.desiredStatus !== "RUNNING") {
       throw new BadRequestException({ message: `Cluster ${id} is not running` });
     }
 
@@ -64,7 +74,7 @@ export default class ClusterService {
     const cluster = await ClusterRepository.findFirstById(id);
     if (cluster === null) throw new NotFoundException({ message: `Cluster ${id} not found` });
 
-    return cluster;
+    return this.toCluster(cluster);
   }
 
   public static async logs(id: ClusterId, options: ClusterLogsQuery) {
@@ -101,7 +111,7 @@ export default class ClusterService {
   }
 
   public static async getAllStats() {
-    const clusters = await ClusterRepository.findManyIdAndContainerIdByStatus("RUNNING");
+    const clusters = await ClusterRepository.findManyIdAndContainerIdByDesiredStatus("RUNNING");
     const results = await Promise.allSettled(
       clusters.map(
         async ({ id, containerId }) =>
@@ -124,57 +134,30 @@ export default class ClusterService {
     const cluster = await ClusterRepository.findFirstContainerIdById(id);
     if (cluster === null) throw new NotFoundException({ message: `Cluster ${id} not found` });
 
-    if ((await ClusterRepository.updateStatusById("STARTING", id)) === null)
-      throw new NotFoundException({ message: `Cluster ${id} not found` });
+    await ClusterRepository.updateDesiredStatusById("RUNNING", id);
+    await DockerService.startContainer(cluster.containerId);
 
-    await DockerService.startContainer(cluster.containerId).catch(async (error) => {
-      if ((await ClusterRepository.updateStatusById("ERROR", id)) === null)
-        throw new NotFoundException({ message: `Cluster ${id} not found` });
-
-      throw error;
-    });
-
-    const updated = await ClusterRepository.updateStatusById("RUNNING", id);
-    if (updated === null) throw new NotFoundException({ message: `Cluster ${id} not found` });
-
-    return updated;
+    return this.get(id);
   }
 
   public static async stop(id: ClusterId) {
     const cluster = await ClusterRepository.findFirstContainerIdById(id);
     if (cluster === null) throw new NotFoundException({ message: `Cluster ${id} not found` });
 
-    await DockerService.stopContainer(cluster.containerId).catch(async (error) => {
-      if ((await ClusterRepository.updateStatusById("ERROR", id)) === null)
-        throw new NotFoundException({ message: `Cluster ${id} not found` });
+    await ClusterRepository.updateDesiredStatusById("STOPPED", id);
+    await DockerService.stopContainer(cluster.containerId);
 
-      throw error;
-    });
-
-    const updated = await ClusterRepository.updateStatusById("STOPPED", id);
-    if (updated === null) throw new NotFoundException({ message: `Cluster ${id} not found` });
-
-    return updated;
+    return this.get(id);
   }
 
   public static async restart(id: ClusterId) {
     const cluster = await ClusterRepository.findFirstContainerIdById(id);
     if (cluster === null) throw new NotFoundException({ message: `Cluster ${id} not found` });
 
-    if ((await ClusterRepository.updateStatusById("STARTING", id)) === null)
-      throw new NotFoundException({ message: `Cluster ${id} not found` });
+    await ClusterRepository.updateDesiredStatusById("RUNNING", id);
+    await DockerService.restartContainer(cluster.containerId);
 
-    await DockerService.restartContainer(cluster.containerId).catch(async (error) => {
-      if ((await ClusterRepository.updateStatusById("ERROR", id)) === null)
-        throw new NotFoundException({ message: `Cluster ${id} not found` });
-
-      throw error;
-    });
-
-    const updated = await ClusterRepository.updateStatusById("RUNNING", id);
-    if (updated === null) throw new NotFoundException({ message: `Cluster ${id} not found` });
-
-    return updated;
+    return this.get(id);
   }
 
   public static async runAction(id: ClusterId, action: ClusterAction) {
@@ -214,11 +197,16 @@ export default class ClusterService {
     await DockerService.stopContainer(cluster.containerId);
     await DockerService.removeContainer(cluster.containerId);
 
-    return ClusterRepository.deleteById(id);
+    const removed = await ClusterRepository.deleteById(id);
+    if (removed === null) throw new NotFoundException({ message: `Cluster ${id} not found` });
+
+    return this.toCluster(removed);
   }
 
   public static async getAll() {
-    return ClusterRepository.findMany();
+    const clusters = await ClusterRepository.findMany();
+
+    return clusters.map((cluster) => this.toCluster(cluster));
   }
 
   public static async stopAll() {
@@ -229,7 +217,7 @@ export default class ClusterService {
 
     await Promise.all(clusters.map(({ containerId }) => DockerService.stopContainer(containerId)));
 
-    return ClusterRepository.updateManyStatusById(
+    return ClusterRepository.updateManyDesiredStatusById(
       "STOPPED",
       clusters.map(({ id }) => id),
     );
@@ -301,27 +289,22 @@ export default class ClusterService {
       throw new NotFoundException({ message: "Bot not found" });
     }
 
-    const previousStatuses = new Map(previous.map(({ id, status }) => [id, status]));
-    const updated = await Promise.all(
-      clusters.map((cluster) =>
-        this.create(
-          {
-            id: cluster.id!,
-            shardIds: cluster.shardIds,
-            status: previousStatuses.get(cluster.id!) === "STOPPED" ? "STOPPED" : "UPDATING",
-          },
+    const desiredStatuses = new Map(previous.map(({ id, desiredStatus }) => [id, desiredStatus]));
+    await Promise.all(
+      clusters.map(async (cluster) => {
+        const desiredStatus = desiredStatuses.get(cluster.id!) ?? "RUNNING";
+        const containerId = await this.create(
+          { id: cluster.id!, shardIds: cluster.shardIds, desiredStatus },
           { ...bot, totalShards: updatedBot.totalShards },
           containerImage,
-        ),
-      ),
-    );
+        );
 
-    return Promise.all(
-      updated.map((cluster) => {
-        if (cluster.status === "STOPPED") return Promise.resolve(cluster);
-
-        return this.start(cluster.id);
+        if (desiredStatus === "RUNNING") {
+          await DockerService.startContainer(containerId);
+        }
       }),
     );
+
+    return this.getAll();
   }
 }

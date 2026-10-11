@@ -5,7 +5,7 @@ export default class ClusterRepository {
   private static readonly DEFAULT_SELECT = {
     id: true,
     shardIds: true,
-    status: true,
+    desiredStatus: true,
   } as const;
 
   public static async findFirstContainerIdById(id: Cluster["id"]) {
@@ -18,7 +18,7 @@ export default class ClusterRepository {
   }
 
   public static async create(
-    data: Pick<Cluster, "id" | "status" | "shardIds" | "botId" | "containerId">,
+    data: Pick<Cluster, "id" | "desiredStatus" | "shardIds" | "botId" | "containerId">,
   ) {
     return prisma.cluster.create({
       data,
@@ -46,13 +46,16 @@ export default class ClusterRepository {
     });
   }
 
-  public static async updateStatusById(status: Cluster["status"], id: Cluster["id"]) {
+  public static async updateDesiredStatusById(
+    desiredStatus: Cluster["desiredStatus"],
+    id: Cluster["id"],
+  ) {
     const cluster = await this.findFirstBotIdById(id);
     if (cluster === null) return null;
 
     return prisma.cluster.update({
       data: {
-        status,
+        desiredStatus,
       },
       where: { botId_id: { botId: cluster.botId, id } },
       select: this.DEFAULT_SELECT,
@@ -72,13 +75,14 @@ export default class ClusterRepository {
   public static async findMany() {
     return prisma.cluster.findMany({
       select: this.DEFAULT_SELECT,
+      orderBy: { id: "asc" },
     });
   }
 
-  public static async findFirstContainerIdAndStatusById(id: Cluster["id"]) {
+  public static async findFirstContainerIdAndDesiredStatusById(id: Cluster["id"]) {
     return prisma.cluster.findFirst({
       where: { id },
-      select: { containerId: true, status: true },
+      select: { containerId: true, desiredStatus: true },
     });
   }
 
@@ -86,9 +90,11 @@ export default class ClusterRepository {
     return prisma.cluster.findMany({ select: { id: true }, orderBy: { id: "asc" } });
   }
 
-  public static async findManyIdAndContainerIdByStatus(status: Cluster["status"]) {
+  public static async findManyIdAndContainerIdByDesiredStatus(
+    desiredStatus: Cluster["desiredStatus"],
+  ) {
     return prisma.cluster.findMany({
-      where: { status },
+      where: { desiredStatus },
       select: { id: true, containerId: true },
     });
   }
@@ -97,9 +103,12 @@ export default class ClusterRepository {
     return prisma.cluster.findMany({ select: { id: true, containerId: true } });
   }
 
-  public static async updateManyStatusById(status: Cluster["status"], ids: Cluster["id"][]) {
+  public static async updateManyDesiredStatusById(
+    desiredStatus: Cluster["desiredStatus"],
+    ids: Cluster["id"][],
+  ) {
     return prisma.cluster.updateMany({
-      data: { status },
+      data: { desiredStatus },
       where: { id: { in: ids } },
     });
   }

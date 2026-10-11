@@ -35,21 +35,18 @@ model ContainerImage {
   @@map("container_image")
 }
 
-enum ClusterStatus {
-  STARTING
+enum ClusterDesiredStatus {
   RUNNING
   STOPPED
-  UPDATING
-  ERROR
 }
 
 model Cluster {
-  id          Int
-  botId       String        @map("bot_id")
-  containerId String        @map("container_id")
-  status      ClusterStatus
-  shardIds    Int[]         @map("shard_ids")
-  bot         Bot           @relation(fields: [botId], references: [id], onDelete: Cascade)
+  id            Int
+  botId         String               @map("bot_id")
+  containerId   String               @map("container_id")
+  desiredStatus ClusterDesiredStatus @map("desired_status")
+  shardIds      Int[]                @map("shard_ids")
+  bot           Bot                  @relation(fields: [botId], references: [id], onDelete: Cascade)
 
   @@id([botId, id])
   @@map("cluster")

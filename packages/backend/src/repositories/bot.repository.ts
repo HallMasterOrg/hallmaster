@@ -59,7 +59,7 @@ export default class BotRepository {
 
   public static async findFirstClusters() {
     return prisma.bot.findFirst({
-      select: { clusters: { select: { id: true, status: true, shardIds: true } } },
+      select: { clusters: { select: { id: true, desiredStatus: true, shardIds: true } } },
     });
   }
 
