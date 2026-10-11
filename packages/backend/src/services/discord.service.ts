@@ -43,7 +43,7 @@ export default class DiscordService {
     }
   }
 
-  private static cdnUrl(kind: "avatar" | "banner", id: string, hash: string) {
+  private static cdnUrl(kind: "avatars" | "banners", id: string, hash: string) {
     const extension = hash.startsWith("a_") ? "gif" : "png";
 
     return `${this.DISCORD_CDN_BASE_URL}/${kind}/${id}/${hash}.${extension}`;
@@ -60,9 +60,9 @@ export default class DiscordService {
       name: user.username,
       displayName: user.global_name,
       discriminator: user.discriminator,
-      avatarUrl: user.avatar ? this.cdnUrl("avatar", user.id, user.avatar) : null,
-      bannerUrl: user.banner ? this.cdnUrl("banner", user.id, user.banner) : null,
-      accentColor: user.accent_color,
+      avatarUrl: user.avatar ? this.cdnUrl("avatars", user.id, user.avatar) : null,
+      bannerUrl: user.banner ? this.cdnUrl("banners", user.id, user.banner) : null,
+      accentColor: user.accent_color ?? null,
     };
   }
 }

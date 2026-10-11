@@ -11,6 +11,6 @@ export const DiscordUserSchema = z.object({
   global_name: z.string().nullable(),
   discriminator: z.string(),
   avatar: z.string().nullable(),
-  banner: z.string().nullable(),
-  accent_color: z.number().int().nullable(),
+  banner: z.string().nullish(),
+  accent_color: z.number().int().nullish(),
 });
