@@ -12,6 +12,7 @@
     "format:check": "oxfmt --check",
     "test": "vitest run",
     "test:unit": "vitest run --project unit",
+    "test:integration": "vitest run --project integration",
     "test:cov": "vitest run --coverage",
     "prisma:dev": "prisma dev",
     "prisma:migrate": "prisma migrate dev",
