@@ -98,7 +98,7 @@ const clusterController = new Hono()
       },
     }),
     validator("query", SseIntervalQuerySchema),
-    async (c) => {
+    (c) => {
       const query = c.req.valid("query");
 
       return streamSSE(c, async (stream) => {
