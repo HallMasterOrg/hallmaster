@@ -1,7 +1,9 @@
 import { Hono } from "hono";
-import { describeRoute, resolver, validator } from "hono-openapi";
+import { describeRoute, resolver } from "hono-openapi";
 
+import validator from "#middlewares/validator.middleware";
 import { UserSchema, UserTokenResponseSchema } from "#schemas/auth.schema";
+import { ApiErrorSchema } from "#schemas/error.schema";
 import { AuthService } from "#services/auth.service";
 
 const tags = ["Authentication"];
@@ -22,7 +24,10 @@ const authController = new Hono()
         409: {
           description: "Conflict",
           content: {
-            "text/plain": { example: "A user is already registered" },
+            "application/json": {
+              schema: resolver(ApiErrorSchema),
+              example: { message: "A user is already registered" },
+            },
           },
         },
       },
@@ -50,7 +55,10 @@ const authController = new Hono()
         401: {
           description: "Unauthorized",
           content: {
-            "text/plain": { example: "Invalid username or password" },
+            "application/json": {
+              schema: resolver(ApiErrorSchema),
+              example: { message: "Invalid username or password" },
+            },
           },
         },
       },

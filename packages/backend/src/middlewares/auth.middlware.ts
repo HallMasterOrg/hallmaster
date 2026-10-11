@@ -1,7 +1,8 @@
-import { describeRoute } from "hono-openapi";
+import { describeRoute, resolver } from "hono-openapi";
 import { jwt } from "hono/jwt";
 
 import env from "#lib/env";
+import { ApiErrorSchema } from "#schemas/error.schema";
 
 const authMiddlewares = [
   describeRoute({
@@ -10,7 +11,10 @@ const authMiddlewares = [
         description:
           "Route is protected by an Authorization header that is either not provided or invalid",
         content: {
-          "text/plain": { example: "Unauthorized" },
+          "application/json": {
+            schema: resolver(ApiErrorSchema),
+            example: { message: "Unauthorized" },
+          },
         },
       },
     },

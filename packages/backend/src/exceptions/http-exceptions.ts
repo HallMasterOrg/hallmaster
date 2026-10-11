@@ -1,5 +1,7 @@
 import { HTTPException } from "hono/http-exception";
 
+import type { ApiIssue } from "#schemas/error.schema";
+
 type HTTPExceptionOptions = Omit<
   NonNullable<ConstructorParameters<typeof HTTPException>[1]>,
   "res"
@@ -35,5 +37,11 @@ export class ConflictException extends HTTPException {
 export class FailedDependancyException extends HTTPException {
   constructor(options: HTTPExceptionOptions) {
     super(424, options);
+  }
+}
+
+export class ValidationException extends BadRequestException {
+  constructor(public readonly issues: ApiIssue[]) {
+    super({ message: "Validation failed" });
   }
 }

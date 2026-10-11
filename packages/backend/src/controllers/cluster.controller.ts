@@ -1,8 +1,9 @@
 import { Hono } from "hono";
-import { describeRoute, resolver, validator } from "hono-openapi";
+import { describeRoute, resolver } from "hono-openapi";
 import { streamSSE } from "hono/streaming";
 
 import authMiddlewares from "#middlewares/auth.middlware";
+import validator from "#middlewares/validator.middleware";
 import {
   ClusterActionParamSchema,
   ClusterIdActionParamSchema,
@@ -18,6 +19,7 @@ import {
   SseIntervalQuerySchema,
   UpdateClustersSchema,
 } from "#schemas/cluster.schema";
+import { ApiErrorSchema } from "#schemas/error.schema";
 import ClusterService from "#services/cluster.service";
 
 const tags = ["Clusters"];
@@ -59,10 +61,11 @@ const clusterController = new Hono()
         404: {
           description: "Not Found",
           content: {
-            "text/plain": {
+            "application/json": {
+              schema: resolver(ApiErrorSchema),
               examples: {
-                "Bot not found": { value: "Bot not found" },
-                "Container image not found": { value: "Container image not found" },
+                "Bot not found": { value: { message: "Bot not found" } },
+                "Container image not found": { value: { message: "Container image not found" } },
               },
             },
           },
@@ -70,8 +73,9 @@ const clusterController = new Hono()
         424: {
           description: "Failed Dependency",
           content: {
-            "text/plain": {
-              example: "Docker Engine API returned an unexpected response",
+            "application/json": {
+              schema: resolver(ApiErrorSchema),
+              example: { message: "Docker Engine API returned an unexpected response" },
             },
           },
         },
@@ -185,7 +189,10 @@ const clusterController = new Hono()
         404: {
           description: "Not Found",
           content: {
-            "text/plain": { example: "Cluster not found" },
+            "application/json": {
+              schema: resolver(ApiErrorSchema),
+              example: { message: "Cluster not found" },
+            },
           },
         },
       },
@@ -213,14 +220,18 @@ const clusterController = new Hono()
         404: {
           description: "Not Found",
           content: {
-            "text/plain": { example: "Cluster not found" },
+            "application/json": {
+              schema: resolver(ApiErrorSchema),
+              example: { message: "Cluster not found" },
+            },
           },
         },
         424: {
           description: "Failed Dependency",
           content: {
-            "text/plain": {
-              example: "Docker Engine API returned an unexpected response",
+            "application/json": {
+              schema: resolver(ApiErrorSchema),
+              example: { message: "Docker Engine API returned an unexpected response" },
             },
           },
         },
@@ -249,14 +260,18 @@ const clusterController = new Hono()
         404: {
           description: "Not Found",
           content: {
-            "text/plain": { example: "Cluster not found" },
+            "application/json": {
+              schema: resolver(ApiErrorSchema),
+              example: { message: "Cluster not found" },
+            },
           },
         },
         424: {
           description: "Failed Dependency",
           content: {
-            "text/plain": {
-              example: "Docker Engine API returned an unexpected response",
+            "application/json": {
+              schema: resolver(ApiErrorSchema),
+              example: { message: "Docker Engine API returned an unexpected response" },
             },
           },
         },
@@ -288,14 +303,18 @@ const clusterController = new Hono()
         404: {
           description: "Not Found",
           content: {
-            "text/plain": { example: "Cluster not found" },
+            "application/json": {
+              schema: resolver(ApiErrorSchema),
+              example: { message: "Cluster not found" },
+            },
           },
         },
         424: {
           description: "Failed Dependency",
           content: {
-            "text/plain": {
-              example: "Docker Engine API returned an unexpected response",
+            "application/json": {
+              schema: resolver(ApiErrorSchema),
+              example: { message: "Docker Engine API returned an unexpected response" },
             },
           },
         },
@@ -338,20 +357,27 @@ const clusterController = new Hono()
         400: {
           description: "Bad Request",
           content: {
-            "text/plain": { example: "Cluster 0 is not running" },
+            "application/json": {
+              schema: resolver(ApiErrorSchema),
+              example: { message: "Cluster 0 is not running" },
+            },
           },
         },
         404: {
           description: "Not Found",
           content: {
-            "text/plain": { example: "Cluster not found" },
+            "application/json": {
+              schema: resolver(ApiErrorSchema),
+              example: { message: "Cluster not found" },
+            },
           },
         },
         424: {
           description: "Failed Dependency",
           content: {
-            "text/plain": {
-              example: "Docker Engine API returned an unexpected response",
+            "application/json": {
+              schema: resolver(ApiErrorSchema),
+              example: { message: "Docker Engine API returned an unexpected response" },
             },
           },
         },
@@ -380,20 +406,27 @@ const clusterController = new Hono()
         400: {
           description: "Bad Request",
           content: {
-            "text/plain": { example: "Cluster 0 is not running" },
+            "application/json": {
+              schema: resolver(ApiErrorSchema),
+              example: { message: "Cluster 0 is not running" },
+            },
           },
         },
         404: {
           description: "Not Found",
           content: {
-            "text/plain": { example: "Cluster not found" },
+            "application/json": {
+              schema: resolver(ApiErrorSchema),
+              example: { message: "Cluster not found" },
+            },
           },
         },
         424: {
           description: "Failed Dependency",
           content: {
-            "text/plain": {
-              example: "Docker Engine API returned an unexpected response",
+            "application/json": {
+              schema: resolver(ApiErrorSchema),
+              example: { message: "Docker Engine API returned an unexpected response" },
             },
           },
         },
@@ -436,14 +469,18 @@ const clusterController = new Hono()
         404: {
           description: "Not Found",
           content: {
-            "text/plain": { example: "Cluster not found" },
+            "application/json": {
+              schema: resolver(ApiErrorSchema),
+              example: { message: "Cluster not found" },
+            },
           },
         },
         424: {
           description: "Failed Dependency",
           content: {
-            "text/plain": {
-              example: "Docker Engine API returned an unexpected response",
+            "application/json": {
+              schema: resolver(ApiErrorSchema),
+              example: { message: "Docker Engine API returned an unexpected response" },
             },
           },
         },

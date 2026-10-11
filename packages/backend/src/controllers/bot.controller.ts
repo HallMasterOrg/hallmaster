@@ -1,9 +1,11 @@
 import { Hono } from "hono";
-import { describeRoute, resolver, validator } from "hono-openapi";
+import { describeRoute, resolver } from "hono-openapi";
 
 import authMiddlewares from "#middlewares/auth.middlware";
+import validator from "#middlewares/validator.middleware";
 import { BotSchema, ContainerImageSchema, CreateBotSchema } from "#schemas/bot.schema";
 import { DiscordUserSchema } from "#schemas/discord.schema";
+import { ApiErrorSchema } from "#schemas/error.schema";
 import BotService from "#services/bot.service";
 
 const tags = ["Bot"];
@@ -25,19 +27,25 @@ const botController = new Hono()
         409: {
           description: "Conflict",
           content: {
-            "text/plain": {
-              example: "A bot is already registered",
+            "application/json": {
+              schema: resolver(ApiErrorSchema),
+              example: { message: "A bot is already registered" },
             },
           },
         },
         424: {
           description: "Failed Dependency",
           content: {
-            "text/plain": {
+            "application/json": {
+              schema: resolver(ApiErrorSchema),
               examples: {
-                "Unreachable or timed out": { value: "Discord API is unreachable or timed out" },
-                "Invalid token": { value: "Invalid Discord bot token" },
-                Unexpected: { value: "Discord API returned an unexpected response body" },
+                "Unreachable or timed out": {
+                  value: { message: "Discord API is unreachable or timed out" },
+                },
+                "Invalid token": { value: { message: "Invalid Discord bot token" } },
+                Unexpected: {
+                  value: { message: "Discord API returned an unexpected response body" },
+                },
               },
             },
           },
@@ -67,7 +75,10 @@ const botController = new Hono()
         404: {
           description: "Not Found",
           content: {
-            "text/plain": { example: "Bot not found" },
+            "application/json": {
+              schema: resolver(ApiErrorSchema),
+              example: { message: "Bot not found" },
+            },
           },
         },
       },
@@ -93,14 +104,18 @@ const botController = new Hono()
         404: {
           description: "Not Found",
           content: {
-            "text/plain": { example: "Bot not found" },
+            "application/json": {
+              schema: resolver(ApiErrorSchema),
+              example: { message: "Bot not found" },
+            },
           },
         },
         424: {
           description: "Failed Dependency",
           content: {
-            "text/plain": {
-              example: "Invalid response from the Discord API",
+            "application/json": {
+              schema: resolver(ApiErrorSchema),
+              example: { message: "Invalid response from the Discord API" },
             },
           },
         },
@@ -129,7 +144,10 @@ const botController = new Hono()
         404: {
           description: "Not Found",
           content: {
-            "text/plain": { example: "Bot not found" },
+            "application/json": {
+              schema: resolver(ApiErrorSchema),
+              example: { message: "Bot not found" },
+            },
           },
         },
       },
@@ -155,17 +173,25 @@ const botController = new Hono()
         404: {
           description: "Not Found",
           content: {
-            "text/plain": { example: "Bot not found" },
+            "application/json": {
+              schema: resolver(ApiErrorSchema),
+              example: { message: "Bot not found" },
+            },
           },
         },
         424: {
           description: "Failed Dependency",
           content: {
-            "text/plain": {
+            "application/json": {
+              schema: resolver(ApiErrorSchema),
               examples: {
-                "Unreachable or timed out": { value: "Discord API is unreachable or timed out" },
-                "Invalid token": { value: "Invalid Discord bot token" },
-                Unexpected: { value: "Discord API returned an unexpected response body" },
+                "Unreachable or timed out": {
+                  value: { message: "Discord API is unreachable or timed out" },
+                },
+                "Invalid token": { value: { message: "Invalid Discord bot token" } },
+                Unexpected: {
+                  value: { message: "Discord API returned an unexpected response body" },
+                },
               },
             },
           },
@@ -193,7 +219,10 @@ const botController = new Hono()
         404: {
           description: "Not Found",
           content: {
-            "text/plain": { example: "Container image not found" },
+            "application/json": {
+              schema: resolver(ApiErrorSchema),
+              example: { message: "Container image not found" },
+            },
           },
         },
       },
@@ -219,22 +248,27 @@ const botController = new Hono()
         404: {
           description: "Not Found",
           content: {
-            "text/plain": { example: "Bot not found" },
+            "application/json": {
+              schema: resolver(ApiErrorSchema),
+              example: { message: "Bot not found" },
+            },
           },
         },
         409: {
           description: "Conflict",
           content: {
-            "text/plain": {
-              example: "A container image is already registered",
+            "application/json": {
+              schema: resolver(ApiErrorSchema),
+              example: { message: "A container image is already registered" },
             },
           },
         },
         424: {
           description: "Failed Dependency",
           content: {
-            "text/plain": {
-              example: "Docker Engine API returned an unexpected response",
+            "application/json": {
+              schema: resolver(ApiErrorSchema),
+              example: { message: "Docker Engine API returned an unexpected response" },
             },
           },
         },
@@ -263,14 +297,18 @@ const botController = new Hono()
         404: {
           description: "Not Found",
           content: {
-            "text/plain": { example: "Container image not found" },
+            "application/json": {
+              schema: resolver(ApiErrorSchema),
+              example: { message: "Container image not found" },
+            },
           },
         },
         424: {
           description: "Failed Dependency",
           content: {
-            "text/plain": {
-              example: "Docker Engine API returned an unexpected response",
+            "application/json": {
+              schema: resolver(ApiErrorSchema),
+              example: { message: "Docker Engine API returned an unexpected response" },
             },
           },
         },
