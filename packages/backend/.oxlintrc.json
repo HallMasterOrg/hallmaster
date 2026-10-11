@@ -17,5 +17,13 @@
   "options": {
     "typeAware": true,
     "typeCheck": true
-  }
+  },
+  "overrides": [
+    {
+      "files": ["tests/**/*.ts"],
+      "rules": {
+        "typescript/unbound-method": "off"
+      }
+    }
+  ]
 }

@@ -27,6 +27,7 @@ lerna-debug.log*
 # misc
 .DS_Store
 dist/
+coverage/
 /.alchemy
 /.prisma-composer
 
