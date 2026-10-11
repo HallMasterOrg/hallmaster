@@ -47,8 +47,11 @@ jobs:
         - name: Test the build process
           run: pnpm --filter=@hallmaster/backend build
 
-      - name: Run the tests
-        run: pnpm --filter=@hallmaster/backend test:cov
+      - name: Run the unit tests
+        run: pnpm --filter=@hallmaster/backend test:unit
+
+      - name: Run the integration tests
+        run: pnpm --filter=@hallmaster/backend test:integration
 
   build-and-push:
     name: Build and Push Images
