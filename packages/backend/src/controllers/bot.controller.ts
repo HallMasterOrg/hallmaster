@@ -3,8 +3,13 @@ import { describeRoute, resolver } from "hono-openapi";
 
 import authMiddlewares from "#middlewares/auth.middlware";
 import validator from "#middlewares/validator.middleware";
-import { BotSchema, ContainerImageSchema, CreateBotSchema } from "#schemas/bot.schema";
-import { DiscordUserSchema } from "#schemas/discord.schema";
+import {
+  BotDiscordProfileSchema,
+  BotSchema,
+  ContainerImageSchema,
+  CreateBotSchema,
+  RecommendedShardsSchema,
+} from "#schemas/bot.schema";
 import { ApiErrorSchema } from "#schemas/error.schema";
 import BotService from "#services/bot.service";
 
@@ -167,7 +172,7 @@ const botController = new Hono()
         200: {
           description: "OK",
           content: {
-            "application/json": { schema: resolver(DiscordUserSchema) },
+            "application/json": { schema: resolver(BotDiscordProfileSchema) },
           },
         },
         404: {
@@ -202,6 +207,52 @@ const botController = new Hono()
       const profile = await BotService.discordProfile();
 
       return c.json(profile, 200);
+    },
+  )
+  .get(
+    "/recommended-shards",
+    describeRoute({
+      tags,
+      description: "Get the number of shards recommended by Discord",
+      responses: {
+        200: {
+          description: "OK",
+          content: {
+            "application/json": { schema: resolver(RecommendedShardsSchema) },
+          },
+        },
+        404: {
+          description: "Not Found",
+          content: {
+            "application/json": {
+              schema: resolver(ApiErrorSchema),
+              example: { message: "Bot not found" },
+            },
+          },
+        },
+        424: {
+          description: "Failed Dependency",
+          content: {
+            "application/json": {
+              schema: resolver(ApiErrorSchema),
+              examples: {
+                "Unreachable or timed out": {
+                  value: { message: "Discord API is unreachable or timed out" },
+                },
+                "Invalid token": { value: { message: "Invalid Discord bot token" } },
+                Unexpected: {
+                  value: { message: "Discord API returned an unexpected response body" },
+                },
+              },
+            },
+          },
+        },
+      },
+    }),
+    async (c) => {
+      const recommendedShards = await BotService.recommendedShards();
+
+      return c.json(recommendedShards, 200);
     },
   )
   .get(

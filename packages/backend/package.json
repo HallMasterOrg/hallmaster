@@ -1,6 +1,9 @@
 {
   "name": "@hallmaster/backend",
   "type": "module",
+  "exports": {
+    "./schemas": "./src/schemas/index.ts"
+  },
   "scripts": {
     "dev": "tsx watch src/index.ts",
     "build": "tsc && tsdown",

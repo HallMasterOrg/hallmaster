@@ -68,6 +68,11 @@ export const BotSchema = z.object({
 });
 export type Bot = z.infer<typeof BotSchema>;
 
+export const RecommendedShardsSchema = BotSchema.pick({ shards: true }).meta({
+  description: "Number of shards recommended by Discord",
+});
+export type RecommendedShards = z.infer<typeof RecommendedShardsSchema>;
+
 // export const UpdateBotSchema = CreateBotSchema.extend({
 //   layout: BotClusterLayoutSchema.meta({ description: "Cluster layout" }),
 // });

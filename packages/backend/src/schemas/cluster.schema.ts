@@ -64,11 +64,13 @@ export const ClusterStatsSchema = z.object({
     }),
   ),
 });
+export type ClusterStats = z.infer<typeof ClusterStatsSchema>;
 
 export const ClustersStatsSchema = z.record(ClusterIdSchema, ClusterStatsSchema).meta({
   description:
     "Stats of every running clusters keyed by ID (clusters whose stats failed to fetch are omitted)",
 });
+export type ClustersStats = z.infer<typeof ClustersStatsSchema>;
 
 export const ClustersBulkActionResultSchema = z.object({
   succeeded: z.array(ClusterIdSchema).meta({
@@ -123,7 +125,9 @@ export const ClusterLogSchema = z.object({
     description: "RFC3339Nano timestamp emitted by the Docker daemon for that log line",
   }),
 });
+export type ClusterLog = z.infer<typeof ClusterLogSchema>;
 
 export const ClusterLogsSchema = z.array(ClusterLogSchema).meta({
   description: "Logs (line by line) of a container",
 });
+export type ClusterLogs = z.infer<typeof ClusterLogsSchema>;

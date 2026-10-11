@@ -78,6 +78,17 @@ export default class BotService {
     };
   }
 
+  public static async recommendedShards() {
+    const bot = await BotRepository.findFirstToken();
+    if (bot === null) {
+      throw new NotFoundException({ message: "Bot not found" });
+    }
+
+    const { shards } = await DiscordService.getGatewayBot(bot.token);
+
+    return { shards };
+  }
+
   public static async discordProfile() {
     const bot = await BotRepository.findFirstToken();
     if (bot === null) throw new NotFoundException({ message: "Bot not found" });

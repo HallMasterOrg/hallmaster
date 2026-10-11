@@ -1,10 +1,16 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import BotRepository from "#repositories/bot.repository";
 import ContainerImageRepository from "#repositories/container-image.repository";
 import BotService from "#services/bot.service";
+import DiscordService from "#services/discord.service";
 import DockerService from "#services/docker.service";
 
-vi.mock("#repositories/bot.repository", () => ({ default: {} }));
+vi.mock("#repositories/bot.repository", () => ({
+  default: {
+    findFirstToken: vi.fn(),
+  },
+}));
 vi.mock("#repositories/cluster.repository", () => ({ default: {} }));
 
 vi.mock("#repositories/container-image.repository", () => ({
@@ -12,6 +18,12 @@ vi.mock("#repositories/container-image.repository", () => ({
     create: vi.fn(),
     findFirst: vi.fn(),
     update: vi.fn(),
+  },
+}));
+
+vi.mock("#services/discord.service", () => ({
+  default: {
+    getGatewayBot: vi.fn(),
   },
 }));
 
@@ -101,5 +113,21 @@ describe("container image update", () => {
       status: 404,
     });
     expect(DockerService.ensureImage).not.toHaveBeenCalled();
+  });
+});
+
+describe("recommended shards", () => {
+  it("returns the number of shards recommended by Discord", async () => {
+    vi.mocked(BotRepository.findFirstToken).mockResolvedValue({ token: "token" });
+    vi.mocked(DiscordService.getGatewayBot).mockResolvedValue({ shards: 4 });
+
+    expect(await BotService.recommendedShards()).toEqual({ shards: 4 });
+    expect(DiscordService.getGatewayBot).toHaveBeenCalledWith("token");
+  });
+
+  it("rejects the request when no bot is registered", async () => {
+    vi.mocked(BotRepository.findFirstToken).mockResolvedValue(null);
+
+    await expect(BotService.recommendedShards()).rejects.toMatchObject({ status: 404 });
   });
 });
