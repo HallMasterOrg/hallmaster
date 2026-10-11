@@ -53,8 +53,8 @@ export default class ClusterService {
 
     return DockerService.containerLogs(cluster.containerId, {
       tail: options.tail,
-      since: options.since?.getTime(),
-      until: options.until?.getTime(),
+      since: options.since && Math.floor(options.since.getTime() / 1000),
+      until: options.until && Math.ceil(options.until.getTime() / 1000),
       stdout: true,
       stderr: true,
       timestamps: true,
