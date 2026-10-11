@@ -135,6 +135,7 @@ export default class ClusterService {
     const cluster = await ClusterRepository.findFirstContainerIdById(id);
     if (cluster === null) throw new NotFoundException({ message: `Cluster ${id} not found` });
 
+    await DockerService.stopContainer(cluster.containerId);
     await DockerService.removeContainer(cluster.containerId);
 
     return ClusterRepository.deleteById(id);
