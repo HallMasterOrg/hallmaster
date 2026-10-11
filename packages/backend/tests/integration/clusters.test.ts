@@ -3,6 +3,7 @@ import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import {
   containerState,
   createBot,
+  openEvents,
   register,
   removeContainerOutsideHallMaster,
   request,
@@ -108,6 +109,22 @@ describe("cluster actions", () => {
     });
   });
 
+  it("stops and starts every cluster", async () => {
+    expect((await call("/clusters/stop", { method: "POST" })).body).toEqual({
+      succeeded: [0, 1],
+      failed: [],
+    });
+    expect(await containerState(0)).toBe("exited");
+    expect(await containerState(1)).toBe("exited");
+
+    expect((await call("/clusters/start", { method: "POST" })).body).toEqual({
+      succeeded: [0, 1],
+      failed: [],
+    });
+    expect(await containerState(0)).toBe("running");
+    expect(await containerState(1)).toBe("running");
+  });
+
   it("removes a running cluster", async () => {
     const { status } = await call("/clusters/0", { method: "DELETE" });
 
@@ -172,5 +189,46 @@ describe("cluster monitoring", () => {
 
     expect(status).toBe(200);
     expect(body).toEqual(expect.any(Array));
+  });
+});
+
+describe("cluster streams", () => {
+  beforeEach(async () => {
+    await applyLayout([{ shardIds: [0] }]);
+  });
+
+  it("streams the clusters", async () => {
+    const stream = await openEvents("/clusters/sse?interval=1", token);
+
+    expect(stream.contentType).toContain("text/event-stream");
+    expect(await stream.read(1)).toEqual([[{ id: 0, shardIds: [0], status: "RUNNING" }]]);
+  });
+
+  it("streams the stats of every running cluster", async () => {
+    const [stats] = await (await openEvents("/clusters/stats/sse?interval=1", token)).read(1);
+
+    expect(stats).toMatchObject({ 0: { cpuPercentage: expect.any(Number) } });
+  });
+
+  it("streams the stats of a cluster", async () => {
+    const events = await (await openEvents("/clusters/0/stats/sse", token)).read(2);
+
+    expect(events).toHaveLength(2);
+    expect(events[0]).toMatchObject({ memory: { usage: expect.any(Number) } });
+  });
+
+  it("streams the new log lines of a cluster", async () => {
+    const stream = await openEvents("/clusters/0/logs/sse", token);
+    await call("/clusters/0/restart", { method: "POST" });
+
+    const [log] = await stream.read(1);
+
+    expect(log).toMatchObject({ content: expect.any(String), stream: expect.any(String) });
+  });
+
+  it("refuses to stream an unknown cluster", async () => {
+    const response = await request("/clusters/42/stats/sse", { token });
+
+    expect(response.status).toBe(404);
   });
 });

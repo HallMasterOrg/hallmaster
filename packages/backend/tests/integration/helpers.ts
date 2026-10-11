@@ -75,3 +75,40 @@ export async function register() {
 
   return token;
 }
+
+export async function openEvents(path: string, token: string) {
+  const response = await request(path, { token });
+  if (response.body === null) {
+    throw new Error(`No body for ${path}`);
+  }
+
+  const reader = response.body.pipeThrough(new TextDecoderStream()).getReader();
+  let buffer = "";
+
+  async function read(count: number) {
+    const events: unknown[] = [];
+
+    while (events.length < count) {
+      const { value, done } = await reader.read();
+      if (done) {
+        break;
+      }
+
+      buffer += value;
+      const blocks = buffer.split("\n\n");
+      buffer = blocks.pop() ?? "";
+      for (const block of blocks) {
+        const data = block.split("\n").find((line) => line.startsWith("data: "));
+        if (data !== undefined) {
+          events.push(JSON.parse(data.slice("data: ".length)));
+        }
+      }
+    }
+
+    await reader.cancel();
+
+    return events;
+  }
+
+  return { status: response.status, contentType: response.headers.get("Content-Type"), read };
+}
