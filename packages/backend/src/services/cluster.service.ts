@@ -141,10 +141,7 @@ export default class ClusterService {
   }
 
   public static async getAll() {
-    const clusters = await ClusterRepository.findMany();
-    if (clusters.length === 0) throw new NotFoundException({ message: "Clusters not found" });
-
-    return clusters;
+    return ClusterRepository.findMany();
   }
 
   public static async stopAll() {

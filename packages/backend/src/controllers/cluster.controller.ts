@@ -33,12 +33,6 @@ const clusterController = new Hono()
             "application/json": { schema: resolver(ClustersSchema) },
           },
         },
-        404: {
-          description: "Not Found",
-          content: {
-            "application/json": { example: "Clusters not found" },
-          },
-        },
       },
     }),
     async (c) => {
