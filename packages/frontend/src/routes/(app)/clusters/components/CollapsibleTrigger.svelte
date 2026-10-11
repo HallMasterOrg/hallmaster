@@ -1,10 +1,10 @@
 <script lang="ts">
-  import type { GetClusterDto } from "@hallmaster/backend/dto";
+  import type { Cluster } from "@hallmaster/backend/schemas";
   import { ChevronRightIcon } from "@lucide/svelte";
   import { Collapsible } from "@skeletonlabs/skeleton-svelte";
 
   interface Props {
-    cluster: GetClusterDto;
+    cluster: Cluster;
   }
 
   let { cluster }: Props = $props();
@@ -19,7 +19,8 @@
     class={{
       "badge preset-filled font-extrabold transition-colors": true,
       "preset-filled-success-400-600": cluster.status === "RUNNING",
-      "animate-pulse preset-filled-primary-500": cluster.status === "STARTING",
+      "animate-pulse preset-filled-primary-500":
+        cluster.status === "STARTING" || cluster.status === "UPDATING",
       "preset-filled-surface-500": cluster.status === "STOPPED",
       "preset-filled-error-500": cluster.status === "ERROR",
     }}

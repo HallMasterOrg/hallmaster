@@ -21,7 +21,7 @@
     class="preset-filled-primary-500 btn-sm"
     disabled={!changed || !!updateBotLayout.pending}
     onclick={() => {
-      toaster.promise(updateBotLayout({ layout: layout!.export() }), {
+      toaster.promise(updateBotLayout(layout!.export()), {
         loading: { title: "Updating layout.." },
         success: { title: "Successfully applied layout" },
         error: (error) => ({

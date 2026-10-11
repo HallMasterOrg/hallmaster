@@ -1,7 +1,7 @@
 <script lang="ts">
   import BoundaryFailed from "$lib/components/BoundaryFailed.svelte";
   import { getClusters, getClustersLive } from "$lib/remotes/clusters.remote";
-  import type { GetClusterDto } from "@hallmaster/backend/dto";
+  import type { Cluster } from "@hallmaster/backend/schemas";
   import { EyeOffIcon, SquareArrowOutUpRight } from "@lucide/svelte";
   import { Collapsible } from "@skeletonlabs/skeleton-svelte";
   import { onMount } from "svelte";
@@ -24,7 +24,7 @@
     return () => (unmounted = true);
   });
 
-  let group = $state<GetClusterDto["id"][]>([]);
+  let group = $state<Cluster["id"][]>([]);
 </script>
 
 <div class="flex flex-col gap-4">

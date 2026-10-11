@@ -2,6 +2,7 @@
   "$schema": "./node_modules/oxlint/configuration_schema.json",
   "plugins": ["eslint", "typescript", "unicorn", "oxc", "import", "node", "promise", "vitest"],
   "options": {
-    "typeAware": true
+    "typeAware": true,
+    "typeCheck": true
   }
 }
