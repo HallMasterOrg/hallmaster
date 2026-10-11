@@ -76,6 +76,21 @@ export default class BotRepository {
     });
   }
 
+  public static async updateTotalShards(data: Pick<Bot, "totalShards">) {
+    const bot = await this.findFirstId();
+    if (bot === null) {
+      return null;
+    }
+
+    return prisma.bot.update({
+      data,
+      where: {
+        id: bot.id,
+      },
+      select: this.DEFAULT_SELECT,
+    });
+  }
+
   // public static async createClusters(data: Pick<Cluster, "id" | "status" | "shardIds">[]) {
   //   const bot = await this.findFirstId();
   //   if (bot === null) return null;

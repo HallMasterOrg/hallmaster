@@ -219,6 +219,11 @@ export default class ClusterService {
     await this.stopAll();
     await this.removeAll();
 
+    const updatedBot = await BotRepository.updateTotalShards({ totalShards: shards.length });
+    if (updatedBot === null) {
+      throw new NotFoundException({ message: "Bot not found" });
+    }
+
     const previousStatuses = new Map(previous.map(({ id, status }) => [id, status]));
     const updated = await Promise.all(
       clusters.map((cluster) =>
@@ -228,10 +233,7 @@ export default class ClusterService {
             shardIds: cluster.shardIds,
             status: previousStatuses.get(cluster.id!) === "STOPPED" ? "STOPPED" : "UPDATING",
           },
-          {
-            ...bot,
-            totalShards: shards.length,
-          },
+          { ...bot, totalShards: updatedBot.totalShards },
           containerImage,
         ),
       ),
