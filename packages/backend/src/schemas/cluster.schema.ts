@@ -30,6 +30,11 @@ export const SseIntervalQuerySchema = z.object({
   }),
 });
 
+export const ClusterActionSchema = z.enum(["start", "stop", "restart"]).meta({
+  description: "Action to apply",
+});
+export type ClusterAction = z.infer<typeof ClusterActionSchema>;
+
 export const ClusterStatsSchema = z.object({
   cpuPercentage: z.number().min(0).nonnegative().meta({
     description: "CPU usage percentage of the cluster",
@@ -77,10 +82,19 @@ export const ClustersBulkActionResultSchema = z.object({
       description: "Failed clusters IDs with the reason of failure",
     }),
 });
+export type ClustersBulkActionResult = z.infer<typeof ClustersBulkActionResultSchema>;
 
 export const ClusterIdParamSchema = z.object({
   id: ClusterIdSchema,
 });
+
+export const ClusterActionParamSchema = z.object({
+  action: ClusterActionSchema,
+});
+
+export const ClusterIdActionParamSchema = ClusterIdParamSchema.extend(
+  ClusterActionParamSchema.shape,
+);
 
 export const ClusterLogsQuerySchema = z.object({
   since: z.coerce.date().optional().meta({

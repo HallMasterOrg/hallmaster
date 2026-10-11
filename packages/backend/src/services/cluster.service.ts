@@ -3,7 +3,14 @@ import type { Bot, ContainerImage } from "#prisma/client";
 import BotRepository from "#repositories/bot.repository";
 import ClusterRepository from "#repositories/cluster.repository";
 import ContainerImageRepository from "#repositories/container-image.repository";
-import type { Cluster, ClusterId, ClusterLogsQuery, UpdateClusters } from "#schemas/cluster.schema";
+import type {
+  Cluster,
+  ClusterAction,
+  ClusterId,
+  ClusterLogsQuery,
+  ClustersBulkActionResult,
+  UpdateClusters,
+} from "#schemas/cluster.schema";
 
 import DockerService from "./docker.service";
 
@@ -40,6 +47,19 @@ export default class ClusterService {
     });
   }
 
+  private static async findRunningContainerId(id: ClusterId) {
+    const cluster = await ClusterRepository.findFirstContainerIdAndStatusById(id);
+    if (cluster === null) {
+      throw new NotFoundException({ message: `Cluster ${id} not found` });
+    }
+
+    if (cluster.status !== "RUNNING") {
+      throw new BadRequestException({ message: `Cluster ${id} is not running` });
+    }
+
+    return cluster.containerId;
+  }
+
   public static async get(id: ClusterId) {
     const cluster = await ClusterRepository.findFirstById(id);
     if (cluster === null) throw new NotFoundException({ message: `Cluster ${id} not found` });
@@ -72,6 +92,32 @@ export default class ClusterService {
       stderr: true,
       timestamps: true,
     });
+  }
+
+  public static async stats(id: ClusterId) {
+    const containerId = await this.findRunningContainerId(id);
+
+    return DockerService.containerStats(containerId);
+  }
+
+  public static async getAllStats() {
+    const clusters = await ClusterRepository.findManyIdAndContainerIdByStatus("RUNNING");
+    const results = await Promise.allSettled(
+      clusters.map(
+        async ({ id, containerId }) =>
+          [id, await DockerService.containerStats(containerId)] as const,
+      ),
+    );
+
+    return Object.fromEntries(
+      results.flatMap((result) => (result.status === "fulfilled" ? [result.value] : [])),
+    );
+  }
+
+  public static async streamStats(id: ClusterId) {
+    const containerId = await this.findRunningContainerId(id);
+
+    return DockerService.streamContainerStats(containerId);
   }
 
   public static async start(id: ClusterId) {
@@ -129,6 +175,36 @@ export default class ClusterService {
     if (updated === null) throw new NotFoundException({ message: `Cluster ${id} not found` });
 
     return updated;
+  }
+
+  public static async runAction(id: ClusterId, action: ClusterAction) {
+    const actions = {
+      start: () => this.start(id),
+      stop: () => this.stop(id),
+      restart: () => this.restart(id),
+    } satisfies Record<ClusterAction, () => Promise<Cluster>>;
+
+    return actions[action]();
+  }
+
+  public static async runActionOnAll(action: ClusterAction): Promise<ClustersBulkActionResult> {
+    const clusters = await ClusterRepository.findManyId();
+    const outcomes = await Promise.all(
+      clusters.map(({ id }) =>
+        this.runAction(id, action).then(
+          () => ({ id, reason: null }),
+          (error: unknown) => ({
+            id,
+            reason: error instanceof Error ? error.message : String(error),
+          }),
+        ),
+      ),
+    );
+
+    return {
+      succeeded: outcomes.filter(({ reason }) => reason === null).map(({ id }) => id),
+      failed: outcomes.flatMap(({ id, reason }) => (reason === null ? [] : [{ id, reason }])),
+    };
   }
 
   public static async remove(id: ClusterId) {

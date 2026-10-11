@@ -1,3 +1,5 @@
+import { Transform } from "node:stream";
+
 import {
   DockerAPIHttpError,
   DockerContainersAPI,
@@ -6,6 +8,11 @@ import {
 } from "@hallmaster/docker.js";
 
 import { FailedDependancyException } from "#exceptions/http-exceptions";
+import {
+  DockerContainerStatsSchema,
+  type DockerContainerStats,
+  type DockerCpuStats,
+} from "#schemas/docker.schema";
 
 type MethodParameters<
   C extends abstract new (...args: any[]) => any,
@@ -41,6 +48,47 @@ export default class DockerService {
         message: `Docker Engine API returned a ${error.status} ${error.message}`,
         cause: error,
       });
+    });
+  }
+
+  private static percentage(value: number, total: number) {
+    return total > 0 ? (value / total) * 100 : 0;
+  }
+
+  private static cpuPercentage(cpu: DockerCpuStats, precpu: DockerCpuStats) {
+    const cpuDelta = cpu.cpu_usage.total_usage - precpu.cpu_usage.total_usage;
+    const systemDelta = cpu.system_cpu_usage - precpu.system_cpu_usage;
+    if (precpu.system_cpu_usage === 0 || cpuDelta <= 0) {
+      return 0;
+    }
+
+    return this.percentage(cpuDelta, systemDelta) * cpu.online_cpus;
+  }
+
+  private static toContainerStats(stats: DockerContainerStats) {
+    const memoryUsage = Math.max(
+      stats.memory_stats.usage - stats.memory_stats.stats.inactive_file,
+      0,
+    );
+
+    return {
+      cpuPercentage: this.cpuPercentage(stats.cpu_stats, stats.precpu_stats),
+      memory: {
+        usage: memoryUsage,
+        percentage: this.percentage(memoryUsage, stats.memory_stats.limit),
+      },
+      network: Object.entries(stats.networks).map(([name, network]) => ({
+        interface: name,
+        transmitted: network.tx_bytes,
+        received: network.rx_bytes,
+      })),
+    };
+  }
+
+  private static unexpectedContainerStats(cause: unknown) {
+    return new FailedDependancyException({
+      message: "Docker Engine API returned unexpected container stats",
+      cause,
     });
   }
 
@@ -87,5 +135,45 @@ export default class DockerService {
     options: Omit<NonNullable<MethodParameters<typeof DockerContainersAPI, "logs">[1]>, "follow">,
   ) {
     return this.call(this.containers.logs(containerId, { ...options, follow: true }));
+  }
+
+  public static async containerStats(containerId: string) {
+    const sample = await this.call(
+      this.containers.stats(containerId, { stream: false, oneShot: false }),
+    );
+
+    const result = DockerContainerStatsSchema.safeParse(sample);
+    if (!result.success) {
+      throw this.unexpectedContainerStats(result.error);
+    }
+
+    return this.toContainerStats(result.data);
+  }
+
+  public static async streamContainerStats(containerId: string) {
+    const samples = await this.call(this.containers.stats(containerId, { stream: true }));
+    const stats = new Transform({
+      objectMode: true,
+      transform: (sample: unknown, _encoding, callback) => {
+        const result = DockerContainerStatsSchema.safeParse(sample);
+        if (!result.success) {
+          callback(this.unexpectedContainerStats(result.error));
+          return;
+        }
+
+        if (result.data.precpu_stats.system_cpu_usage === 0) {
+          callback();
+          return;
+        }
+
+        callback(null, this.toContainerStats(result.data));
+      },
+    });
+
+    samples.pipe(stats);
+    samples.on("error", (error) => stats.destroy(error));
+    stats.on("close", () => samples.destroy());
+
+    return stats;
   }
 }

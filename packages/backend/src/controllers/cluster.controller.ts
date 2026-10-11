@@ -4,6 +4,8 @@ import { streamSSE } from "hono/streaming";
 
 import authMiddlewares from "#middlewares/auth.middlware";
 import {
+  ClusterActionParamSchema,
+  ClusterIdActionParamSchema,
   ClusterIdParamSchema,
   ClusterLogSchema,
   ClusterLogsQuerySchema,
@@ -129,10 +131,24 @@ const clusterController = new Hono()
       },
     }),
     validator("query", SseIntervalQuerySchema),
+    (c) => {
+      const query = c.req.valid("query");
+
+      return streamSSE(c, async (stream) => {
+        while (!stream.aborted) {
+          const stats = await ClusterService.getAllStats();
+
+          await stream.writeSSE({
+            data: JSON.stringify(stats),
+          });
+
+          await stream.sleep(query.interval * 1000);
+        }
+      });
+    },
   )
-  .on(
-    "POST",
-    ["/start", "/stop", "/restart"],
+  .post(
+    "/:action{(?:start|stop|restart)}",
     describeRoute({
       tags,
       description:
@@ -144,22 +160,15 @@ const clusterController = new Hono()
             "application/json": { schema: resolver(ClustersBulkActionResultSchema) },
           },
         },
-        404: {
-          description: "Not Found",
-          content: {
-            "text/plain": { example: "Cluster not found" },
-          },
-        },
-        424: {
-          description: "Failed Dependency",
-          content: {
-            "text/plain": {
-              example: "Docker Engine API returned an unexpected response",
-            },
-          },
-        },
       },
     }),
+    validator("param", ClusterActionParamSchema),
+    async (c) => {
+      const param = c.req.valid("param");
+      const result = await ClusterService.runActionOnAll(param.action);
+
+      return c.json(result, 200);
+    },
   )
   .get(
     "/:id",
@@ -326,15 +335,35 @@ const clusterController = new Hono()
             "application/json": { schema: resolver(ClusterStatsSchema) },
           },
         },
+        400: {
+          description: "Bad Request",
+          content: {
+            "text/plain": { example: "Cluster 0 is not running" },
+          },
+        },
         404: {
           description: "Not Found",
           content: {
             "text/plain": { example: "Cluster not found" },
           },
         },
+        424: {
+          description: "Failed Dependency",
+          content: {
+            "text/plain": {
+              example: "Docker Engine API returned an unexpected response",
+            },
+          },
+        },
       },
     }),
     validator("param", ClusterIdParamSchema),
+    async (c) => {
+      const param = c.req.valid("param");
+      const stats = await ClusterService.stats(param.id);
+
+      return c.json(stats, 200);
+    },
   )
   .get(
     "/:id/stats/sse",
@@ -348,19 +377,52 @@ const clusterController = new Hono()
             "text/event-stream": { schema: resolver(ClusterStatsSchema) },
           },
         },
+        400: {
+          description: "Bad Request",
+          content: {
+            "text/plain": { example: "Cluster 0 is not running" },
+          },
+        },
         404: {
           description: "Not Found",
           content: {
             "text/plain": { example: "Cluster not found" },
           },
         },
+        424: {
+          description: "Failed Dependency",
+          content: {
+            "text/plain": {
+              example: "Docker Engine API returned an unexpected response",
+            },
+          },
+        },
       },
     }),
     validator("param", ClusterIdParamSchema),
+    async (c) => {
+      const param = c.req.valid("param");
+      const stats = await ClusterService.streamStats(param.id);
+
+      return streamSSE(c, async (stream) => {
+        stream.onAbort(() => {
+          stats.destroy();
+        });
+
+        try {
+          for await (const sample of stats) {
+            await stream.writeSSE({ data: JSON.stringify(sample) });
+          }
+        } catch (error) {
+          if (!stream.aborted) {
+            throw error;
+          }
+        }
+      });
+    },
   )
-  .on(
-    "POST",
-    ["/:id/start", "/:id/stop", "/:id/restart"],
+  .post(
+    "/:id/:action{(?:start|stop|restart)}",
     describeRoute({
       tags,
       description: "Start, stop or restart a cluster",
@@ -387,7 +449,13 @@ const clusterController = new Hono()
         },
       },
     }),
-    validator("param", ClusterIdParamSchema),
+    validator("param", ClusterIdActionParamSchema),
+    async (c) => {
+      const param = c.req.valid("param");
+      const cluster = await ClusterService.runAction(param.id, param.action);
+
+      return c.json(cluster, 200);
+    },
   );
 
 export default clusterController;

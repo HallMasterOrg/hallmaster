@@ -75,6 +75,24 @@ export default class ClusterRepository {
     });
   }
 
+  public static async findFirstContainerIdAndStatusById(id: Cluster["id"]) {
+    return prisma.cluster.findFirst({
+      where: { id },
+      select: { containerId: true, status: true },
+    });
+  }
+
+  public static async findManyId() {
+    return prisma.cluster.findMany({ select: { id: true }, orderBy: { id: "asc" } });
+  }
+
+  public static async findManyIdAndContainerIdByStatus(status: Cluster["status"]) {
+    return prisma.cluster.findMany({
+      where: { status },
+      select: { id: true, containerId: true },
+    });
+  }
+
   public static async findManyIdAndContainerId() {
     return prisma.cluster.findMany({ select: { id: true, containerId: true } });
   }
