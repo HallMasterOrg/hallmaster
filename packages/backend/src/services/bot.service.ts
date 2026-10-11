@@ -34,7 +34,7 @@ export default class BotService {
   }
 
   public static async update({ token }: CreateBot): Promise<Bot> {
-    const bot = BotRepository.findFirst();
+    const bot = await BotRepository.findFirstId();
     if (bot === null) throw new NotFoundException({ message: "Bot not found" });
 
     await DiscordService.getGatewayBot(token);
