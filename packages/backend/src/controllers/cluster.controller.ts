@@ -5,6 +5,7 @@ import { streamSSE } from "hono/streaming";
 import authMiddlewares from "#middlewares/auth.middlware";
 import {
   ClusterIdParamSchema,
+  ClusterLogSchema,
   ClusterLogsQuerySchema,
   ClusterLogsSchema,
   ClustersBulkActionResultSchema,
@@ -272,7 +273,7 @@ const clusterController = new Hono()
         200: {
           description: "Server-Sent Events with cluster logs",
           content: {
-            "text/event-stream": { schema: resolver(ClusterLogsSchema) },
+            "text/event-stream": { schema: resolver(ClusterLogSchema) },
           },
         },
         404: {
@@ -281,13 +282,36 @@ const clusterController = new Hono()
             "text/plain": { example: "Cluster not found" },
           },
         },
+        424: {
+          description: "Failed Dependency",
+          content: {
+            "text/plain": {
+              example: "Docker Engine API returned an unexpected response",
+            },
+          },
+        },
       },
     }),
     validator("param", ClusterIdParamSchema),
     async (c) => {
       const param = c.req.valid("param");
+      const logs = await ClusterService.streamLogs(param.id);
 
-      await ClusterService.streamLogs(param.id);
+      return streamSSE(c, async (stream) => {
+        stream.onAbort(() => {
+          logs.destroy();
+        });
+
+        try {
+          for await (const log of logs) {
+            await stream.writeSSE({ data: JSON.stringify(log) });
+          }
+        } catch (error) {
+          if (!stream.aborted) {
+            throw error;
+          }
+        }
+      });
     },
   )
   .get(

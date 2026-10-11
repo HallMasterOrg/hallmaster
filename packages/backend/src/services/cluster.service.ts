@@ -66,7 +66,7 @@ export default class ClusterService {
     const cluster = await ClusterRepository.findFirstContainerIdById(id);
     if (cluster === null) throw new NotFoundException({ message: `Cluster ${id} not found` });
 
-    return DockerService.containerLogs(cluster.containerId, {
+    return DockerService.streamContainerLogs(cluster.containerId, {
       tail: 0,
       stdout: true,
       stderr: true,
