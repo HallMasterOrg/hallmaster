@@ -38,20 +38,72 @@ jobs:
         run: pnpm --filter=@hallmaster/backend prisma:generate
 
       - parallel:
-        - name: Run lint
-          run: pnpm --filter=@hallmaster/backend lint
+          - name: Run lint
+            run: pnpm --filter=@hallmaster/backend lint
 
-        - name: Run format check
-          run: pnpm --filter=@hallmaster/backend format:check
+          - name: Run format check
+            run: pnpm --filter=@hallmaster/backend format:check
 
-        - name: Test the build process
-          run: pnpm --filter=@hallmaster/backend build
+          - name: Test build process
+            run: pnpm --filter=@hallmaster/backend build
 
-      - name: Run the unit tests
-        run: pnpm --filter=@hallmaster/backend test:unit
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - branche: ${{ github.head_ref }}
+            artifact: pull-request
+          - branch: main
+            artifact: main
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ matrix.branch }}
 
-      - name: Run the integration tests
-        run: pnpm --filter=@hallmaster/backend test:integration
+      - name: Setup Node.js & pnpm
+        uses: pnpm/setup@v2
+        with:
+          cache: true
+          install: false
+
+      - name: Install dependencies
+        run: pnpm install --filter=@hallmaster/backend... --frozen-lockfile
+
+      - name: Generate Prisma types
+        run: pnpm --filter=@hallmaster/backend prisma:generate
+
+      - name: Run tests
+        run: pnpm --filter=@hallmaster/backend test:coverage
+
+      - name: Upload coverage
+        uses: actions/upload-artifact@v7
+        with:
+          name: coverage-${{ matrix.artifact }}
+          path: coverage
+
+  report-coverage:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Download coverage artifact
+        uses: actions/download-artifact@v8
+        with:
+          name: coverage-pull-request
+          path: coverage
+      - uses: actions/download-artifact@v8
+        with:
+          name: coverage-main
+          path: coverage-main
+
+      - name: Report coverage
+        uses: davelosert/vitest-coverage-report-action@v2
+        with:
+          json-summary-compare-path: coverage-main/coverage-summary.json
 
   build-and-push:
     name: Build and Push Images
