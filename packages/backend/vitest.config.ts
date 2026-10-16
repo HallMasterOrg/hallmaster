@@ -6,6 +6,8 @@ export default defineConfig({
   test: {
     coverage: {
       include: ["src/**/*.ts"],
+      reportOnFailure: true,
+      reporter: ["json-summary", "json"],
     },
     projects: [
       {
