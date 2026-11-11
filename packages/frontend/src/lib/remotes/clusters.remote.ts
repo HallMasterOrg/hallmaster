@@ -138,7 +138,7 @@ export const getClusterLogsLive = query.live(ClusterIdSchema, async function* (i
       return;
     }
     case 401:
-      return redirect(303, "/login");
+      return error(401, "Unauthorized");
     case 404:
       return error(404, "Cluster not found");
 
@@ -176,7 +176,7 @@ export const getClusterStatsLive = query.live(ClusterIdSchema, async function* (
     case 400:
       return error(400, "Cluster is not running");
     case 401:
-      return redirect(303, "/login");
+      return error(401, "Unauthorized");
     case 404:
       return error(404, "Cluster not found");
 
@@ -234,7 +234,7 @@ export const getClustersLive = query.live(async function* () {
       return;
     }
     case 401:
-      return redirect(303, "/login");
+      return error(401, "Unauthorized");
 
     default:
       console.error(await response.text());
@@ -273,7 +273,7 @@ export const getClustersStatsLive = query.live(
         return;
       }
       case 401:
-        return redirect(303, "/login");
+        return error(401, "Unauthorized");
 
       default:
         console.error(await response.text());
