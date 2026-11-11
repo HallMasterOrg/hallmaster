@@ -39,6 +39,7 @@ HallMaster is organized as a monorepo with the following packages:
 | Package | Description | Stack |
 |---------|-------------|-------|
 | `packages/backend` | REST API, orchestration engine, Docker management | Hono, Prisma, Zod |
+| `packages/e2e` | End-to-end tests of the dashboard | Vitest, Playwright |
 | `packages/frontend` | Web dashboard | SvelteKit, Skeleton UI |
 
 The frontend reuses the backend Zod schemas (`@hallmaster/backend/schemas`) to validate its forms and type the API responses.
@@ -106,6 +107,14 @@ pnpm dev
 cd packages/backend
 pnpm test:unit
 pnpm test:integration # requires Docker
+```
+
+The end-to-end tests build the backend and the dashboard, start them against a test database, and drive the dashboard in a headless Chromium. They need Docker, and the first run downloads Chromium:
+
+```sh
+cd packages/e2e
+pnpm browsers:install
+pnpm test
 ```
 
 ## Self-hosting

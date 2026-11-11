@@ -2,6 +2,7 @@
   import LiveAreaStackChart from "$lib/components/LiveAreaStackChart.svelte";
   import Widget from "$lib/components/Widget.svelte";
   import { getClustersStatsLive } from "$lib/remotes/clusters.remote";
+  import follow from "$lib/utils/follow";
   import formatPercentage from "$lib/utils/formatPercentage";
   import handleLiveError from "$lib/utils/handleLiveError";
   import type { ClustersStats } from "@hallmaster/backend/schemas";
@@ -13,7 +14,7 @@
   onMount(() => {
     let unmounted = false;
     (async () => {
-      for await (const { date, ...stats } of getClustersStatsLive({ interval: 1 })) {
+      for await (const { date, ...stats } of follow(getClustersStatsLive({ interval: 1 }))) {
         if (unmounted) break;
         value = Object.fromEntries(
           Object.entries(stats as ClustersStats).map(([key, { cpuPercentage }]) => [

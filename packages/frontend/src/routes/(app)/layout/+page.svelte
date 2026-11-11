@@ -29,6 +29,7 @@
 
     <button
       class="btn flex aspect-video rounded-lg bg-surface-50-950 btn-lg text-surface-700-300 hover:text-primary-700-300"
+      aria-label="Add a cluster"
       onclick={() => layout.add()}
     >
       <PlusIcon />

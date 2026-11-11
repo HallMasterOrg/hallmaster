@@ -69,6 +69,7 @@
       <button
         class="btn-icon"
         title={label}
+        aria-label={`${label} cluster ${String(id).padStart(2, "0")}`}
         onclick={() => {
           isLoading = true;
           toaster.promise(remote(id), {

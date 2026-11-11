@@ -2,6 +2,7 @@
   import LiveAreaChart from "$lib/components/LiveAreaChart.svelte";
   import Widget from "$lib/components/Widget.svelte";
   import { getClusterStatsLive } from "$lib/remotes/clusters.remote";
+  import follow from "$lib/utils/follow";
   import formatPercentage from "$lib/utils/formatPercentage";
   import handleLiveError from "$lib/utils/handleLiveError";
   import type { Cluster, ClusterStats } from "@hallmaster/backend/schemas";
@@ -22,7 +23,7 @@
   onMount(() => {
     let unmounted = false;
     (async () => {
-      for await (const { date, cpuPercentage } of getClusterStatsLive(id)) {
+      for await (const { date, cpuPercentage } of follow(getClusterStatsLive(id))) {
         if (unmounted) break;
         value = { date, value: cpuPercentage / 100 };
       }

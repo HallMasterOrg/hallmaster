@@ -1,6 +1,7 @@
 <script lang="ts">
   import BoundaryFailed from "$lib/components/BoundaryFailed.svelte";
   import { getClusters, getClustersLive } from "$lib/remotes/clusters.remote";
+  import follow from "$lib/utils/follow";
   import handleLiveError from "$lib/utils/handleLiveError";
   import type { Cluster } from "@hallmaster/backend/schemas";
   import { EyeOffIcon, SquareArrowOutUpRight } from "@lucide/svelte";
@@ -16,7 +17,7 @@
   onMount(() => {
     let unmounted = false;
     (async () => {
-      for await (const live of getClustersLive()) {
+      for await (const live of follow(getClustersLive())) {
         if (unmounted) break;
         query.set(live);
       }
