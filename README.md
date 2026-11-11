@@ -6,8 +6,6 @@
 
 HallMaster is an open-source platform designed to centralize the orchestration and monitoring of Discord bots. It aims to provide a unified interface for managing shards, clusters, deployments, and real-time observability. You can focus on building your bot instead of fighting your infrastructure.
 
-![HallMaster dashboard: the clusters of a bot with their status](docs/screenshots/clusters.png)
-
 ## What it does today
 
 - Registers one Discord bot (its token is checked against Discord) and the container image of your bot.
