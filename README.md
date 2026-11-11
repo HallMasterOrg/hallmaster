@@ -6,6 +6,21 @@
 
 HallMaster is an open-source platform designed to centralize the orchestration and monitoring of Discord bots. It aims to provide a unified interface for managing shards, clusters, deployments, and real-time observability. You can focus on building your bot instead of fighting your infrastructure.
 
+## What it does today
+
+- Registers one Discord bot (its token is checked against Discord) and the container image of your bot.
+- Splits the bot's shards into clusters from the dashboard. Each cluster runs as a Docker container that receives `DISCORD_BOT_TOKEN`, `TOTAL_SHARDS` and `SHARD_ID_LIST`, so your bot knows which shards to handle.
+- Starts, stops and restarts one cluster or several at once.
+- Shows the live status, logs, CPU and memory of each cluster, and the total for the bot.
+
+## What it does not do
+
+- It manages a single bot and a single user account per instance.
+- It only runs containers on the machine where the backend runs (through the local Docker socket). There is no multi-machine setup yet.
+- It does not build your bot: push its image to a registry first, then give HallMaster the image URL.
+- It does not scale or reshard on its own: you change the cluster layout by hand.
+- Changing the bot token or the image in the settings does not restart the running clusters. The new values are used the next time you apply a layout.
+
 ## Features
 
 > [!NOTE]
@@ -32,8 +47,8 @@ The backend communicates with the Docker daemon via Unix socket to manage bot co
 
 ## Prerequisites
 
-- Node >= 24
-- pnpm >= 10
+- Node 24
+- pnpm 12 (the exact version is pinned in `package.json`)
 - Docker
 
 ## Getting started
@@ -103,8 +118,8 @@ docker compose up -d
 
 ## Contributing
 
-Contributions are welcome. Please use [conventional commits](https://www.conventionalcommits.org/) for your commit messages.
+Contributions are welcome. [CONTRIBUTING.md](CONTRIBUTING.md) explains how to submit a change, what we accept and how fast we answer. Issues labeled [`good first issue`](https://github.com/hallmasterorg/hallmaster/labels/good%20first%20issue) are a good place to start.
 
 ## License
 
-This project is open-source. See the [LICENSE](LICENSE) file for details.
+HallMaster is licensed under the [GNU AGPL v3](LICENSE). The Docker client it uses, [`@hallmaster/docker.js`](https://github.com/hallmasterorg/docker.js), is a separate package under the MIT license.
