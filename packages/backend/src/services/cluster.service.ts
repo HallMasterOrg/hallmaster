@@ -293,6 +293,15 @@ export default class ClusterService {
     return ClusterRepository.deleteManyById(clusters.map(({ id }) => id));
   }
 
+  public static async redeployAll() {
+    const clusters = await ClusterRepository.findMany();
+    if (clusters.length === 0) {
+      return [];
+    }
+
+    return this.updateAll(clusters.map(({ id, shardIds }) => ({ id, shardIds })));
+  }
+
   public static async updateAll(clusters: UpdateClusters) {
     const bot = await BotRepository.findFirstIdAndToken();
     if (bot === null) throw new NotFoundException({ message: "Bot not found" });

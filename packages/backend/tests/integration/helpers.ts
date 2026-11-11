@@ -20,6 +20,10 @@ export async function containerState(clusterId: number) {
   return (await findContainer(clusterId))?.State;
 }
 
+export async function containerImage(clusterId: number) {
+  return (await findContainer(clusterId))?.Image;
+}
+
 export async function stopContainerOutsideHallMaster(clusterId: number) {
   const container = await findContainer(clusterId);
   if (container !== undefined) {
