@@ -1,5 +1,6 @@
 <script lang="ts">
   import { getClusterLogs, getClusterLogsLive } from "$lib/remotes/clusters.remote";
+  import follow from "$lib/utils/follow";
   import handleLiveError from "$lib/utils/handleLiveError";
   import type { Cluster, ClusterLogs } from "@hallmaster/backend/schemas";
   import { Progress } from "@skeletonlabs/skeleton-svelte";
@@ -20,7 +21,7 @@
   onMount(() => {
     let unmounted = false;
     (async () => {
-      for await (const logs of getClusterLogsLive(id)) {
+      for await (const logs of follow(getClusterLogsLive(id))) {
         if (unmounted) break;
         live.push(...logs);
       }
