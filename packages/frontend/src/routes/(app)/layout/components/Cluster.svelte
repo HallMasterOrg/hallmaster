@@ -36,12 +36,14 @@
       <div class="flex gap-1">
         <button
           class="btn-icon btn-icon-sm transition-colors hover:bg-surface-100-900 hover:text-error-800-200"
+          aria-label="Remove the cluster"
           onclick={() => layout.remove(index)}
         >
           <MinusIcon />
         </button>
         <button
           class="btn-icon btn-icon-sm transition-colors hover:bg-surface-100-900"
+          aria-label="Duplicate the cluster"
           onclick={() => layout.add(cluster.current.size)}
         >
           <CopyIcon />
@@ -67,6 +69,7 @@
         <button
           class="btn-icon rounded-r-none text-surface-700-300 hover:bg-surface-100-900 hover:text-error-700-300"
           style:font-size="clamp(0.625rem, 30cqw, 2em)"
+          aria-label="Remove a shard"
           onclick={() => {
             if (cluster.state === "added" && cluster.current.size === 1) layout.remove(index);
             else cluster.pop();
@@ -77,6 +80,7 @@
         <button
           class="btn-icon rounded-l-none text-surface-700-300 hover:bg-surface-100-900 hover:text-primary-700-300"
           style:font-size="clamp(0.625rem, 30cqw, 2em)"
+          aria-label="Add a shard"
           onclick={() => cluster.add()}
         >
           <PlusIcon />

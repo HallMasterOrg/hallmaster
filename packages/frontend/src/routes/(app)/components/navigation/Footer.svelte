@@ -18,6 +18,7 @@
 
   <form {...logout}>
     <ConfirmButton
+      aria-label="Log out"
       disabled={!!logout.pending}
       icon={{ icon: LogOutIcon }}
       class="hover:text-error-500"
