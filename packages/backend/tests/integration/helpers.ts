@@ -1,13 +1,12 @@
-import { DockerContainersAPI, DockerSocket } from "@hallmaster/docker.js";
+import { DockerContainersAPI } from "@hallmaster/docker.js";
 
 import prisma from "#lib/database";
+import socket from "#lib/docker";
 
 import app from "../../src/app";
 
 export const BOT_ID = "424242424242424242";
 
-const socket = new DockerSocket();
-await socket.init();
 const containers = new DockerContainersAPI(socket);
 
 async function findContainer(clusterId: number) {

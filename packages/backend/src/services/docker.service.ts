@@ -1,13 +1,9 @@
 import { Transform } from "node:stream";
 
-import {
-  DockerAPIHttpError,
-  DockerContainersAPI,
-  DockerImagesAPI,
-  DockerSocket,
-} from "@hallmaster/docker.js";
+import { DockerAPIHttpError, DockerContainersAPI, DockerImagesAPI } from "@hallmaster/docker.js";
 
 import { FailedDependancyException } from "#exceptions/http-exceptions";
+import socket from "#lib/docker";
 import {
   DockerContainerStatsSchema,
   type DockerContainerStats,
@@ -26,9 +22,6 @@ type RegistryImage = {
   username?: string | null;
   password?: string | null;
 };
-
-const socket = new DockerSocket();
-await socket.init();
 
 export default class DockerService {
   private static readonly images = new DockerImagesAPI(socket);
