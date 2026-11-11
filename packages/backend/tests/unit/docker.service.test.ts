@@ -1,4 +1,5 @@
-import { Readable } from "node:stream";
+import { once } from "node:events";
+import { PassThrough, Readable } from "node:stream";
 
 import { DockerAPIHttpError } from "@hallmaster/docker.js";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -109,6 +110,29 @@ describe("container stats", () => {
     expect(stats).toHaveLength(1);
     expect(stats[0]).toMatchObject({ cpuPercentage: 40 });
   });
+
+  it("ends the stream with a failed dependency on a malformed sample", async () => {
+    containers.stats.mockResolvedValue(
+      Readable.from([statsSample(), { memory_stats: { usage: "a lot" } }]),
+    );
+
+    const stats = await DockerService.streamContainerStats("container");
+
+    await expect(stats.toArray()).rejects.toMatchObject({ status: 424 });
+  });
+
+  it("closes the stats stream when Docker drops it", async () => {
+    const samples = new PassThrough({ objectMode: true });
+    containers.stats.mockResolvedValue(samples);
+
+    const stats = await DockerService.streamContainerStats("container");
+    const failure = once(stats, "error");
+    samples.destroy(new Error("socket hang up"));
+
+    const [error] = await failure;
+    expect(error).toMatchObject({ message: "socket hang up" });
+    expect(stats.destroyed).toBe(true);
+  });
 });
 
 describe("docker engine errors", () => {
@@ -161,6 +185,20 @@ describe("container creation", () => {
 });
 
 describe("image availability", () => {
+  it("pulls without credentials when the password is missing", async () => {
+    images.list.mockResolvedValue([]);
+    images.create.mockResolvedValue(undefined);
+
+    await DockerService.ensureImage({
+      serverName: "registry.example.com",
+      image: "bot",
+      tag: "1.0",
+      username: "deployer",
+    });
+
+    expect(images.create).toHaveBeenCalledWith(expect.objectContaining({ auth: undefined }));
+  });
+
   const image = { serverName: "docker.io", image: "library/alpine", tag: "3.20" };
 
   it("does not pull an image that is already present", async () => {

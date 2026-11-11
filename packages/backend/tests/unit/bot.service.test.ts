@@ -3,12 +3,24 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import BotRepository from "#repositories/bot.repository";
 import ContainerImageRepository from "#repositories/container-image.repository";
 import BotService from "#services/bot.service";
+import ClusterService from "#services/cluster.service";
 import DiscordService from "#services/discord.service";
 import DockerService from "#services/docker.service";
 
 vi.mock("#repositories/bot.repository", () => ({
   default: {
+    delete: vi.fn(),
+    findFirst: vi.fn(),
+    findFirstId: vi.fn(),
     findFirstToken: vi.fn(),
+    updateToken: vi.fn(),
+  },
+}));
+
+vi.mock("#services/cluster.service", () => ({
+  default: {
+    removeAll: vi.fn(),
+    stopAll: vi.fn(),
   },
 }));
 vi.mock("#repositories/cluster.repository", () => ({ default: {} }));
@@ -23,6 +35,7 @@ vi.mock("#repositories/container-image.repository", () => ({
 
 vi.mock("#services/discord.service", () => ({
   default: {
+    getBotProfile: vi.fn(),
     getGatewayBot: vi.fn(),
   },
 }));
@@ -129,5 +142,92 @@ describe("recommended shards", () => {
     vi.mocked(BotRepository.findFirstToken).mockResolvedValue(null);
 
     await expect(BotService.recommendedShards()).rejects.toMatchObject({ status: 404 });
+  });
+});
+
+describe("missing bot", () => {
+  beforeEach(() => {
+    vi.mocked(BotRepository.findFirst).mockResolvedValue(null);
+    vi.mocked(BotRepository.findFirstId).mockResolvedValue(null);
+    vi.mocked(BotRepository.findFirstToken).mockResolvedValue(null);
+  });
+
+  it.each([
+    ["read it", () => BotService.get()],
+    ["update its token", () => BotService.update({ token: "new.token" })],
+    ["delete it", () => BotService.delete()],
+    ["read its Discord profile", () => BotService.discordProfile()],
+  ])("refuses to %s", async (_case, action) => {
+    await expect(action()).rejects.toMatchObject({ status: 404, message: "Bot not found" });
+    expect(DiscordService.getGatewayBot).not.toHaveBeenCalled();
+    expect(ClusterService.stopAll).not.toHaveBeenCalled();
+  });
+
+  it("refuses a container image", async () => {
+    vi.mocked(ContainerImageRepository.create).mockResolvedValue(null);
+
+    await expect(BotService.createContainerImage({ url: "nginx:alpine" })).rejects.toMatchObject({
+      status: 404,
+      message: "Bot not found",
+    });
+  });
+});
+
+describe("bot removed while it is being changed", () => {
+  beforeEach(() => {
+    vi.mocked(BotRepository.findFirstId).mockResolvedValue({ id: "42" });
+  });
+
+  it("reports a 404 when the token update finds no bot", async () => {
+    vi.mocked(BotRepository.updateToken).mockResolvedValue(null);
+
+    await expect(BotService.update({ token: "new.token" })).rejects.toMatchObject({ status: 404 });
+  });
+
+  it("reports a 404 when the delete finds no bot", async () => {
+    vi.mocked(BotRepository.delete).mockResolvedValue(null);
+
+    await expect(BotService.delete()).rejects.toMatchObject({ status: 404 });
+  });
+
+  it("reports a 404 when the image update finds no image", async () => {
+    vi.mocked(ContainerImageRepository.findFirst).mockResolvedValue({
+      serverName: "docker.io",
+      image: "library/nginx",
+      tag: "alpine",
+      username: null,
+      password: null,
+    });
+    vi.mocked(ContainerImageRepository.update).mockResolvedValue(null);
+
+    await expect(BotService.updateContainerImage({ url: "nginx:latest" })).rejects.toMatchObject({
+      status: 404,
+      message: "Container image not found",
+    });
+  });
+});
+
+describe("bot deletion", () => {
+  it("stops and removes every cluster before deleting the bot", async () => {
+    vi.mocked(BotRepository.findFirstId).mockResolvedValue({ id: "42" });
+    vi.mocked(BotRepository.delete).mockResolvedValue({ id: "42", totalShards: 2 });
+
+    await expect(BotService.delete()).resolves.toEqual({ id: "42", shards: 2 });
+
+    const [stopOrder] = vi.mocked(ClusterService.stopAll).mock.invocationCallOrder;
+    const [removeOrder] = vi.mocked(ClusterService.removeAll).mock.invocationCallOrder;
+    const [deleteOrder] = vi.mocked(BotRepository.delete).mock.invocationCallOrder;
+    expect(stopOrder).toBeLessThan(removeOrder);
+    expect(removeOrder).toBeLessThan(deleteOrder);
+  });
+});
+
+describe("Discord profile", () => {
+  it("reads the profile with the stored token", async () => {
+    vi.mocked(BotRepository.findFirstToken).mockResolvedValue({ token: "stored.token" });
+
+    await BotService.discordProfile();
+
+    expect(DiscordService.getBotProfile).toHaveBeenCalledWith("stored.token");
   });
 });

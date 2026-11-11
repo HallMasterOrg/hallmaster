@@ -37,11 +37,14 @@ vi.mock("#services/docker.service", () => ({
   default: {
     containerLogs: vi.fn(),
     containerStates: vi.fn(),
+    containerStats: vi.fn(),
     create: vi.fn(),
     ensureImage: vi.fn(),
     removeContainer: vi.fn(),
+    restartContainer: vi.fn(),
     startContainer: vi.fn(),
     stopContainer: vi.fn(),
+    streamContainerLogs: vi.fn(),
   },
 }));
 
@@ -153,6 +156,54 @@ describe("cluster actions on every cluster", () => {
       failed: [{ id: 1, reason: "No such container" }],
     });
   });
+
+  it("keeps the reason of a failure that is not an Error", async () => {
+    givenClusters([{ id: 0, desiredStatus: "RUNNING", containerState: "running" }]);
+    vi.mocked(ClusterRepository.findManyId).mockResolvedValue([{ id: 0 }]);
+    vi.mocked(DockerService.restartContainer).mockRejectedValue("socket closed");
+
+    const result = await ClusterService.runActionOnAll("restart");
+
+    expect(result).toEqual({ succeeded: [], failed: [{ id: 0, reason: "socket closed" }] });
+  });
+});
+
+describe("unknown cluster", () => {
+  beforeEach(() => {
+    givenClusters([]);
+  });
+
+  it.each([
+    ["read its logs", () => ClusterService.logs(7, { tail: "all" })],
+    ["stream its logs", () => ClusterService.streamLogs(7)],
+    ["start it", () => ClusterService.start(7)],
+    ["stop it", () => ClusterService.stop(7)],
+    ["restart it", () => ClusterService.restart(7)],
+  ])("refuses to %s", async (_case, action) => {
+    await expect(action()).rejects.toMatchObject({ status: 404, message: "Cluster 7 not found" });
+    expect(ClusterRepository.updateDesiredStatusById).not.toHaveBeenCalled();
+  });
+});
+
+describe("stats of every cluster", () => {
+  it("leaves out stopped clusters and the ones whose stats can't be read", async () => {
+    const stats = {
+      cpuPercentage: 1,
+      memory: { usage: 10, percentage: 1 },
+      network: [],
+    };
+    givenClusters([
+      { id: 0, desiredStatus: "RUNNING", containerState: "running" },
+      { id: 1, desiredStatus: "RUNNING", containerState: "running" },
+      { id: 2, desiredStatus: "STOPPED", containerState: "exited" },
+    ]);
+    vi.mocked(DockerService.containerStats).mockImplementation((containerId) =>
+      containerId === "container-1" ? Promise.reject(new Error("gone")) : Promise.resolve(stats),
+    );
+
+    expect(await ClusterService.getAllStats()).toEqual({ 0: stats });
+    expect(DockerService.containerStats).toHaveBeenCalledTimes(2);
+  });
 });
 
 describe("cluster logs", () => {
@@ -236,6 +287,35 @@ describe("cluster layout update", () => {
       expect.objectContaining({ Env: expect.arrayContaining(["TOTAL_SHARDS=3"]) }),
       "bot-0",
     );
+  });
+
+  it("refuses a layout when no bot is registered", async () => {
+    vi.mocked(BotRepository.findFirstIdAndToken).mockResolvedValue(null);
+
+    await expect(ClusterService.updateAll([{ shardIds: [0] }])).rejects.toMatchObject({
+      status: 404,
+      message: "Bot not found",
+    });
+    expect(DockerService.stopContainer).not.toHaveBeenCalled();
+  });
+
+  it("refuses a layout when no container image is registered", async () => {
+    vi.mocked(ContainerImageRepository.findFirst).mockResolvedValue(null);
+
+    await expect(ClusterService.updateAll([{ shardIds: [0] }])).rejects.toMatchObject({
+      status: 404,
+      message: "Container image not found",
+    });
+    expect(DockerService.stopContainer).not.toHaveBeenCalled();
+  });
+
+  it("stops before creating clusters when the bot disappears", async () => {
+    vi.mocked(BotRepository.updateTotalShards).mockResolvedValue(null);
+
+    await expect(ClusterService.updateAll([{ shardIds: [0] }])).rejects.toMatchObject({
+      status: 404,
+    });
+    expect(DockerService.create).not.toHaveBeenCalled();
   });
 
   it("leaves the current clusters untouched when the image is unavailable", async () => {
