@@ -3,7 +3,6 @@ import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import prisma from "#lib/database";
 
 import {
-  containerImage,
   containerState,
   createBot,
   openEvents,
@@ -81,6 +80,7 @@ describe("cluster layout", () => {
     expect(clusters).toEqual([{ id: 0, shardIds: [0], status: "RUNNING" }]);
     expect(await containerState(0)).toBe("running");
   });
+
   it("replaces a leftover container that has the name of a cluster", async () => {
     await applyLayout([{ shardIds: [0] }]);
     await prisma.cluster.deleteMany();
@@ -89,23 +89,6 @@ describe("cluster layout", () => {
 
     expect(clusters).toEqual([{ id: 0, shardIds: [0], status: "RUNNING" }]);
     expect(await containerState(0)).toBe("running");
-  });
-
-  it("redeploys the clusters with the new container image", async () => {
-    await applyLayout([{ shardIds: [0] }, { shardIds: [1] }]);
-    await call("/clusters/1/stop", { method: "POST" });
-
-    const { status } = await call("/bot/container-image", {
-      method: "PUT",
-      body: { url: "nginx:stable-alpine" },
-    });
-
-    expect(status).toBe(200);
-    expect(await containerImage(0)).toBe("docker.io/library/nginx:stable-alpine");
-    expect((await call("/clusters")).body).toEqual([
-      { id: 0, shardIds: [0], status: "RUNNING" },
-      { id: 1, shardIds: [1], status: "STOPPED" },
-    ]);
   });
 });
 

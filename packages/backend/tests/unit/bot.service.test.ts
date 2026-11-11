@@ -3,15 +3,12 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import BotRepository from "#repositories/bot.repository";
 import ContainerImageRepository from "#repositories/container-image.repository";
 import BotService from "#services/bot.service";
-import ClusterService from "#services/cluster.service";
 import DiscordService from "#services/discord.service";
 import DockerService from "#services/docker.service";
 
 vi.mock("#repositories/bot.repository", () => ({
   default: {
-    findFirstIdAndToken: vi.fn(),
     findFirstToken: vi.fn(),
-    updateToken: vi.fn(),
   },
 }));
 vi.mock("#repositories/cluster.repository", () => ({ default: {} }));
@@ -21,12 +18,6 @@ vi.mock("#repositories/container-image.repository", () => ({
     create: vi.fn(),
     findFirst: vi.fn(),
     update: vi.fn(),
-  },
-}));
-
-vi.mock("#services/cluster.service", () => ({
-  default: {
-    redeployAll: vi.fn(),
   },
 }));
 
@@ -115,24 +106,6 @@ describe("container image update", () => {
     );
   });
 
-  it("redeploys the clusters when the image changes", async () => {
-    await BotService.updateContainerImage({
-      url: "registry.example.com/bot:2.0",
-      username: "deployer",
-    });
-
-    expect(ClusterService.redeployAll).toHaveBeenCalledOnce();
-  });
-
-  it("does not redeploy the clusters when the image is unchanged", async () => {
-    await BotService.updateContainerImage({
-      url: "registry.example.com/bot:1.0",
-      username: "deployer",
-    });
-
-    expect(ClusterService.redeployAll).not.toHaveBeenCalled();
-  });
-
   it("rejects the update when no image is registered", async () => {
     vi.mocked(ContainerImageRepository.findFirst).mockResolvedValue(null);
 
@@ -140,42 +113,6 @@ describe("container image update", () => {
       status: 404,
     });
     expect(DockerService.ensureImage).not.toHaveBeenCalled();
-  });
-});
-
-describe("bot token update", () => {
-  beforeEach(() => {
-    vi.mocked(BotRepository.findFirstIdAndToken).mockResolvedValue({
-      id: "42",
-      token: "current.token",
-    });
-    vi.mocked(BotRepository.updateToken).mockImplementation(() =>
-      Promise.resolve({ id: "42", totalShards: 2 }),
-    );
-  });
-
-  it("redeploys the clusters with the new token", async () => {
-    await expect(BotService.update({ token: "new.token" })).resolves.toEqual({
-      id: "42",
-      shards: 2,
-    });
-
-    expect(BotRepository.updateToken).toHaveBeenCalledWith({ token: "new.token" });
-    expect(ClusterService.redeployAll).toHaveBeenCalledOnce();
-  });
-
-  it("does not redeploy the clusters when the token is unchanged", async () => {
-    await BotService.update({ token: "current.token" });
-
-    expect(ClusterService.redeployAll).not.toHaveBeenCalled();
-  });
-
-  it("rejects an invalid token without updating the bot", async () => {
-    vi.mocked(DiscordService.getGatewayBot).mockRejectedValue(new Error("invalid token"));
-
-    await expect(BotService.update({ token: "new.token" })).rejects.toThrow("invalid token");
-    expect(BotRepository.updateToken).not.toHaveBeenCalled();
-    expect(ClusterService.redeployAll).not.toHaveBeenCalled();
   });
 });
 

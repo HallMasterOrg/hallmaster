@@ -38,17 +38,13 @@ export default class BotService {
   }
 
   public static async update({ token }: CreateBot): Promise<Bot> {
-    const bot = await BotRepository.findFirstIdAndToken();
+    const bot = await BotRepository.findFirstId();
     if (bot === null) throw new NotFoundException({ message: "Bot not found" });
 
     await DiscordService.getGatewayBot(token);
 
     const updated = await BotRepository.updateToken({ token });
     if (updated === null) throw new NotFoundException({ message: "Bot not found" });
-
-    if (bot.token !== token) {
-      await ClusterService.redeployAll();
-    }
 
     return {
       id: updated.id,
@@ -164,16 +160,6 @@ export default class BotService {
 
     if (containerImage === null)
       throw new NotFoundException({ message: "Container image not found" });
-
-    const changed =
-      current.serverName !== host ||
-      current.image !== image ||
-      current.tag !== tag ||
-      current.username !== credentials.username ||
-      current.password !== credentials.password;
-    if (changed) {
-      await ClusterService.redeployAll();
-    }
 
     return {
       url: `${containerImage.serverName}/${containerImage.image}:${containerImage.tag}`,
