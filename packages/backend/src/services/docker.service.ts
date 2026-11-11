@@ -148,6 +148,20 @@ export default class DockerService {
   }
 
   public static async create(...options: MethodParameters<typeof DockerContainersAPI, "create">) {
+    const [, name] = options;
+    if (name === undefined) {
+      return this.call(this.containers.create(...options));
+    }
+
+    const created = await this.call(this.containers.create(...options), [409]);
+    if (created !== undefined) {
+      return created;
+    }
+
+    // A container left behind with the same name (e.g. after a crash) blocks the creation
+    await this.stopContainer(name);
+    await this.removeContainer(name);
+
     return this.call(this.containers.create(...options));
   }
 

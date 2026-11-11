@@ -1,5 +1,7 @@
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 
+import prisma from "#lib/database";
+
 import {
   containerState,
   createBot,
@@ -74,6 +76,16 @@ describe("cluster layout", () => {
     await removeContainerOutsideHallMaster(0);
 
     const clusters = await applyLayout([{ id: 0, shardIds: [0] }]);
+
+    expect(clusters).toEqual([{ id: 0, shardIds: [0], status: "RUNNING" }]);
+    expect(await containerState(0)).toBe("running");
+  });
+
+  it("replaces a leftover container that has the name of a cluster", async () => {
+    await applyLayout([{ shardIds: [0] }]);
+    await prisma.cluster.deleteMany();
+
+    const clusters = await applyLayout([{ shardIds: [0] }]);
 
     expect(clusters).toEqual([{ id: 0, shardIds: [0], status: "RUNNING" }]);
     expect(await containerState(0)).toBe("running");

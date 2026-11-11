@@ -7,6 +7,7 @@ import DockerService from "#services/docker.service";
 
 const { containers, images } = vi.hoisted(() => ({
   containers: {
+    create: vi.fn(),
     list: vi.fn(),
     remove: vi.fn(),
     stats: vi.fn(),
@@ -132,6 +133,30 @@ describe("docker engine errors", () => {
     await expect(DockerService.removeContainer("container")).rejects.toMatchObject({
       status: 424,
     });
+  });
+});
+
+describe("container creation", () => {
+  it("replaces a container left behind with the same name", async () => {
+    containers.create
+      .mockRejectedValueOnce(new DockerAPIHttpError(409, "name already in use"))
+      .mockResolvedValueOnce({ Id: "new-container", Warnings: [] });
+    containers.stop.mockResolvedValue(undefined);
+    containers.remove.mockResolvedValue(undefined);
+
+    await expect(DockerService.create({ Image: "bot" }, "42-0")).resolves.toMatchObject({
+      Id: "new-container",
+    });
+    expect(containers.stop).toHaveBeenCalledWith("42-0");
+    expect(containers.remove).toHaveBeenCalledWith("42-0");
+    expect(containers.create).toHaveBeenCalledTimes(2);
+  });
+
+  it("reports a conflict on an unnamed container as a failed dependency", async () => {
+    containers.create.mockRejectedValue(new DockerAPIHttpError(409, "conflict"));
+
+    await expect(DockerService.create({ Image: "bot" })).rejects.toMatchObject({ status: 424 });
+    expect(containers.remove).not.toHaveBeenCalled();
   });
 });
 
