@@ -1,0 +1,23 @@
+{
+  "name": "@hallmaster/e2e",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "vitest run",
+    "browsers:install": "playwright install chromium",
+    "lint": "oxlint",
+    "lint:fix": "oxlint --fix",
+    "format": "oxfmt",
+    "format:check": "oxfmt --check"
+  },
+  "devDependencies": {
+    "@testcontainers/postgresql": "^12.2.0",
+    "@types/node": "^26.1.1",
+    "oxfmt": "^0.70.0",
+    "oxlint": "^1.85.0",
+    "oxlint-tsgolint": "^7.0.2003",
+    "playwright": "^1.65.0",
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.3"
+  }
+}
