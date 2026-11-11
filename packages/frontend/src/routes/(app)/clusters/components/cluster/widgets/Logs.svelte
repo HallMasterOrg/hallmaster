@@ -3,11 +3,11 @@
   import LiveQueryPing from "$lib/components/LiveQueryPing.svelte";
   import Widget from "$lib/components/Widget.svelte";
   import { getClusterLogs, getClusterLogsLive } from "$lib/remotes/clusters.remote";
-  import type { GetClusterDto } from "@hallmaster/backend/dto";
+  import type { Cluster } from "@hallmaster/backend/schemas";
   import { LogsIcon } from "@lucide/svelte";
 
   interface Props {
-    id: GetClusterDto["id"];
+    id: Cluster["id"];
   }
 
   let { id }: Props = $props();

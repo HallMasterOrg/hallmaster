@@ -23,9 +23,10 @@ HallMaster is organized as a monorepo with the following packages:
 
 | Package | Description | Stack |
 |---------|-------------|-------|
-| `packages/backend` | REST API, orchestration engine, Docker management | NestJS, Prisma, Fastify |
+| `packages/backend` | REST API, orchestration engine, Docker management | Hono, Prisma, Zod |
 | `packages/frontend` | Web dashboard | SvelteKit, Skeleton UI |
-| `packages/prisma-client` | Shared Prisma client | Prisma |
+
+The frontend reuses the backend Zod schemas (`@hallmaster/backend/schemas`) to validate its forms and type the API responses.
 
 The backend communicates with the Docker daemon via Unix socket to manage bot containers. An external library, [`@hallmaster/docker.js`](https://github.com/hallmasterorg/docker.js), provides the low-level Docker API bindings.
 
@@ -52,32 +53,29 @@ pnpm install
 
 ### 3. Set up the database
 
-Copy the environment template and fill in your values:
+Copy the environment templates and fill in your values:
 
 ```sh
-cp packages/backend/.env.development.local.exemple packages/backend/.env.development.local
+cp packages/backend/.env.example packages/backend/.env
+cp packages/frontend/.env.example packages/frontend/.env
 ```
 
-Start PostgreSQL (or use the provided Docker Compose):
+Start PostgreSQL (`pnpm prisma:dev` starts a local one), then run the migrations:
 
 ```sh
 cd packages/backend
-docker compose up -d hallmaster-postgres
-```
-
-Run migrations:
-
-```sh
 pnpm prisma:deploy
 ```
 
+The backend talks to Docker through `/var/run/docker.sock`. If your socket lives elsewhere (Docker Desktop on macOS for example), set `DOCKER_HOST`, e.g. `DOCKER_HOST=unix://$HOME/.docker/run/docker.sock`.
+
 ### 4. Start the development servers
 
-Backend:
+Backend (the API documentation is served on `/docs`):
 
 ```sh
 cd packages/backend
-pnpm start:dev
+pnpm dev
 ```
 
 Frontend:
@@ -87,12 +85,19 @@ cd packages/frontend
 pnpm dev
 ```
 
-## Self-hosting
-
-A `docker-compose.yml` is provided in `packages/backend` to run the full stack (PostgreSQL + backend) with Docker. The backend container mounts the host Docker socket to manage bot containers.
+### 5. Run the tests
 
 ```sh
 cd packages/backend
+pnpm test:unit
+pnpm test:integration # requires Docker
+```
+
+## Self-hosting
+
+A `docker-compose.yml` is provided at the root of the repository to run the full stack (PostgreSQL, backend and frontend). Fill the `secrets/*/.env.production` files from their examples first. The backend container mounts the host Docker socket to manage bot containers.
+
+```sh
 docker compose up -d
 ```
 

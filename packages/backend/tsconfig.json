@@ -1,38 +1,28 @@
 {
-  "$schema": "https://json.schemastore.org/tsconfig.json",
   "compilerOptions": {
-    "strict": true,
-    "allowUnreachableCode": false,
-    "noFallthroughCasesInSwitch": true,
-    "noImplicitOverride": true,
-    "noImplicitReturns": true,
-    "noUnusedLocals": true,
-    "noUnusedParameters": true,
-
-    "module": "NodeNext",
-    "moduleResolution": "NodeNext",
+    "allowImportingTsExtensions": true,
+    "noEmit": true,
+    "target": "es2023",
+    "module": "esnext",
+    "moduleResolution": "bundler",
     "resolveJsonModule": true,
-
-    "declaration": true,
-    "declarationMap": true,
-    "removeComments": true,
-    "sourceMap": true,
-    "newLine": "lf",
-    "outDir": "./dist",
-    "rootDir": "./",
-
-    "allowSyntheticDefaultImports": true,
+    "verbatimModuleSyntax": true,
+    "strict": true,
     "esModuleInterop": true,
+    "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
-    "isolatedModules": true,
-
-    "target": "ES2023",
-    "lib": ["ES2023"],
-    "types": ["jest", "mocha"],
-    "experimentalDecorators": true,
-    "emitDecoratorMetadata": true,
-
-    "incremental": true,
-    "skipLibCheck": true
+    "outDir": "dist",
+    "rootDir": ".",
+    "types": ["node"],
+    "paths": {
+      "#controllers/*": ["./src/controllers/*"],
+      "#exceptions/*": ["./src/exceptions/*"],
+      "#lib/*": ["./src/lib/*"],
+      "#middlewares/*": ["./src/middlewares/*"],
+      "#prisma/client": ["./prisma/generated/prisma/client"],
+      "#repositories/*": ["./src/repositories/*"],
+      "#schemas/*": ["./src/schemas/*"],
+      "#services/*": ["./src/services/*"]
+    }
   }
 }

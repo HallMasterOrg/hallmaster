@@ -6,12 +6,12 @@
     stopClusters,
   } from "$lib/remotes/clusters.remote";
   import toaster from "$lib/utils/toaster";
-  import type { GetClusterDto } from "@hallmaster/backend/dto";
+  import type { Cluster } from "@hallmaster/backend/schemas";
   import { PlayIcon, RotateCcwIcon, SquareIcon, XIcon } from "@lucide/svelte";
   import { fade } from "svelte/transition";
 
   interface Props {
-    group: GetClusterDto["id"][];
+    group: Cluster["id"][];
   }
 
   let { group = $bindable() }: Props = $props();

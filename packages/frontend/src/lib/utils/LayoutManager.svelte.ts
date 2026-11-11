@@ -1,4 +1,4 @@
-import type { GetClusterDto, UpdateBotDto } from "@hallmaster/backend/dto";
+import type { Cluster as ClusterData, UpdateClusters } from "@hallmaster/backend/schemas";
 
 class Cluster {
   public current: Set<number>;
@@ -9,7 +9,7 @@ class Cluster {
   constructor(
     private readonly manager: LayoutManager,
     shards: NonNullable<typeof this.shards>,
-    public readonly id?: GetClusterDto["id"],
+    public readonly id?: ClusterData["id"],
   ) {
     const ids = shards.keys().toArray();
     this.current = new Set(ids);
@@ -61,7 +61,7 @@ class Cluster {
     }
   }
 
-  public decrement(id: GetClusterDto["shardIds"][number]) {
+  public decrement(id: ClusterData["shardIds"][number]) {
     this.current = new Set(this.current.values().map((shard) => (shard > id ? shard - 1 : shard)));
   }
 
@@ -75,7 +75,7 @@ class Cluster {
 export class LayoutManager {
   public clusters: Cluster[];
 
-  constructor(private readonly data: Omit<GetClusterDto, "status">[]) {
+  constructor(private readonly data: Omit<ClusterData, "status">[]) {
     this.clusters = $state(
       this.data.map(
         ({ id, shardIds }) =>
@@ -109,7 +109,7 @@ export class LayoutManager {
     );
   }
 
-  public export(): NonNullable<UpdateBotDto["layout"]> {
+  public export(): UpdateClusters {
     return this.clusters
       .filter((cluster) => cluster.state !== "deleted")
       .map(({ id, current }) => ({ id, shardIds: Array.from(current) }));

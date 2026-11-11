@@ -7,8 +7,11 @@ allowBuilds:
   '@scarf/scarf': true
   '@swc/core': true
   argon2: true
+  cpu-features: false
   esbuild: true
   prisma: true
+  protobufjs: false
+  ssh2: false
   unrs-resolver: false
 
 # virtua patch is frontend-only; unused when deploying the backend subset

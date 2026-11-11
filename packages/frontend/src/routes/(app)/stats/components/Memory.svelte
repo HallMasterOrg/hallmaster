@@ -3,7 +3,7 @@
   import Widget from "$lib/components/Widget.svelte";
   import { getClustersStatsLive } from "$lib/remotes/clusters.remote";
   import formatBytes from "$lib/utils/formatBytes";
-  import type { GetAggregateStatsDto } from "@hallmaster/backend/dto";
+  import type { ClustersStats } from "@hallmaster/backend/schemas";
   import { MemoryStickIcon } from "@lucide/svelte";
   import { onMount, type ComponentProps } from "svelte";
 
@@ -15,7 +15,7 @@
       for await (const { date, ...stats } of getClustersStatsLive({ interval: 1 })) {
         if (unmounted) break;
         value = Object.fromEntries(
-          Object.entries(stats as GetAggregateStatsDto).map(([key, { memory }]) => [
+          Object.entries(stats as ClustersStats).map(([key, { memory }]) => [
             `Cluster ${key.padStart(2, "0")}`,
             { date, value: memory.usage },
           ]),
@@ -26,7 +26,7 @@
     return () => (unmounted = true);
   });
 
-  let sum = $derived.by<GetAggregateStatsDto[number]["memory"]["usage"]>(() => {
+  let sum = $derived.by<ClustersStats[number]["memory"]["usage"]>(() => {
     if (!value) return 0;
 
     return Object.values(value).reduce((acc, { value }) => acc + value, 0);
