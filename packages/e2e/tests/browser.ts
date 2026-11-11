@@ -1,10 +1,16 @@
-import { chromium, type Locator, type Page } from "playwright";
+import { chromium, type Browser, type Locator, type Page } from "playwright";
 import { inject } from "vitest";
+
+// A page in a fresh context: its own cookies, so its own session.
+export async function newPage(browser: Browser) {
+  const context = await browser.newContext({ baseURL: inject("baseURL") });
+
+  return context.newPage();
+}
 
 export async function openBrowser() {
   const browser = await chromium.launch();
-  const context = await browser.newContext({ baseURL: inject("baseURL") });
-  const page = await context.newPage();
+  const page = await newPage(browser);
 
   return { browser, page };
 }

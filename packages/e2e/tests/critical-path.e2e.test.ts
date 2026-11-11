@@ -8,7 +8,7 @@ import {
   RECOMMENDED_SHARDS,
   USER,
 } from "../setup/fixtures";
-import { clusterRow, countRemoteCalls, openBrowser, visible } from "./browser";
+import { clusterRow, countRemoteCalls, newPage, openBrowser, visible } from "./browser";
 
 // The steps share one browser and one backend: each one starts where the previous one stopped.
 let browser: Browser;
@@ -28,31 +28,57 @@ afterAll(async () => {
   await browser.close();
 });
 
+async function expectNoRequestLoop(page: Page) {
+  const remoteCalls = countRemoteCalls(page);
+  const username = page.getByLabel("Username");
+  await username.focus();
+  const callsBefore = remoteCalls();
+  await page.waitForTimeout(2_000);
+
+  expect(remoteCalls() - callsBefore).toBe(0);
+  expect(await username.evaluate((input) => input === document.activeElement)).toBe(true);
+}
+
 describe("first visit", () => {
-  it("sends a visitor without a session to the login page, once", async () => {
-    const remoteCalls = countRemoteCalls(page);
-
+  it("sends the first visitor of a new instance to the setup page", async () => {
     await page.goto("/clusters");
-    await page.waitForURL("**/login");
+    await page.waitForURL("**/setup");
 
-    const username = page.getByLabel("Username");
-    await username.focus();
-    const callsOnLogin = remoteCalls();
-    await page.waitForTimeout(2_000);
+    await visible(page.getByRole("button", { name: "Create account" }));
+    await expectNoRequestLoop(page);
+  });
 
-    expect(remoteCalls() - callsOnLogin).toBe(0);
-    expect(await username.evaluate((input) => input === document.activeElement)).toBe(true);
+  it("sends the login page to the setup page while there is no account", async () => {
+    await page.goto("/login");
+    await page.waitForURL("**/setup");
   });
 });
 
 describe("onboarding", () => {
-  it("creates the account and registers the bot", async () => {
-    await page.goto("/setup");
+  it("creates the account and moves to the bot step", async () => {
     await page.getByLabel("Username").fill(USER.username);
     await page.getByLabel("Password").fill(USER.password);
     await page.getByRole("button", { name: "Create account" }).click();
-    await page.waitForURL("**/setup#bot");
 
+    await visible(page.getByLabel("Container image url"));
+  });
+
+  it("asks a visitor without a session to log in before the bot step", async () => {
+    const visitor = await newPage(browser);
+
+    await visitor.goto("/setup");
+    await visitor.waitForURL("**/login");
+
+    await visitor.getByLabel("Username").fill(USER.username);
+    await visitor.getByLabel("Password").fill(USER.password);
+    await visitor.getByRole("button", { name: "Login" }).click();
+
+    await visitor.waitForURL("**/setup");
+    await visible(visitor.getByLabel("Container image url"));
+    await visitor.context().close();
+  });
+
+  it("registers the bot", async () => {
     await page.getByLabel("Container image url").fill(CONTAINER_IMAGE);
     await page.getByLabel("Bot token").fill(BOT_TOKEN);
     await page.getByRole("button", { name: "Register bot" }).click();
@@ -60,6 +86,11 @@ describe("onboarding", () => {
     await page.waitForURL("**/clusters", { timeout: 120_000 });
     await visible(page.getByText("No clusters"));
     await visible(page.getByText(BOT_PROFILE.global_name));
+  });
+
+  it("closes the setup page once the bot is registered", async () => {
+    await page.goto("/setup");
+    await page.waitForURL("**/clusters");
   });
 });
 
@@ -108,6 +139,7 @@ describe("session", () => {
     await page.getByRole("button", { name: "Log out" }).click();
     await page.getByRole("button", { name: "Confirm action" }).click();
     await page.waitForURL("**/login");
+    await expectNoRequestLoop(page);
 
     await page.getByLabel("Username").fill(USER.username);
     await page.getByLabel("Password").fill("not-the-password");
