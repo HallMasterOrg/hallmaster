@@ -1,9 +1,9 @@
 <script lang="ts">
-  import { page } from "$app/state";
   import { BotIcon, UserIcon, type Icon } from "@lucide/svelte";
   import { Steps } from "@skeletonlabs/skeleton-svelte";
   import type { Component } from "svelte";
 
+  import type { PageProps } from "./$types";
   import Account from "./components/Account.svelte";
   import Bot from "./components/Bot.svelte";
 
@@ -18,9 +18,9 @@
     { title: "bot", icon: BotIcon, content: Bot },
   ];
 
-  let step: number = $derived(
-    steps.findLastIndex(({ title }, index) => title === page.url.hash.slice(1) || index === 0),
-  );
+  let { data }: PageProps = $props();
+
+  let step = $derived(steps.findIndex(({ title }) => title === data.step));
 </script>
 
 <Steps {step} count={steps.length}>
