@@ -9,7 +9,8 @@ import {
 } from "#schemas/discord.schema";
 
 export default class DiscordService {
-  private static readonly DISCORD_API_BASE_URL = "https://discord.com/api/v10";
+  private static readonly DISCORD_API_BASE_URL =
+    process.env.DISCORD_API_URL ?? "https://discord.com/api/v10";
   private static readonly DISCORD_CDN_BASE_URL = "https://cdn.discordapp.com";
 
   private static async request<S extends z.ZodType>(
