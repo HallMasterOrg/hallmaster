@@ -116,7 +116,14 @@ pnpm lint
 pnpm format:check
 ```
 
-Backend tests live in `tests/unit` (one file per service) and `tests/integration` (one file per route group).
+End-to-end tests (`packages/e2e`, they need Docker):
+
+```sh
+pnpm browsers:install # once, downloads Chromium
+pnpm test
+```
+
+Backend tests live in `tests/unit` (one file per service) and `tests/integration` (one file per route group). End-to-end tests live in `packages/e2e/tests` and follow the user flows of the dashboard; when one fails, the server logs and a screenshot of the page are written to `packages/e2e/.logs`.
 
 ## Reporting bugs
 
