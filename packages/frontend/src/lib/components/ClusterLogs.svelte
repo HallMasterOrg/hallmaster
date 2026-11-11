@@ -1,5 +1,6 @@
 <script lang="ts">
   import { getClusterLogs, getClusterLogsLive } from "$lib/remotes/clusters.remote";
+  import handleLiveError from "$lib/utils/handleLiveError";
   import type { Cluster, ClusterLogs } from "@hallmaster/backend/schemas";
   import { Progress } from "@skeletonlabs/skeleton-svelte";
   import { onMount } from "svelte";
@@ -23,7 +24,7 @@
         if (unmounted) break;
         live.push(...logs);
       }
-    })();
+    })().catch(handleLiveError);
 
     return () => (unmounted = true);
   });

@@ -3,6 +3,7 @@
   import Widget from "$lib/components/Widget.svelte";
   import { getClusterStatsLive } from "$lib/remotes/clusters.remote";
   import formatBytes from "$lib/utils/formatBytes";
+  import handleLiveError from "$lib/utils/handleLiveError";
   import type { Cluster, ClusterStats } from "@hallmaster/backend/schemas";
   import { MemoryStickIcon } from "@lucide/svelte";
   import { onMount } from "svelte";
@@ -28,7 +29,7 @@
           value: memory.usage,
         };
       }
-    })();
+    })().catch(handleLiveError);
 
     return () => (unmounted = true);
   });

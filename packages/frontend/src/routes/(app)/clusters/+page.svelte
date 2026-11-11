@@ -1,6 +1,7 @@
 <script lang="ts">
   import BoundaryFailed from "$lib/components/BoundaryFailed.svelte";
   import { getClusters, getClustersLive } from "$lib/remotes/clusters.remote";
+  import handleLiveError from "$lib/utils/handleLiveError";
   import type { Cluster } from "@hallmaster/backend/schemas";
   import { EyeOffIcon, SquareArrowOutUpRight } from "@lucide/svelte";
   import { Collapsible } from "@skeletonlabs/skeleton-svelte";
@@ -19,7 +20,7 @@
         if (unmounted) break;
         query.set(live);
       }
-    })();
+    })().catch(handleLiveError);
 
     return () => (unmounted = true);
   });

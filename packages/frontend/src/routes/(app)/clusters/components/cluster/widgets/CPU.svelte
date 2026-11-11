@@ -3,6 +3,7 @@
   import Widget from "$lib/components/Widget.svelte";
   import { getClusterStatsLive } from "$lib/remotes/clusters.remote";
   import formatPercentage from "$lib/utils/formatPercentage";
+  import handleLiveError from "$lib/utils/handleLiveError";
   import type { Cluster, ClusterStats } from "@hallmaster/backend/schemas";
   import { CpuIcon } from "@lucide/svelte";
   import { onMount } from "svelte";
@@ -25,7 +26,7 @@
         if (unmounted) break;
         value = { date, value: cpuPercentage / 100 };
       }
-    })();
+    })().catch(handleLiveError);
 
     return () => (unmounted = true);
   });

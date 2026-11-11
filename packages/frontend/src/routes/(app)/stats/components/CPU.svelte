@@ -3,6 +3,7 @@
   import Widget from "$lib/components/Widget.svelte";
   import { getClustersStatsLive } from "$lib/remotes/clusters.remote";
   import formatPercentage from "$lib/utils/formatPercentage";
+  import handleLiveError from "$lib/utils/handleLiveError";
   import type { ClustersStats } from "@hallmaster/backend/schemas";
   import { CpuIcon } from "@lucide/svelte";
   import { onMount, type ComponentProps } from "svelte";
@@ -21,7 +22,7 @@
           ]),
         );
       }
-    })();
+    })().catch(handleLiveError);
 
     return () => (unmounted = true);
   });
