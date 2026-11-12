@@ -1,38 +1,67 @@
-import { hash, verify } from "argon2";
 import { sign } from "hono/jwt";
 
-import { ConflictException, UnauthorizedException } from "#exceptions/http-exceptions";
-import prisma from "#lib/database";
+import { ForbiddenException, UnauthorizedException } from "#exceptions/http-exceptions";
 import env from "#lib/env";
+import type { User } from "#prisma/client";
 import UserRepository from "#repositories/user.repository";
-import type { User, UserTokenResponse } from "#schemas/auth.schema";
+import type {
+  DiscordAuthorization,
+  DiscordAuthorizationUrl,
+  DiscordLogin,
+  User as UserProfile,
+  UserTokenResponse,
+} from "#schemas/auth.schema";
+
+import DiscordService from "./discord.service";
 
 export class AuthService {
   private static async sign(sub: string) {
     return await sign(
       {
         sub,
-        exp: Math.floor(Date.now() / 1000) + 3600 * 12, // 12 hours
+        exp: Math.floor(Date.now() / 1000) + 3600 * 12,
       },
       env.SECRET,
     );
   }
 
-  public static async register({ username, password }: User): Promise<UserTokenResponse> {
-    const userCount = await prisma.user.count();
-    if (userCount !== 0) throw new ConflictException({ message: "A user is already registered" });
+  private static async register(user: User) {
+    const userCount = await UserRepository.count();
+    if (userCount !== 0)
+      throw new ForbiddenException({ message: "This Discord account cannot access this instance" });
 
-    const user = await UserRepository.create({ username, passwordHash: await hash(password) });
-
-    return { token: await this.sign(user.username) };
+    return await UserRepository.create(user);
   }
 
-  public static async login({ username, password }: User): Promise<UserTokenResponse> {
-    const user = await UserRepository.findFirstByUsername(username);
+  public static authorizationUrl({
+    redirectUri,
+    state,
+  }: DiscordAuthorization): DiscordAuthorizationUrl {
+    return { url: DiscordService.authorizationUrl(redirectUri, state) };
+  }
 
-    if (user === null || !(await verify(user.passwordHash, password)))
-      throw new UnauthorizedException({ message: "Invalid username or password" });
+  public static async login({ code, redirectUri }: DiscordLogin): Promise<UserTokenResponse> {
+    const accessToken = await DiscordService.getAccessToken(code, redirectUri);
+    const { id, username, global_name, avatar } = await DiscordService.getUser(accessToken);
+    const profile = { id, username, displayName: global_name, avatar };
 
-    return { token: await this.sign(user.username) };
+    const user =
+      (await UserRepository.findById(id)) === null
+        ? await this.register(profile)
+        : await UserRepository.update(profile);
+
+    return { token: await this.sign(user.id) };
+  }
+
+  public static async me(id: User["id"]): Promise<UserProfile> {
+    const user = await UserRepository.findById(id);
+    if (user === null) throw new UnauthorizedException({ message: "Unauthorized" });
+
+    return {
+      id: user.id,
+      username: user.username,
+      displayName: user.displayName,
+      avatarUrl: DiscordService.avatarUrl(user.id, user.avatar),
+    };
   }
 }

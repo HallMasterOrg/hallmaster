@@ -15,6 +15,10 @@ export async function openBrowser() {
   return { browser, page };
 }
 
+export async function useDiscordAccount(page: Page, user: { id: string }) {
+  await page.context().addCookies([{ name: "user", value: user.id, url: inject("discordURL") }]);
+}
+
 export async function visible(locator: Locator) {
   await locator.waitFor({ state: "visible" });
 }

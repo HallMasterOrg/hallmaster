@@ -8,6 +8,7 @@ HallMaster is an open-source platform designed to centralize the orchestration a
 
 ## What it does today
 
+- Logs you in with Discord. The first Discord account to log in to a new instance becomes its account.
 - Registers one Discord bot (its token is checked against Discord) and the container image of your bot.
 - Splits the bot's shards into clusters from the dashboard. Each cluster runs as a Docker container that receives `DISCORD_BOT_TOKEN`, `TOTAL_SHARDS` and `SHARD_ID_LIST`, so your bot knows which shards to handle.
 - Starts, stops and restarts one cluster or several at once.
@@ -83,6 +84,8 @@ cd packages/backend
 pnpm prisma:deploy
 ```
 
+The dashboard logs you in with Discord. In the [Discord developer portal](https://discord.com/developers/applications), open an application (the one of your bot works), add `http://localhost:5173/login/discord/callback` to its OAuth2 redirects, and copy its client ID and client secret to `DISCORD_CLIENT_ID` and `DISCORD_CLIENT_SECRET` in `packages/backend/.env`.
+
 The backend talks to Docker through `/var/run/docker.sock`. If your socket lives elsewhere (Docker Desktop on macOS for example), set `DOCKER_HOST`, e.g. `DOCKER_HOST=unix://$HOME/.docker/run/docker.sock`.
 
 ### 4. Start the development servers
@@ -119,7 +122,7 @@ pnpm test
 
 ## Self-hosting
 
-A `docker-compose.yml` is provided at the root of the repository to run the full stack (PostgreSQL, backend and frontend). Fill the `secrets/*/.env.production` files from their examples first. The backend container mounts the host Docker socket to manage bot containers.
+A `docker-compose.yml` is provided at the root of the repository to run the full stack (PostgreSQL, backend and frontend). Fill the `secrets/*/.env.production` files from their examples first. Set `ORIGIN` in `secrets/frontend/.env.production` to the public URL of the dashboard (e.g. `https://hallmaster.example.com`), and add `<ORIGIN>/login/discord/callback` to the OAuth2 redirects of your Discord application. The backend container mounts the host Docker socket to manage bot containers.
 
 ```sh
 docker compose up -d

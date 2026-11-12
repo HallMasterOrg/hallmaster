@@ -1,47 +1,20 @@
 <script lang="ts">
-  import LabeledInput from "$lib/components/LabeledInput.svelte";
-  import { login } from "$lib/remotes/auth.remote";
-  import toaster from "$lib/utils/toaster";
-  import {
-    ChevronRightIcon,
-    RectangleEllipsisIcon,
-    TextCursorIcon,
-    UserIcon,
-  } from "@lucide/svelte";
+  import DiscordLogin from "$lib/components/DiscordLogin.svelte";
+  import { BotIcon } from "@lucide/svelte";
 </script>
 
-<form
-  class="card preset-filled-surface-100-900"
-  {...login.enhance(({ submit }) => {
-    submit().catch((error) => {
-      toaster.create({
-        type: "error",
-        title: "Error",
-        description: JSON.parse(error).message,
-      });
-    });
-  })}
->
-  <UserIcon size={64} />
+<div class="card preset-filled-surface-100-900">
+  <div class="flex flex-col items-center gap-3 text-center">
+    <span class="rounded-container preset-tonal-primary p-3">
+      <BotIcon size={32} />
+    </span>
+    <div>
+      <h1 class="h5">HallMaster</h1>
+      <p class="text-xs opacity-60">Log in to manage your bot</p>
+    </div>
+  </div>
 
-  <LabeledInput
-    label="Username"
-    required
-    icon={TextCursorIcon}
-    {...login.fields.username.as("text")}
-    issues={login.fields.username.issues()}
-  />
+  <hr class="hr" />
 
-  <LabeledInput
-    label="Password"
-    required
-    icon={RectangleEllipsisIcon}
-    {...login.fields.password.as("password")}
-    issues={login.fields.password.issues()}
-  />
-
-  <button class="btn preset-filled-primary-500 text-sm">
-    Login
-    <ChevronRightIcon />
-  </button>
-</form>
+  <DiscordLogin />
+</div>

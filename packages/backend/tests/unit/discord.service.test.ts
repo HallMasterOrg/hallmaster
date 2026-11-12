@@ -2,6 +2,14 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import DiscordService from "#services/discord.service";
 
+vi.mock("#lib/env", () => ({
+  default: {
+    DISCORD_URL: "https://discord.com",
+    DISCORD_CLIENT_ID: "client-id",
+    DISCORD_CLIENT_SECRET: "client-secret",
+  },
+}));
+
 const fetchMock = vi.fn<typeof fetch>();
 
 function respond(status: number, body: unknown = {}) {
@@ -99,5 +107,74 @@ describe("bot profile", () => {
       bannerUrl: null,
       accentColor: null,
     });
+  });
+});
+
+describe("oauth", () => {
+  it("builds the authorization page of the application", () => {
+    const url = new URL(DiscordService.authorizationUrl("http://localhost/callback", "state"));
+
+    expect(url.origin + url.pathname).toBe("https://discord.com/oauth2/authorize");
+    expect(Object.fromEntries(url.searchParams)).toEqual({
+      client_id: "client-id",
+      response_type: "code",
+      scope: "identify",
+      redirect_uri: "http://localhost/callback",
+      state: "state",
+      prompt: "none",
+    });
+  });
+
+  it("exchanges a code with the application credentials", async () => {
+    respond(200, { access_token: "access-token", token_type: "Bearer" });
+
+    expect(await DiscordService.getAccessToken("code", "http://localhost/callback")).toBe(
+      "access-token",
+    );
+
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(url).toBe("https://discord.com/api/v10/oauth2/token");
+    expect(init).toMatchObject({
+      method: "POST",
+      headers: { Authorization: `Basic ${btoa("client-id:client-secret")}` },
+    });
+    expect(Object.fromEntries(init?.body as URLSearchParams)).toEqual({
+      grant_type: "authorization_code",
+      code: "code",
+      redirect_uri: "http://localhost/callback",
+    });
+  });
+
+  it("reports a code Discord does not accept", async () => {
+    respond(400, { error: "invalid_grant" });
+
+    await expect(
+      DiscordService.getAccessToken("code", "http://localhost/callback"),
+    ).rejects.toMatchObject({ status: 401, message: "Invalid Discord authorization code" });
+  });
+
+  it("reports wrong application credentials as a Discord failure", async () => {
+    respond(401, { error: "invalid_client" });
+
+    await expect(
+      DiscordService.getAccessToken("code", "http://localhost/callback"),
+    ).rejects.toMatchObject({ status: 424 });
+  });
+
+  it("reads the user behind an access token", async () => {
+    const user = {
+      id: "42",
+      username: "owner",
+      global_name: "Owner",
+      discriminator: "0",
+      avatar: null,
+    };
+    respond(200, user);
+
+    expect(await DiscordService.getUser("access-token")).toEqual(user);
+    expect(fetchMock).toHaveBeenCalledWith(
+      "https://discord.com/api/v10/users/@me",
+      expect.objectContaining({ headers: { Authorization: "Bearer access-token" } }),
+    );
   });
 });
