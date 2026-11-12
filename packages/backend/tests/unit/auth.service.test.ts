@@ -13,30 +13,39 @@ vi.mock("#repositories/user.repository", () => ({
     count: vi.fn(),
     create: vi.fn(),
     findById: vi.fn(),
+    update: vi.fn(),
   },
 }));
 
 vi.mock("#services/discord.service", () => ({
   default: {
     authorizationUrl: vi.fn(),
+    avatarUrl: vi.fn(),
     getAccessToken: vi.fn(),
     getUser: vi.fn(),
   },
 }));
 
-const owner = { id: "111111111111111111", username: "owner" };
+const owner = {
+  id: "111111111111111111",
+  username: "owner",
+  displayName: "Owner",
+  avatar: "avatar",
+};
 const login = { code: "code", redirectUri: "http://localhost/login/discord/callback" };
 
 beforeEach(() => {
   vi.resetAllMocks();
   vi.mocked(DiscordService.getAccessToken).mockResolvedValue("access-token");
   vi.mocked(DiscordService.getUser).mockResolvedValue({
-    ...owner,
-    global_name: "Owner",
+    id: owner.id,
+    username: owner.username,
+    global_name: owner.displayName,
     discriminator: "0",
-    avatar: null,
+    avatar: owner.avatar,
   });
   vi.mocked(UserRepository.create).mockImplementation((user) => Promise.resolve(user));
+  vi.mocked(UserRepository.update).mockImplementation((user) => Promise.resolve(user));
 });
 
 describe("authorization url", () => {
@@ -74,12 +83,13 @@ describe("login", () => {
     expect(await verify(token, "unit-secret", "HS256")).toMatchObject({ sub: owner.id });
   });
 
-  it("logs the account back in", async () => {
-    vi.mocked(UserRepository.findById).mockResolvedValue(owner);
+  it("logs the account back in with its current Discord profile", async () => {
+    vi.mocked(UserRepository.findById).mockResolvedValue({ ...owner, avatar: null });
 
     const { token } = await AuthService.login(login);
 
     expect(UserRepository.create).not.toHaveBeenCalled();
+    expect(UserRepository.update).toHaveBeenCalledWith(owner);
     expect(await verify(token, "unit-secret", "HS256")).toMatchObject({ sub: owner.id });
   });
 
@@ -101,5 +111,26 @@ describe("login", () => {
 
     await expect(AuthService.login(login)).rejects.toMatchObject({ status: 401 });
     expect(DiscordService.getUser).not.toHaveBeenCalled();
+  });
+});
+
+describe("me", () => {
+  it("returns the Discord profile of the user", async () => {
+    vi.mocked(UserRepository.findById).mockResolvedValue(owner);
+    vi.mocked(DiscordService.avatarUrl).mockReturnValue("https://cdn.discordapp.com/avatar.png");
+
+    expect(await AuthService.me(owner.id)).toEqual({
+      id: owner.id,
+      username: "owner",
+      displayName: "Owner",
+      avatarUrl: "https://cdn.discordapp.com/avatar.png",
+    });
+    expect(DiscordService.avatarUrl).toHaveBeenCalledWith(owner.id, "avatar");
+  });
+
+  it("refuses a session whose account no longer exists", async () => {
+    vi.mocked(UserRepository.findById).mockResolvedValue(null);
+
+    await expect(AuthService.me(owner.id)).rejects.toMatchObject({ status: 401 });
   });
 });

@@ -8,8 +8,10 @@ datasource db {
 }
 
 model User {
-  id       String @id
-  username String
+  id          String  @id
+  username    String
+  displayName String? @map("display_name")
+  avatar      String?
 }
 
 model Bot {

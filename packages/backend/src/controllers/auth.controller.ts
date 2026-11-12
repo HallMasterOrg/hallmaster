@@ -1,11 +1,14 @@
 import { Hono } from "hono";
 import { describeRoute, resolver } from "hono-openapi";
+import type { JwtVariables } from "hono/jwt";
 
+import authMiddlewares from "#middlewares/auth.middlware";
 import validator from "#middlewares/validator.middleware";
 import {
   DiscordAuthorizationSchema,
   DiscordAuthorizationUrlSchema,
   DiscordLoginSchema,
+  UserSchema,
   UserTokenResponseSchema,
 } from "#schemas/auth.schema";
 import { ApiErrorSchema } from "#schemas/error.schema";
@@ -13,7 +16,28 @@ import { AuthService } from "#services/auth.service";
 
 const tags = ["Authentication"];
 
-const authController = new Hono()
+const authController = new Hono<{ Variables: JwtVariables<{ sub: string }> }>()
+  .get(
+    "/me",
+    describeRoute({
+      tags,
+      description: "Get the Discord profile of the logged in user",
+      responses: {
+        200: {
+          description: "OK",
+          content: {
+            "application/json": { schema: resolver(UserSchema) },
+          },
+        },
+      },
+    }),
+    ...authMiddlewares,
+    async (c) => {
+      const user = await AuthService.me(c.get("jwtPayload").sub);
+
+      return c.json(user);
+    },
+  )
   .get(
     "/discord",
     describeRoute({

@@ -62,10 +62,16 @@ export default class DiscordService {
     });
   }
 
-  private static cdnUrl(kind: "avatars" | "banners", id: string, hash: string) {
+  private static cdnUrl(kind: "avatars" | "banners", id: string, hash: string | null) {
+    if (hash === null) return null;
+
     const extension = hash.startsWith("a_") ? "gif" : "png";
 
     return `${this.DISCORD_CDN_BASE_URL}/${kind}/${id}/${hash}.${extension}`;
+  }
+
+  public static avatarUrl(id: string, hash: string | null) {
+    return this.cdnUrl("avatars", id, hash);
   }
 
   public static async getGatewayBot(token: string): Promise<DiscordGatewayBot> {
@@ -79,8 +85,8 @@ export default class DiscordService {
       name: user.username,
       displayName: user.global_name,
       discriminator: user.discriminator,
-      avatarUrl: user.avatar ? this.cdnUrl("avatars", user.id, user.avatar) : null,
-      bannerUrl: user.banner ? this.cdnUrl("banners", user.id, user.banner) : null,
+      avatarUrl: this.avatarUrl(user.id, user.avatar),
+      bannerUrl: this.cdnUrl("banners", user.id, user.banner ?? null),
       accentColor: user.accent_color ?? null,
     };
   }

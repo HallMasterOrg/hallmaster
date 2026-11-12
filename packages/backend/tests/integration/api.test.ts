@@ -21,11 +21,36 @@ describe("authentication", () => {
 
   it("creates the account of the first Discord user and logs it back in", async () => {
     const first = await logInWithDiscord(OWNER);
-    const second = await logInWithDiscord(OWNER);
+    const second = await logInWithDiscord({ ...OWNER, global_name: "Renamed", avatar: "a_new" });
 
     expect(first.status).toBe(200);
     expect(second.status).toBe(200);
-    expect(await prisma.user.findMany()).toEqual([{ id: OWNER.id, username: OWNER.username }]);
+    expect(await prisma.user.findMany()).toEqual([
+      { id: OWNER.id, username: OWNER.username, displayName: "Renamed", avatar: "a_new" },
+    ]);
+  });
+
+  it("returns the Discord profile of the logged in user", async () => {
+    const token = await register();
+
+    const response = await request("/auth/me", { token });
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({
+      id: OWNER.id,
+      username: OWNER.username,
+      displayName: OWNER.global_name,
+      avatarUrl: null,
+    });
+  });
+
+  it("refuses the session of an account that no longer exists", async () => {
+    const token = await register();
+    await prisma.user.deleteMany();
+
+    const response = await request("/auth/me", { token });
+
+    expect(response.status).toBe(401);
   });
 
   it("refuses another Discord account", async () => {

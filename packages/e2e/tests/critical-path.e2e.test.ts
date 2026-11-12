@@ -5,6 +5,7 @@ import {
   BOT_PROFILE,
   BOT_TOKEN,
   CONTAINER_IMAGE,
+  OWNER,
   RECOMMENDED_SHARDS,
   STRANGER,
 } from "../setup/fixtures";
@@ -115,6 +116,8 @@ describe("onboarding", () => {
     await page.waitForURL("**/clusters", { timeout: 120_000 });
     await visible(page.getByText("No clusters"));
     await visible(page.getByText(BOT_PROFILE.global_name));
+    await visible(page.getByText(OWNER.global_name, { exact: true }));
+    await visible(page.getByText(`@${OWNER.username}`));
   });
 
   it("closes the setup page once the bot is registered", async () => {
