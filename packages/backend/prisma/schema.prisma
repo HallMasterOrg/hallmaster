@@ -7,11 +7,18 @@ datasource db {
   provider = "postgresql"
 }
 
+enum UserRole {
+  OWNER
+  ADMIN
+}
+
 model User {
-  id          String  @id
+  id          String   @id
   username    String
-  displayName String? @map("display_name")
+  displayName String?  @map("display_name")
   avatar      String?
+  role        UserRole @default(ADMIN)
+  createdAt   DateTime @default(now()) @map("created_at")
 }
 
 model Bot {

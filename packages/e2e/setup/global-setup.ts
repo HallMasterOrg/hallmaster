@@ -102,7 +102,10 @@ async function answerDiscord(request: IncomingMessage, response: ServerResponse)
   const url = new URL(request.url ?? "/", `http://${request.headers.host}`);
   const { authorization } = request.headers;
 
-  switch (`${request.method} ${url.pathname}`) {
+  const userId = url.pathname.match(/^\/api\/v10\/users\/(\d+)$/)?.[1];
+  const route = userId === undefined ? url.pathname : "/api/v10/users/:id";
+
+  switch (`${request.method} ${route}`) {
     case "GET /oauth2/authorize": {
       const callback = new URL(url.searchParams.get("redirect_uri") ?? "");
       callback.searchParams.set("code", discordUser(request)?.id ?? "");
@@ -130,6 +133,21 @@ async function answerDiscord(request: IncomingMessage, response: ServerResponse)
       const user = authorization === `Bot ${BOT_TOKEN}` ? BOT_PROFILE : bearerUser(authorization);
       if (user === undefined) {
         reply(401, { message: "401: Unauthorized", code: 0 });
+        return;
+      }
+
+      reply(200, user);
+      return;
+    }
+    case "GET /api/v10/users/:id": {
+      if (authorization !== `Bot ${BOT_TOKEN}`) {
+        reply(401, { message: "401: Unauthorized", code: 0 });
+        return;
+      }
+
+      const user = DISCORD_USERS.get(userId ?? "");
+      if (user === undefined) {
+        reply(404, { message: "Unknown User", code: 10013 });
         return;
       }
 

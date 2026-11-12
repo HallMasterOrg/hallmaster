@@ -1,14 +1,13 @@
 import { sign } from "hono/jwt";
 
-import { ForbiddenException, UnauthorizedException } from "#exceptions/http-exceptions";
+import { ForbiddenException } from "#exceptions/http-exceptions";
 import env from "#lib/env";
-import type { User } from "#prisma/client";
+import type { Prisma } from "#prisma/client";
 import UserRepository from "#repositories/user.repository";
 import type {
   DiscordAuthorization,
   DiscordAuthorizationUrl,
   DiscordLogin,
-  User as UserProfile,
   UserTokenResponse,
 } from "#schemas/auth.schema";
 
@@ -25,12 +24,12 @@ export class AuthService {
     );
   }
 
-  private static async register(user: User) {
+  private static async register(user: Prisma.UserCreateInput) {
     const userCount = await UserRepository.count();
     if (userCount !== 0)
       throw new ForbiddenException({ message: "This Discord account cannot access this instance" });
 
-    return await UserRepository.create(user);
+    return await UserRepository.create({ ...user, role: "OWNER" });
   }
 
   public static authorizationUrl({
@@ -51,17 +50,5 @@ export class AuthService {
         : await UserRepository.update(profile);
 
     return { token: await this.sign(user.id) };
-  }
-
-  public static async me(id: User["id"]): Promise<UserProfile> {
-    const user = await UserRepository.findById(id);
-    if (user === null) throw new UnauthorizedException({ message: "Unauthorized" });
-
-    return {
-      id: user.id,
-      username: user.username,
-      displayName: user.displayName,
-      avatarUrl: DiscordService.avatarUrl(user.id, user.avatar),
-    };
   }
 }
