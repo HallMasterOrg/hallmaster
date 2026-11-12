@@ -122,7 +122,7 @@ pnpm test
 
 ## Self-hosting
 
-A `docker-compose.yml` is provided at the root of the repository to run the full stack (PostgreSQL, backend and frontend). Fill the `secrets/*/.env.production` files from their examples first, and add `<dashboard URL>/login/discord/callback` to the OAuth2 redirects of your Discord application. The backend container mounts the host Docker socket to manage bot containers.
+A `docker-compose.yml` is provided at the root of the repository to run the full stack (PostgreSQL, backend and frontend). Fill the `secrets/*/.env.production` files from their examples first. Set `ORIGIN` in `secrets/frontend/.env.production` to the public URL of the dashboard (e.g. `https://hallmaster.example.com`), and add `<ORIGIN>/login/discord/callback` to the OAuth2 redirects of your Discord application. The backend container mounts the host Docker socket to manage bot containers.
 
 ```sh
 docker compose up -d
