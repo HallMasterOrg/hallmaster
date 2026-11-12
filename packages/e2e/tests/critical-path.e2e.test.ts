@@ -10,6 +10,7 @@ import {
   STRANGER,
 } from "../setup/fixtures";
 import {
+  adminRow,
   clusterRow,
   countRemoteCalls,
   newPage,
@@ -179,5 +180,52 @@ describe("session", () => {
 
     await page.waitForURL("**/clusters");
     await visible(clusterRow(page, 0).getByText("running", { exact: true }));
+  });
+});
+
+describe("admins", () => {
+  let stranger: Page;
+
+  afterAll(async () => {
+    await stranger.context().close();
+  });
+
+  it("gives another Discord account access", async () => {
+    await page.goto("/admins");
+    await page.getByLabel("Discord user ID").fill(STRANGER.id);
+    await page.getByRole("button", { name: "Add admin" }).click();
+
+    await visible(adminRow(page, STRANGER).getByText("Admin", { exact: true }));
+  });
+
+  it("lets the new admin log in without managing the admins", async () => {
+    stranger = await newPage(browser);
+    await useDiscordAccount(stranger, STRANGER);
+
+    await stranger.goto("/login");
+    await discordLogin(stranger).click();
+    await stranger.waitForURL("**/clusters");
+
+    await stranger.goto("/admins");
+    await visible(stranger.getByText("Only the owner can add admins"));
+    expect(await stranger.getByLabel("Discord user ID").count()).toBe(0);
+  });
+
+  it("hands the instance over to the admin", async () => {
+    await page.getByRole("button", { name: `Make ${STRANGER.global_name} the owner` }).click();
+    await page.getByRole("button", { name: "Confirm action" }).click();
+
+    await visible(adminRow(page, STRANGER).getByText("Owner", { exact: true }));
+    await visible(page.getByText("Only the owner can add admins"));
+  });
+
+  it("ends the session of a removed admin", async () => {
+    await stranger.reload();
+    await stranger.getByRole("button", { name: `Remove ${OWNER.global_name}` }).click();
+    await stranger.getByRole("button", { name: "Confirm action" }).click();
+    await expect.poll(() => adminRow(stranger, OWNER).count()).toBe(0);
+
+    await page.goto("/clusters");
+    await page.waitForURL("**/login");
   });
 });

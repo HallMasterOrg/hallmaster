@@ -17,14 +17,6 @@ export const DiscordLoginSchema = z.object({
 });
 export type DiscordLogin = z.infer<typeof DiscordLoginSchema>;
 
-export const UserSchema = z.object({
-  id: z.string().meta({ description: "Discord id of the user" }),
-  username: z.string().meta({ description: "Discord username" }),
-  displayName: z.string().nullable().meta({ description: "Discord display name" }),
-  avatarUrl: z.string().nullable().meta({ description: "Discord avatar" }),
-});
-export type User = z.infer<typeof UserSchema>;
-
 export const UserTokenResponseSchema = z.object({
   token: z.jwt().meta({ description: "User session token" }),
 });

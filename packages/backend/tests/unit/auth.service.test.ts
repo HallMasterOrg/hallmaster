@@ -20,32 +20,32 @@ vi.mock("#repositories/user.repository", () => ({
 vi.mock("#services/discord.service", () => ({
   default: {
     authorizationUrl: vi.fn(),
-    avatarUrl: vi.fn(),
     getAccessToken: vi.fn(),
     getUser: vi.fn(),
   },
 }));
 
-const owner = {
+const profile = {
   id: "111111111111111111",
   username: "owner",
   displayName: "Owner",
   avatar: "avatar",
 };
+const owner = { ...profile, role: "OWNER" as const, createdAt: new Date() };
 const login = { code: "code", redirectUri: "http://localhost/login/discord/callback" };
 
 beforeEach(() => {
   vi.resetAllMocks();
   vi.mocked(DiscordService.getAccessToken).mockResolvedValue("access-token");
   vi.mocked(DiscordService.getUser).mockResolvedValue({
-    id: owner.id,
-    username: owner.username,
-    global_name: owner.displayName,
+    id: profile.id,
+    username: profile.username,
+    global_name: profile.displayName,
     discriminator: "0",
-    avatar: owner.avatar,
+    avatar: profile.avatar,
   });
-  vi.mocked(UserRepository.create).mockImplementation((user) => Promise.resolve(user));
-  vi.mocked(UserRepository.update).mockImplementation((user) => Promise.resolve(user));
+  vi.mocked(UserRepository.create).mockResolvedValue(owner);
+  vi.mocked(UserRepository.update).mockResolvedValue(owner);
 });
 
 describe("authorization url", () => {
@@ -73,13 +73,13 @@ describe("login", () => {
     expect(DiscordService.getUser).toHaveBeenCalledWith("access-token");
   });
 
-  it("creates the account of the first Discord user", async () => {
+  it("makes the first Discord user the owner", async () => {
     vi.mocked(UserRepository.findById).mockResolvedValue(null);
     vi.mocked(UserRepository.count).mockResolvedValue(0);
 
     const { token } = await AuthService.login(login);
 
-    expect(UserRepository.create).toHaveBeenCalledWith(owner);
+    expect(UserRepository.create).toHaveBeenCalledWith({ ...profile, role: "OWNER" });
     expect(await verify(token, "unit-secret", "HS256")).toMatchObject({ sub: owner.id });
   });
 
@@ -89,11 +89,11 @@ describe("login", () => {
     const { token } = await AuthService.login(login);
 
     expect(UserRepository.create).not.toHaveBeenCalled();
-    expect(UserRepository.update).toHaveBeenCalledWith(owner);
+    expect(UserRepository.update).toHaveBeenCalledWith(profile);
     expect(await verify(token, "unit-secret", "HS256")).toMatchObject({ sub: owner.id });
   });
 
-  it("refuses another Discord account once the account exists", async () => {
+  it("refuses a Discord account that was not added as an admin", async () => {
     vi.mocked(UserRepository.findById).mockResolvedValue(null);
     vi.mocked(UserRepository.count).mockResolvedValue(1);
 
@@ -111,26 +111,5 @@ describe("login", () => {
 
     await expect(AuthService.login(login)).rejects.toMatchObject({ status: 401 });
     expect(DiscordService.getUser).not.toHaveBeenCalled();
-  });
-});
-
-describe("me", () => {
-  it("returns the Discord profile of the user", async () => {
-    vi.mocked(UserRepository.findById).mockResolvedValue(owner);
-    vi.mocked(DiscordService.avatarUrl).mockReturnValue("https://cdn.discordapp.com/avatar.png");
-
-    expect(await AuthService.me(owner.id)).toEqual({
-      id: owner.id,
-      username: "owner",
-      displayName: "Owner",
-      avatarUrl: "https://cdn.discordapp.com/avatar.png",
-    });
-    expect(DiscordService.avatarUrl).toHaveBeenCalledWith(owner.id, "avatar");
-  });
-
-  it("refuses a session whose account no longer exists", async () => {
-    vi.mocked(UserRepository.findById).mockResolvedValue(null);
-
-    await expect(AuthService.me(owner.id)).rejects.toMatchObject({ status: 401 });
   });
 });

@@ -88,6 +88,20 @@ export function logInWithDiscord(user: DiscordUser) {
   });
 }
 
+export const ADMIN: DiscordUser = {
+  id: "222222222222222222",
+  username: "admin",
+  global_name: "Admin",
+  discriminator: "0",
+  avatar: null,
+};
+
+export function addAdmin(token: string, user: DiscordUser) {
+  vi.spyOn(DiscordService, "getUserById").mockResolvedValue(user);
+
+  return request("/users", { method: "POST", token, body: { id: user.id } });
+}
+
 export async function register() {
   const response = await logInWithDiscord(OWNER);
   const { token } = (await response.json()) as { token: string };
