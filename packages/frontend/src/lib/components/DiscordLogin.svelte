@@ -7,7 +7,7 @@
 </script>
 
 {#if isLoginError(error)}
-  <p class="flex items-center gap-2 text-sm text-error-500" role="alert">
+  <p class="flex items-center gap-2 card preset-tonal-error p-3 text-xs" role="alert">
     <TriangleAlertIcon class="shrink-0" size={16} />
     {loginErrors[error]}
   </p>
