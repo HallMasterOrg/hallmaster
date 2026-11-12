@@ -1,5 +1,5 @@
 import prisma from "#lib/database";
-import type { Prisma, User } from "#prisma/client";
+import { Prisma, type User } from "#prisma/client";
 
 export default class UserRepository {
   static async count() {
@@ -8,6 +8,17 @@ export default class UserRepository {
 
   static async create(data: Prisma.UserCreateInput) {
     return prisma.user.create({ data });
+  }
+
+  static async createOwner(data: Omit<Prisma.UserCreateInput, "role">) {
+    try {
+      return await prisma.user.create({ data: { ...data, role: "OWNER" } });
+    } catch (error) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002")
+        return null;
+
+      throw error;
+    }
   }
 
   static async findById(id: User["id"]) {
@@ -22,14 +33,23 @@ export default class UserRepository {
     return prisma.user.update({ where: { id }, data });
   }
 
-  static async deleteById(id: User["id"]) {
-    return prisma.user.delete({ where: { id } });
+  static async deleteAdminById(id: User["id"]) {
+    const { count } = await prisma.user.deleteMany({ where: { id, role: "ADMIN" } });
+
+    return count > 0;
   }
 
   static async transferOwnership(from: User["id"], to: User["id"]) {
-    return prisma.$transaction([
-      prisma.user.update({ where: { id: from }, data: { role: "ADMIN" } }),
-      prisma.user.update({ where: { id: to }, data: { role: "OWNER" } }),
-    ]);
+    return prisma.$transaction(async (tx) => {
+      const { count } = await tx.user.updateMany({
+        where: { id: from, role: "OWNER" },
+        data: { role: "ADMIN" },
+      });
+      if (count === 0) return false;
+
+      await tx.user.update({ where: { id: to }, data: { role: "OWNER" } });
+
+      return true;
+    });
   }
 }

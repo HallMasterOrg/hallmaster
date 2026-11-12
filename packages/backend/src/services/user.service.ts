@@ -40,9 +40,13 @@ export default class UserService {
       throw new ConflictException({ message: "This Discord account can already log in" });
 
     const bot = await BotRepository.findFirstIdAndToken();
-    if (bot === null) throw new NotFoundException({ message: "Bot not found" });
+    if (bot === null)
+      throw new ConflictException({ message: "Register the bot before adding admins" });
 
-    const { username, global_name, avatar } = await DiscordService.getUserById(bot.token, id);
+    const discordUser = await DiscordService.getUserById(bot.token, id);
+    if (discordUser.bot) throw new BadRequestException({ message: "A bot cannot be an admin" });
+
+    const { username, global_name, avatar } = discordUser;
     const user = await UserRepository.create({
       id,
       username,
@@ -55,11 +59,10 @@ export default class UserService {
   }
 
   public static async removeAdmin(id: UserId) {
-    const user = await this.findById(id);
-    if (user.role === "OWNER")
-      throw new BadRequestException({ message: "The owner cannot be removed" });
+    if (await UserRepository.deleteAdminById(id)) return;
 
-    await UserRepository.deleteById(id);
+    await this.findById(id);
+    throw new BadRequestException({ message: "The owner cannot be removed" });
   }
 
   public static async transferOwnership(owner: UserRow, id: UserId): Promise<User[]> {
@@ -67,7 +70,8 @@ export default class UserService {
     if (user.id === owner.id)
       throw new BadRequestException({ message: "This user is already the owner" });
 
-    await UserRepository.transferOwnership(owner.id, user.id);
+    if (!(await UserRepository.transferOwnership(owner.id, user.id)))
+      throw new ConflictException({ message: "You are no longer the owner" });
 
     return this.getAll();
   }

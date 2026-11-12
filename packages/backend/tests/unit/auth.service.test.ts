@@ -11,7 +11,7 @@ vi.mock("#lib/env", () => ({ default: { SECRET: "unit-secret", PORT: 3000 } }));
 vi.mock("#repositories/user.repository", () => ({
   default: {
     count: vi.fn(),
-    create: vi.fn(),
+    createOwner: vi.fn(),
     findById: vi.fn(),
     update: vi.fn(),
   },
@@ -44,7 +44,7 @@ beforeEach(() => {
     discriminator: "0",
     avatar: profile.avatar,
   });
-  vi.mocked(UserRepository.create).mockResolvedValue(owner);
+  vi.mocked(UserRepository.createOwner).mockResolvedValue(owner);
   vi.mocked(UserRepository.update).mockResolvedValue(owner);
 });
 
@@ -79,7 +79,7 @@ describe("login", () => {
 
     const { token } = await AuthService.login(login);
 
-    expect(UserRepository.create).toHaveBeenCalledWith({ ...profile, role: "OWNER" });
+    expect(UserRepository.createOwner).toHaveBeenCalledWith(profile);
     expect(await verify(token, "unit-secret", "HS256")).toMatchObject({ sub: owner.id });
   });
 
@@ -88,7 +88,7 @@ describe("login", () => {
 
     const { token } = await AuthService.login(login);
 
-    expect(UserRepository.create).not.toHaveBeenCalled();
+    expect(UserRepository.createOwner).not.toHaveBeenCalled();
     expect(UserRepository.update).toHaveBeenCalledWith(profile);
     expect(await verify(token, "unit-secret", "HS256")).toMatchObject({ sub: owner.id });
   });
@@ -101,7 +101,15 @@ describe("login", () => {
       status: 403,
       message: "This Discord account cannot access this instance",
     });
-    expect(UserRepository.create).not.toHaveBeenCalled();
+    expect(UserRepository.createOwner).not.toHaveBeenCalled();
+  });
+
+  it("refuses the second of two first logins at the same time", async () => {
+    vi.mocked(UserRepository.findById).mockResolvedValue(null);
+    vi.mocked(UserRepository.count).mockResolvedValue(0);
+    vi.mocked(UserRepository.createOwner).mockResolvedValue(null);
+
+    await expect(AuthService.login(login)).rejects.toMatchObject({ status: 403 });
   });
 
   it("refuses a code Discord does not accept", async () => {
