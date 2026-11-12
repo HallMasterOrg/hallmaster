@@ -38,7 +38,7 @@
       />
     </div>
 
-    <button class="btn preset-filled-primary-500" disabled={!!addAdmin.pending}>
+    <button class="btn preset-filled-primary-500 px-3 py-1.5 text-sm" disabled={!!addAdmin.pending}>
       <UserPlusIcon size={16} />
       Add admin
     </button>
