@@ -183,6 +183,29 @@ describe("session", () => {
   });
 });
 
+describe("expired session", () => {
+  it("sends the user to the login page when a cluster action is refused", async () => {
+    const pageErrors: Error[] = [];
+    const onPageError = (error: Error) => pageErrors.push(error);
+    page.on("pageerror", onPageError);
+
+    await page.context().clearCookies({ name: "token" });
+    await page.getByRole("button", { name: "stop cluster 01" }).click();
+
+    await page.waitForURL("**/login");
+    await visible(page.getByText("Unauthorized", { exact: true }));
+    page.off("pageerror", onPageError);
+    expect(pageErrors).toEqual([]);
+  });
+
+  it("logs back in and finds the cluster still running", async () => {
+    await discordLogin(page).click();
+
+    await page.waitForURL("**/clusters");
+    await visible(clusterRow(page, 1).getByText("running", { exact: true }));
+  });
+});
+
 describe("admins", () => {
   let stranger: Page;
 

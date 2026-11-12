@@ -2,6 +2,7 @@
   import LabeledInput from "$lib/components/LabeledInput.svelte";
   import { addAdmin } from "$lib/remotes/users.remote";
   import toaster from "$lib/utils/toaster";
+  import toastError from "$lib/utils/toastError";
   import { AddUserSchema } from "@hallmaster/backend/schemas";
   import { FingerprintIcon, UserPlusIcon } from "@lucide/svelte";
 
@@ -16,10 +17,7 @@
       element.reset();
       toaster.success({ title: "Admin added, they can now log in with Discord" });
     } catch (error) {
-      toaster.error({
-        title: "Error",
-        description: JSON.parse(error as string)?.message ?? "An error occurred",
-      });
+      toaster.error(toastError(error));
     }
   })}
   class="flex flex-col gap-2 card preset-filled-surface-100-900 p-4"
