@@ -24,23 +24,25 @@
   })}
   class="flex flex-col gap-2 card preset-filled-surface-100-900 p-4"
 >
-  <LabeledInput
-    label="Discord user ID"
-    icon={FingerprintIcon}
-    placeholder="123456789012345678"
-    inputmode="numeric"
-    autocomplete="off"
-    required
-    {...addAdmin.fields.id.as("text")}
-    {issues}
-  >
-    {#snippet suffix()}
-      <button class="btn preset-filled-primary-500 btn-sm" disabled={!!addAdmin.pending}>
-        <UserPlusIcon size={16} />
-        Add admin
-      </button>
-    {/snippet}
-  </LabeledInput>
+  <div class="flex items-end gap-2">
+    <div class="grow">
+      <LabeledInput
+        label="Discord user ID"
+        icon={FingerprintIcon}
+        placeholder="123456789012345678"
+        inputmode="numeric"
+        autocomplete="off"
+        required
+        {...addAdmin.fields.id.as("text")}
+        {issues}
+      />
+    </div>
+
+    <button class="btn preset-filled-primary-500" disabled={!!addAdmin.pending}>
+      <UserPlusIcon size={16} />
+      Add admin
+    </button>
+  </div>
 
   {#if issues}
     <p class="text-xs text-error-500" role="alert">{issues[0].message}</p>
