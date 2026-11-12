@@ -231,9 +231,9 @@ export const updateBotLayout = command(UpdateClustersSchema, async (payload) => 
     case 424:
       return error(response.status, ((await response.json()) as ApiError).message);
     case 401:
-      return redirect(303, "/login");
+      return error(401, "Unauthorized");
     case 404:
-      return redirect(303, "/setup");
+      return error(404, "Bot not found");
 
     default:
       console.error(await response.text());

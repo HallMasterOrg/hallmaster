@@ -6,6 +6,7 @@
     stopCluster,
   } from "$lib/remotes/clusters.remote";
   import toaster from "$lib/utils/toaster";
+  import toastError from "$lib/utils/toastError";
   import type { Cluster } from "@hallmaster/backend/schemas";
   import { PlayIcon, RotateCcwIcon, SquareIcon } from "@lucide/svelte";
 
@@ -77,10 +78,7 @@
             success,
             error(error) {
               getClusters().refresh();
-              return {
-                title: "Error",
-                description: JSON.parse(error as string)?.message ?? "An error occurred",
-              };
+              return toastError(error);
             },
             finally() {
               isLoading = false;
