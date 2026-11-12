@@ -44,10 +44,5 @@
 
   {#if issues}
     <p class="text-xs text-error-500" role="alert">{issues[0].message}</p>
-  {:else}
-    <p class="text-xs opacity-60">
-      In Discord, turn on Developer Mode in the advanced settings, then right-click a user and
-      choose Copy User ID.
-    </p>
   {/if}
 </form>

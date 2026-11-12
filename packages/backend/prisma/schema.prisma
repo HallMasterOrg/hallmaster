@@ -1,6 +1,7 @@
 generator client {
-  provider = "prisma-client"
-  output   = "generated/prisma"
+  provider        = "prisma-client"
+  output          = "generated/prisma"
+  previewFeatures = ["partialIndexes"]
 }
 
 datasource db {
@@ -19,6 +20,8 @@ model User {
   avatar      String?
   role        UserRole @default(ADMIN)
   createdAt   DateTime @default(now()) @map("created_at")
+
+  @@unique([role], where: { role: "OWNER" })
 }
 
 model Bot {

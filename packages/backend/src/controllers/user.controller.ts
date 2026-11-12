@@ -9,16 +9,6 @@ import UserService from "#services/user.service";
 
 const tags = ["Users"];
 
-const forbidden = {
-  description: "Forbidden",
-  content: {
-    "application/json": {
-      schema: resolver(ApiErrorSchema),
-      example: { message: "Only the owner can manage the admins" },
-    },
-  },
-};
-
 const notFound = {
   description: "Not Found",
   content: {
@@ -64,17 +54,24 @@ const userController = new Hono<AuthEnv>()
           content: {
             "application/json": {
               schema: resolver(ApiErrorSchema),
-              example: { message: "No Discord user has this ID" },
+              examples: {
+                "Unknown user": { value: { message: "No Discord user has this ID" } },
+                Bot: { value: { message: "A bot cannot be an admin" } },
+              },
             },
           },
         },
-        403: forbidden,
         409: {
           description: "Conflict",
           content: {
             "application/json": {
               schema: resolver(ApiErrorSchema),
-              example: { message: "This Discord account can already log in" },
+              examples: {
+                "Already an admin": {
+                  value: { message: "This Discord account can already log in" },
+                },
+                "No bot": { value: { message: "Register the bot before adding admins" } },
+              },
             },
           },
         },
@@ -89,7 +86,7 @@ const userController = new Hono<AuthEnv>()
         },
       },
     }),
-    ownerOnly,
+    ...ownerOnly,
     validator("json", AddUserSchema),
     async (c) => {
       const { id } = c.req.valid("json");
@@ -114,11 +111,10 @@ const userController = new Hono<AuthEnv>()
             },
           },
         },
-        403: forbidden,
         404: notFound,
       },
     }),
-    ownerOnly,
+    ...ownerOnly,
     validator("param", UserIdParamSchema),
     async (c) => {
       const { id } = c.req.valid("param");
@@ -148,11 +144,19 @@ const userController = new Hono<AuthEnv>()
             },
           },
         },
-        403: forbidden,
         404: notFound,
+        409: {
+          description: "Conflict",
+          content: {
+            "application/json": {
+              schema: resolver(ApiErrorSchema),
+              example: { message: "You are no longer the owner" },
+            },
+          },
+        },
       },
     }),
-    ownerOnly,
+    ...ownerOnly,
     validator("param", UserIdParamSchema),
     async (c) => {
       const { id } = c.req.valid("param");

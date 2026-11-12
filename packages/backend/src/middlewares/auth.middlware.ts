@@ -45,12 +45,27 @@ const authMiddlewares = [
   }),
 ];
 
-export const ownerOnly = createMiddleware<AuthEnv>(async (c, next) => {
-  if (c.get("user").role !== "OWNER") {
-    throw new ForbiddenException({ message: "Only the owner can manage the admins" });
-  }
+export const ownerOnly = [
+  describeRoute({
+    responses: {
+      403: {
+        description: "Forbidden",
+        content: {
+          "application/json": {
+            schema: resolver(ApiErrorSchema),
+            example: { message: "Only the owner can manage the admins" },
+          },
+        },
+      },
+    },
+  }),
+  createMiddleware<AuthEnv>(async (c, next) => {
+    if (c.get("user").role !== "OWNER") {
+      throw new ForbiddenException({ message: "Only the owner can manage the admins" });
+    }
 
-  await next();
-});
+    await next();
+  }),
+] as const;
 
 export default authMiddlewares;

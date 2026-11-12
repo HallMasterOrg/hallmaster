@@ -64,6 +64,13 @@ describe("admins", () => {
     expect((await addAdmin(ownerToken, ADMIN)).status).toBe(409);
   });
 
+  it("refuses a bot account", async () => {
+    const response = await addAdmin(ownerToken, { ...ADMIN, bot: true });
+
+    expect(response.status).toBe(400);
+    expect(await response.json()).toEqual({ message: "A bot cannot be an admin" });
+  });
+
   it("refuses an invalid Discord ID", async () => {
     const response = await request("/users", {
       method: "POST",
@@ -105,6 +112,32 @@ describe("admins", () => {
 });
 
 describe("ownership", () => {
+  it("keeps a single owner when two transfers run at the same time", async () => {
+    const other = { ...ADMIN, id: "333333333333333333", username: "other" };
+    await addAdmin(ownerToken, ADMIN);
+    await addAdmin(ownerToken, other);
+
+    const statuses = await Promise.all(
+      [ADMIN, other].map(async ({ id }) => {
+        const response = await request(`/users/${id}/ownership`, {
+          method: "POST",
+          token: ownerToken,
+        });
+
+        return response.status;
+      }),
+    );
+
+    expect(statuses.filter((status) => status === 200)).toHaveLength(1);
+    expect(await prisma.user.count({ where: { role: "OWNER" } })).toBe(1);
+  });
+
+  it("lets the database refuse a second owner", async () => {
+    await expect(
+      prisma.user.create({ data: { id: ADMIN.id, username: ADMIN.username, role: "OWNER" } }),
+    ).rejects.toMatchObject({ code: "P2002" });
+  });
+
   it("makes the admin the owner and the owner an admin", async () => {
     await addAdmin(ownerToken, ADMIN);
 

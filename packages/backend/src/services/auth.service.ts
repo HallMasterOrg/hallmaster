@@ -25,11 +25,12 @@ export class AuthService {
   }
 
   private static async register(user: Prisma.UserCreateInput) {
-    const userCount = await UserRepository.count();
-    if (userCount !== 0)
+    const owner =
+      (await UserRepository.count()) === 0 ? await UserRepository.createOwner(user) : null;
+    if (owner === null)
       throw new ForbiddenException({ message: "This Discord account cannot access this instance" });
 
-    return await UserRepository.create({ ...user, role: "OWNER" });
+    return owner;
   }
 
   public static authorizationUrl({
