@@ -3,6 +3,7 @@
   import { updateBotLayout } from "$lib/remotes/bot.remote";
   import type { LayoutManager } from "$lib/utils/LayoutManager.svelte";
   import toaster from "$lib/utils/toaster";
+  import toastError from "$lib/utils/toastError";
   import { SaveIcon } from "@lucide/svelte";
 
   interface Props {
@@ -24,10 +25,7 @@
       toaster.promise(updateBotLayout(layout!.export()), {
         loading: { title: "Updating layout.." },
         success: { title: "Successfully applied layout" },
-        error: (error) => ({
-          title: "Error",
-          description: JSON.parse(error as string)?.message ?? "An error occurred",
-        }),
+        error: toastError,
       });
     }}
   />
