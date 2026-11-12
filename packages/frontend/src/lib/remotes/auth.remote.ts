@@ -1,5 +1,6 @@
 import { form, getRequestEvent } from "$app/server";
 import { env } from "$env/dynamic/private";
+import { getStatus } from "$lib/server/status";
 import { UserSchema, type UserTokenResponse } from "@hallmaster/backend/schemas";
 import { error, invalid, redirect } from "@sveltejs/kit";
 
@@ -17,7 +18,7 @@ export const register = form(UserSchema, async (payload) => {
       const { token } = (await response.json()) as UserTokenResponse;
       getRequestEvent().cookies.set("token", token, { path: "/" });
 
-      return redirect(303, "/setup#bot");
+      return redirect(303, "/setup");
     }
     case 400:
       return error(400, "Invalid fields");
@@ -44,7 +45,8 @@ export const login = form(UserSchema, async (payload, issue) => {
       const { token } = (await response.json()) as UserTokenResponse;
       getRequestEvent().cookies.set("token", token, { path: "/" });
 
-      return redirect(303, "/clusters");
+      const { hasBot } = await getStatus();
+      return redirect(303, hasBot ? "/clusters" : "/setup");
     }
     case 400:
       return error(400, "Invalid fields");

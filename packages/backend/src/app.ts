@@ -9,6 +9,7 @@ import z from "zod";
 import authController from "#controllers/auth.controller";
 import botController from "#controllers/bot.controller";
 import clusterController from "#controllers/cluster.controller";
+import statusController from "#controllers/status.controller";
 import { ValidationException } from "#exceptions/http-exceptions";
 import { ApiErrorSchema, type ApiError } from "#schemas/error.schema";
 
@@ -83,7 +84,8 @@ app.get(
 const routes = app
   .route("/api/auth", authController)
   .route("/api/bot", botController)
-  .route("/api/clusters", clusterController);
+  .route("/api/clusters", clusterController)
+  .route("/api/status", statusController);
 
 export default app;
 export type AppType = typeof routes;

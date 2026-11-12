@@ -51,7 +51,7 @@ export const createBot = form(
 
     switch (imageResponse.status) {
       case 201:
-        return redirect(303, "/");
+        return redirect(303, "/clusters");
       case 401:
         return error(401, "Unauthorized");
       case 409:
