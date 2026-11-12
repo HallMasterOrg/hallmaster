@@ -6,9 +6,16 @@ import {
   BOT_TOKEN,
   CONTAINER_IMAGE,
   RECOMMENDED_SHARDS,
-  USER,
+  STRANGER,
 } from "../setup/fixtures";
-import { clusterRow, countRemoteCalls, newPage, openBrowser, visible } from "./browser";
+import {
+  clusterRow,
+  countRemoteCalls,
+  newPage,
+  openBrowser,
+  useDiscordAccount,
+  visible,
+} from "./browser";
 
 // The steps share one browser and one backend: each one starts where the previous one stopped.
 let browser: Browser;
@@ -28,15 +35,19 @@ afterAll(async () => {
   await browser.close();
 });
 
+function discordLogin(page: Page) {
+  return page.getByRole("link", { name: "Continue with Discord" });
+}
+
 async function expectNoRequestLoop(page: Page) {
   const remoteCalls = countRemoteCalls(page);
-  const username = page.getByLabel("Username");
-  await username.focus();
+  const login = discordLogin(page);
+  await login.focus();
   const callsBefore = remoteCalls();
   await page.waitForTimeout(2_000);
 
   expect(remoteCalls() - callsBefore).toBe(0);
-  expect(await username.evaluate((input) => input === document.activeElement)).toBe(true);
+  expect(await login.evaluate((link) => link === document.activeElement)).toBe(true);
 }
 
 describe("first visit", () => {
@@ -44,7 +55,7 @@ describe("first visit", () => {
     await page.goto("/clusters");
     await page.waitForURL("**/setup");
 
-    await visible(page.getByRole("button", { name: "Create account" }));
+    await visible(discordLogin(page));
     await expectNoRequestLoop(page);
   });
 
@@ -55,11 +66,10 @@ describe("first visit", () => {
 });
 
 describe("onboarding", () => {
-  it("creates the account and moves to the bot step", async () => {
-    await page.getByLabel("Username").fill(USER.username);
-    await page.getByLabel("Password").fill(USER.password);
-    await page.getByRole("button", { name: "Create account" }).click();
+  it("creates the account with Discord and moves to the bot step", async () => {
+    await discordLogin(page).click();
 
+    await page.waitForURL("**/setup");
     await visible(page.getByLabel("Container image url"));
   });
 
@@ -69,13 +79,23 @@ describe("onboarding", () => {
     await visitor.goto("/setup");
     await visitor.waitForURL("**/login");
 
-    await visitor.getByLabel("Username").fill(USER.username);
-    await visitor.getByLabel("Password").fill(USER.password);
-    await visitor.getByRole("button", { name: "Login" }).click();
+    await discordLogin(visitor).click();
 
     await visitor.waitForURL("**/setup");
     await visible(visitor.getByLabel("Container image url"));
     await visitor.context().close();
+  });
+
+  it("refuses another Discord account", async () => {
+    const stranger = await newPage(browser);
+    await useDiscordAccount(stranger, STRANGER);
+
+    await stranger.goto("/login");
+    await discordLogin(stranger).click();
+
+    await stranger.waitForURL("**/login?error=forbidden");
+    await visible(stranger.getByText("This Discord account cannot access this instance"));
+    await stranger.context().close();
   });
 
   it("registers the bot", async () => {
@@ -135,26 +155,15 @@ describe("cluster actions", () => {
 });
 
 describe("session", () => {
-  it("logs out and refuses a wrong password", async () => {
+  it("logs out", async () => {
     await page.getByRole("button", { name: "Log out" }).click();
     await page.getByRole("button", { name: "Confirm action" }).click();
     await page.waitForURL("**/login");
     await expectNoRequestLoop(page);
-
-    await page.getByLabel("Username").fill(USER.username);
-    await page.getByLabel("Password").fill("not-the-password");
-    await page.getByRole("button", { name: "Login" }).click();
-
-    // The login form marks both fields as invalid, without a message
-    await expect
-      .poll(() => page.getByLabel("Password").getAttribute("aria-invalid"), { timeout: 10_000 })
-      .toBe("true");
-    expect(page.url()).toContain("/login");
   });
 
-  it("logs back in and finds the clusters", async () => {
-    await page.getByLabel("Password").fill(USER.password);
-    await page.getByRole("button", { name: "Login" }).click();
+  it("logs back in with Discord and finds the clusters", async () => {
+    await discordLogin(page).click();
 
     await page.waitForURL("**/clusters");
     await visible(clusterRow(page, 0).getByText("running", { exact: true }));

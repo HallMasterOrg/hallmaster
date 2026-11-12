@@ -7,8 +7,10 @@ import { BOT_ID, register, request, resetState } from "./helpers";
 
 vi.mock("#services/discord.service", () => ({
   default: {
+    getAccessToken: vi.fn(),
     getBotProfile: vi.fn(),
     getGatewayBot: vi.fn(),
+    getUser: vi.fn(),
   },
 }));
 

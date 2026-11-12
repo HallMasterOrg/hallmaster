@@ -8,8 +8,8 @@ datasource db {
 }
 
 model User {
-  username     String @unique
-  passwordHash String @map("password_hash")
+  id       String @id
+  username String
 }
 
 model Bot {

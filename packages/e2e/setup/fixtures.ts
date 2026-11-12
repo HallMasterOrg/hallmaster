@@ -16,4 +16,20 @@ export const RECOMMENDED_SHARDS = 2;
 
 export const CONTAINER_IMAGE = "nginx:alpine";
 
-export const USER = { username: "admin", password: "password123" };
+export const DISCORD_CLIENT = { id: "e2e-client", secret: "e2e-client-secret" };
+
+export const OWNER = {
+  id: "111111111111111111",
+  username: "owner",
+  global_name: "Owner",
+  discriminator: "0",
+  avatar: null,
+};
+
+export const STRANGER = {
+  id: "222222222222222222",
+  username: "stranger",
+  global_name: "Stranger",
+  discriminator: "0",
+  avatar: null,
+};

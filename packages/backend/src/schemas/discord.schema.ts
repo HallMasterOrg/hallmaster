@@ -14,3 +14,8 @@ export const DiscordUserSchema = z.object({
   banner: z.string().nullish(),
   accent_color: z.number().int().nullish(),
 });
+export type DiscordUser = z.infer<typeof DiscordUserSchema>;
+
+export const DiscordAccessTokenSchema = z.object({
+  access_token: z.string(),
+});

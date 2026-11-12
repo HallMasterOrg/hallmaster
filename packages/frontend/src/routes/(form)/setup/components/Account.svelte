@@ -1,49 +1,9 @@
 <script lang="ts">
-  import LabeledInput from "$lib/components/LabeledInput.svelte";
-  import { register } from "$lib/remotes/auth.remote";
-  import toaster from "$lib/utils/toaster";
-  import {
-    ChevronRightIcon,
-    LoaderCircleIcon,
-    RectangleEllipsisIcon,
-    TextCursorIcon,
-  } from "@lucide/svelte";
+  import DiscordLogin from "$lib/components/DiscordLogin.svelte";
 </script>
 
-<form
-  {...register.enhance(async ({ submit, element }) => {
-    await submit()
-      .then(() => element.reset())
-      .catch((error) =>
-        toaster.create({
-          type: "error",
-          title: "Error",
-          description: JSON.parse(error).message,
-        }),
-      );
-  })}
->
-  <LabeledInput
-    label="Username"
-    icon={TextCursorIcon}
-    required
-    {...register.fields.username.as("text")}
-    issues={register.fields.username.issues()}
-  />
-  <LabeledInput
-    label="Password"
-    icon={RectangleEllipsisIcon}
-    required
-    {...register.fields.password.as("password")}
-    issues={register.fields.password.issues()}
-  />
+<div>
+  <p class="text-sm">Log in with the Discord account that will manage this instance.</p>
 
-  <button class="btn preset-filled-primary-500 text-sm" disabled={!!register.pending}>
-    Create account
-    {#if register.pending}
-      <LoaderCircleIcon class="animate-spin" />
-    {:else}
-      <ChevronRightIcon />
-    {/if}
-  </button>
-</form>
+  <DiscordLogin />
+</div>

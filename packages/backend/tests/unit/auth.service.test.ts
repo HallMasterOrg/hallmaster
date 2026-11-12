@@ -1,90 +1,105 @@
-import { hash, verify as verifyHash } from "argon2";
-import { verify as verifyToken } from "hono/jwt";
+import { verify } from "hono/jwt";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import prisma from "#lib/database";
+import { UnauthorizedException } from "#exceptions/http-exceptions";
 import UserRepository from "#repositories/user.repository";
 import { AuthService } from "#services/auth.service";
+import DiscordService from "#services/discord.service";
 
 vi.mock("#lib/env", () => ({ default: { SECRET: "unit-secret", PORT: 3000 } }));
 
-vi.mock("#lib/database", () => ({
-  default: {
-    user: {
-      count: vi.fn(),
-    },
-  },
-}));
-
 vi.mock("#repositories/user.repository", () => ({
   default: {
+    count: vi.fn(),
     create: vi.fn(),
-    findFirstByUsername: vi.fn(),
+    findById: vi.fn(),
   },
 }));
 
-const credentials = { username: "admin", password: "password123" };
+vi.mock("#services/discord.service", () => ({
+  default: {
+    authorizationUrl: vi.fn(),
+    getAccessToken: vi.fn(),
+    getUser: vi.fn(),
+  },
+}));
+
+const owner = { id: "111111111111111111", username: "owner" };
+const login = { code: "code", redirectUri: "http://localhost/login/discord/callback" };
 
 beforeEach(() => {
   vi.resetAllMocks();
-  vi.mocked(UserRepository.create).mockImplementation(({ username }) =>
-    Promise.resolve({ username }),
-  );
+  vi.mocked(DiscordService.getAccessToken).mockResolvedValue("access-token");
+  vi.mocked(DiscordService.getUser).mockResolvedValue({
+    ...owner,
+    global_name: "Owner",
+    discriminator: "0",
+    avatar: null,
+  });
+  vi.mocked(UserRepository.create).mockImplementation((user) => Promise.resolve(user));
 });
 
-describe("registration", () => {
-  it("creates the first account and returns a session token for it", async () => {
-    vi.mocked(prisma.user.count).mockResolvedValue(0);
+describe("authorization url", () => {
+  it("asks Discord for the page of the instance", () => {
+    vi.mocked(DiscordService.authorizationUrl).mockReturnValue(
+      "https://discord.com/oauth2/authorize",
+    );
 
-    const { token } = await AuthService.register(credentials);
-
-    expect(await verifyToken(token, "unit-secret", "HS256")).toMatchObject({ sub: "admin" });
-  });
-
-  it("stores a hash of the password, never the password itself", async () => {
-    vi.mocked(prisma.user.count).mockResolvedValue(0);
-
-    await AuthService.register(credentials);
-
-    const [[{ passwordHash }]] = vi.mocked(UserRepository.create).mock.calls;
-    expect(passwordHash).not.toBe(credentials.password);
-    expect(await verifyHash(passwordHash, credentials.password)).toBe(true);
-  });
-
-  it("refuses a second account", async () => {
-    vi.mocked(prisma.user.count).mockResolvedValue(1);
-
-    await expect(AuthService.register(credentials)).rejects.toMatchObject({ status: 409 });
-    expect(UserRepository.create).not.toHaveBeenCalled();
+    expect(
+      AuthService.authorizationUrl({ redirectUri: login.redirectUri, state: "state" }),
+    ).toEqual({
+      url: "https://discord.com/oauth2/authorize",
+    });
+    expect(DiscordService.authorizationUrl).toHaveBeenCalledWith(login.redirectUri, "state");
   });
 });
 
 describe("login", () => {
-  beforeEach(async () => {
-    vi.mocked(UserRepository.findFirstByUsername).mockResolvedValue({
-      username: "admin",
-      passwordHash: await hash(credentials.password),
+  it("exchanges the code sent to the redirect uri", async () => {
+    vi.mocked(UserRepository.findById).mockResolvedValue(owner);
+
+    await AuthService.login(login);
+
+    expect(DiscordService.getAccessToken).toHaveBeenCalledWith("code", login.redirectUri);
+    expect(DiscordService.getUser).toHaveBeenCalledWith("access-token");
+  });
+
+  it("creates the account of the first Discord user", async () => {
+    vi.mocked(UserRepository.findById).mockResolvedValue(null);
+    vi.mocked(UserRepository.count).mockResolvedValue(0);
+
+    const { token } = await AuthService.login(login);
+
+    expect(UserRepository.create).toHaveBeenCalledWith(owner);
+    expect(await verify(token, "unit-secret", "HS256")).toMatchObject({ sub: owner.id });
+  });
+
+  it("logs the account back in", async () => {
+    vi.mocked(UserRepository.findById).mockResolvedValue(owner);
+
+    const { token } = await AuthService.login(login);
+
+    expect(UserRepository.create).not.toHaveBeenCalled();
+    expect(await verify(token, "unit-secret", "HS256")).toMatchObject({ sub: owner.id });
+  });
+
+  it("refuses another Discord account once the account exists", async () => {
+    vi.mocked(UserRepository.findById).mockResolvedValue(null);
+    vi.mocked(UserRepository.count).mockResolvedValue(1);
+
+    await expect(AuthService.login(login)).rejects.toMatchObject({
+      status: 403,
+      message: "This Discord account cannot access this instance",
     });
+    expect(UserRepository.create).not.toHaveBeenCalled();
   });
 
-  it("returns a session token for the right password", async () => {
-    const { token } = await AuthService.login(credentials);
+  it("refuses a code Discord does not accept", async () => {
+    vi.mocked(DiscordService.getAccessToken).mockRejectedValue(
+      new UnauthorizedException({ message: "Invalid Discord authorization code" }),
+    );
 
-    expect(await verifyToken(token, "unit-secret", "HS256")).toMatchObject({ sub: "admin" });
-  });
-
-  it("refuses a wrong password", async () => {
-    await expect(
-      AuthService.login({ username: "admin", password: "not-the-password" }),
-    ).rejects.toMatchObject({ status: 401, message: "Invalid username or password" });
-  });
-
-  it("refuses an unknown user with the same message", async () => {
-    vi.mocked(UserRepository.findFirstByUsername).mockResolvedValue(null);
-
-    await expect(AuthService.login(credentials)).rejects.toMatchObject({
-      status: 401,
-      message: "Invalid username or password",
-    });
+    await expect(AuthService.login(login)).rejects.toMatchObject({ status: 401 });
+    expect(DiscordService.getUser).not.toHaveBeenCalled();
   });
 });
