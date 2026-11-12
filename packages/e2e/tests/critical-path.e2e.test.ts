@@ -73,6 +73,15 @@ describe("onboarding", () => {
     await visible(page.getByLabel("Container image url"));
   });
 
+  it("keeps the dashboard closed until the bot is registered", async () => {
+    for (const path of ["/clusters", "/stats", "/layout", "/settings"]) {
+      const response = await page.request.get(path, { maxRedirects: 0 });
+
+      expect(response.status()).toBe(303);
+      expect(response.headers().location).toBe("/setup");
+    }
+  });
+
   it("asks a visitor without a session to log in before the bot step", async () => {
     const visitor = await newPage(browser);
 
