@@ -17,8 +17,4 @@
   <hr class="hr" />
 
   <DiscordLogin />
-
-  <p class="text-center text-xs text-balance opacity-60">
-    Only the Discord account that set up this instance can log in.
-  </p>
 </div>
