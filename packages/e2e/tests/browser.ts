@@ -38,3 +38,10 @@ export function countRemoteCalls(page: Page) {
 
   return () => count;
 }
+
+export function adminRow(page: Page, user: { username: string }) {
+  return page
+    .getByRole("list", { name: "Admins" })
+    .getByRole("listitem")
+    .filter({ hasText: `@${user.username}` });
+}

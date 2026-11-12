@@ -178,3 +178,40 @@ describe("oauth", () => {
     );
   });
 });
+
+describe("user by id", () => {
+  it("looks the user up with the bot token", async () => {
+    const user = {
+      id: "42",
+      username: "admin",
+      global_name: null,
+      discriminator: "0",
+      avatar: null,
+    };
+    respond(200, user);
+
+    expect(await DiscordService.getUserById("token", "42")).toEqual(user);
+    expect(fetchMock).toHaveBeenCalledWith(
+      "https://discord.com/api/v10/users/42",
+      expect.objectContaining({ headers: { Authorization: "Bot token" } }),
+    );
+  });
+
+  it("reports an unknown user", async () => {
+    respond(404, { message: "Unknown User", code: 10013 });
+
+    await expect(DiscordService.getUserById("token", "42")).rejects.toMatchObject({
+      status: 400,
+      message: "No Discord user has this ID",
+    });
+  });
+
+  it("still reports an invalid bot token", async () => {
+    respond(401);
+
+    await expect(DiscordService.getUserById("token", "42")).rejects.toMatchObject({
+      status: 424,
+      message: "Invalid Discord bot token",
+    });
+  });
+});
