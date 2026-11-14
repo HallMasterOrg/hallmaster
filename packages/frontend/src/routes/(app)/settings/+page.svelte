@@ -12,6 +12,8 @@
   } from "@lucide/svelte";
   import { Switch } from "@skeletonlabs/skeleton-svelte";
   import { slide } from "svelte/transition";
+
+  import EnvironmentVariables from "./components/EnvironmentVariables.svelte";
 </script>
 
 <h6 class="h6 font-normal">Deployment</h6>
@@ -128,4 +130,18 @@
       {/snippet}
     </LabeledInput>
   </form>
+
+  <hr class="hr" />
+
+  <svelte:boundary>
+    <EnvironmentVariables />
+
+    {#snippet pending()}
+      <div class="h-40 placeholder animate-pulse"></div>
+    {/snippet}
+
+    {#snippet failed(error, reset)}
+      <BoundaryFailed {error} {reset} />
+    {/snippet}
+  </svelte:boundary>
 </div>

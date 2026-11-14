@@ -3,12 +3,14 @@ import { env } from "$env/dynamic/private";
 import {
   ContainerImageSchema,
   CreateBotSchema,
+  EnvironmentVariablesSchema,
   UpdateClustersSchema,
   type ApiError,
   type Bot,
   type BotDiscordProfile,
   type Cluster,
   type ContainerImage,
+  type EnvironmentVariables,
   type RecommendedShards,
 } from "@hallmaster/backend/schemas";
 import { error, redirect } from "@sveltejs/kit";
@@ -135,6 +137,28 @@ export const getContainerImage = query<Omit<ContainerImage, "password">>(async (
   }
 });
 
+export const getEnvironment = query<EnvironmentVariables>(async () => {
+  const response = await fetch(new URL("/api/bot/environment", env.API_URL), {
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${getRequestEvent().cookies.get("token")}`,
+    },
+  });
+
+  switch (response.status) {
+    case 200:
+      return response.json();
+    case 401:
+      return redirect(303, "/login");
+    case 404:
+      return redirect(303, "/setup");
+
+    default:
+      console.error(await response.text());
+      return error(500, "An error occurred");
+  }
+});
+
 export const getRecommendedShards = query<RecommendedShards["shards"]>(async () => {
   const response = await fetch(new URL("/api/bot/recommended-shards", env.API_URL), {
     headers: {
@@ -206,6 +230,33 @@ export const updateBotImage = form(ContainerImageSchema, async (payload) => {
       return redirect(303, "/setup");
     case 424:
       return error(424, ((await response.json()) as ApiError).message);
+
+    default:
+      console.error(await response.text());
+      return error(500, "An error occurred");
+  }
+});
+
+export const updateEnvironment = command(EnvironmentVariablesSchema, async (payload) => {
+  const response = await fetch(new URL("/api/bot/environment", env.API_URL), {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${getRequestEvent().cookies.get("token")}`,
+    },
+    body: JSON.stringify(payload),
+  });
+
+  switch (response.status) {
+    case 200:
+      getEnvironment().set((await response.json()) as EnvironmentVariables);
+      return;
+    case 400:
+      return error(400, ((await response.json()) as ApiError).message);
+    case 401:
+      return redirect(303, "/login");
+    case 404:
+      return redirect(303, "/setup");
 
     default:
       console.error(await response.text());
