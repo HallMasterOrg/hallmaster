@@ -2,13 +2,10 @@
   import ConfirmButton from "$lib/components/ConfirmButton.svelte";
   import { getEnvironment, updateBotLayout, updateEnvironment } from "$lib/remotes/bot.remote";
   import { getClusters } from "$lib/remotes/clusters.remote";
+  import { EnvironmentFormSchema } from "$lib/schemas/environment";
   import parseDotenv from "$lib/utils/parseDotenv";
   import toaster from "$lib/utils/toaster";
-  import {
-    EnvironmentVariablesSchema,
-    type EnvironmentVariable,
-    type EnvironmentVariables,
-  } from "@hallmaster/backend/schemas";
+  import type { EnvironmentVariables } from "@hallmaster/backend/schemas";
   import {
     EyeIcon,
     EyeOffIcon,
@@ -20,55 +17,50 @@
   import type { Attachment } from "svelte/attachments";
   import { slide } from "svelte/transition";
 
-  type Row = EnvironmentVariable & { id: string };
-
   const environment = getEnvironment();
   const clusters = getClusters();
+  const form = updateEnvironment.preflight(EnvironmentFormSchema);
+  const fields = form.fields.variables;
 
-  const toRows = (variables: EnvironmentVariables, previous: Row[] = []): Row[] =>
-    variables.map((variable) => ({
-      ...variable,
-      id: previous.find(({ key }) => key === variable.key)?.id ?? crypto.randomUUID(),
-    }));
-  const isFilled = ({ key, value }: Row) => key !== "" || value !== "";
+  let ids = $state<string[]>([]);
+  let shown = $state(false);
+  let focused = $state<string>();
+  let file = $state<HTMLInputElement>();
+
+  const current = () => (fields.value() ?? []) as EnvironmentVariables;
   const serialize = (variables: EnvironmentVariables) =>
     JSON.stringify(
       variables.map(({ key, value }) => [key, value]).sort(([a], [b]) => a.localeCompare(b)),
     );
 
-  let rows = $state(toRows(await environment));
-  let shown = $state(false);
-  let focused = $state<string>();
-  let file = $state<HTMLInputElement>();
-
-  let filled = $derived(rows.filter(isFilled));
-  let variables = $derived(filled.map(({ key, value }) => ({ key, value })));
-  let result = $derived(EnvironmentVariablesSchema.safeParse(variables));
-  let changed = $derived(serialize(variables) !== serialize(await environment));
+  let changed = $derived(serialize(current()) !== serialize(await environment));
   let deployed = $derived((await clusters).length > 0);
-  let issues = $derived.by(() => {
-    const issues = new Map<string, string>();
 
-    for (const { path, message } of result.error?.issues ?? []) {
-      const row = filled[path[0] as number];
-      if (row !== undefined && !issues.has(row.id)) issues.set(row.id, message);
-    }
+  function load(variables: EnvironmentVariables) {
+    const previous = current();
 
-    return issues;
-  });
+    ids = variables.map(
+      ({ key }) =>
+        ids[previous.findIndex((variable) => variable.key === key)] ?? crypto.randomUUID(),
+    );
+    fields.set(variables);
+  }
+
+  load(await environment);
 
   const focus: Attachment<HTMLInputElement> = (input) => {
     if (input.dataset.row === focused) input.focus();
   };
 
   function add() {
-    const [row] = toRows([{ key: "", value: "" }]);
-    rows.push(row);
-    focused = row.id;
+    focused = crypto.randomUUID();
+    ids.push(focused);
+    fields.set([...current(), { key: "", value: "" }]);
   }
 
-  function remove(id: Row["id"]) {
-    rows = rows.filter((row) => row.id !== id);
+  function remove(index: number) {
+    ids.splice(index, 1);
+    fields.set(current().toSpliced(index, 1));
   }
 
   function merge(imported: EnvironmentVariables) {
@@ -77,14 +69,14 @@
       return;
     }
 
-    const kept = rows.filter(isFilled);
-    for (const variable of imported) {
-      const row = kept.find(({ key }) => key === variable.key);
-      if (row === undefined) kept.push(...toRows([variable]));
-      else row.value = variable.value;
-    }
+    const kept = current().filter(({ key, value }) => key !== "" || value !== "");
+    const merged = [
+      ...kept.map((variable) => imported.find(({ key }) => key === variable.key) ?? variable),
+      ...imported.filter(({ key }) => !kept.some((variable) => variable.key === key)),
+    ];
 
-    rows = kept;
+    load(merged);
+    void form.validate({ includeUntouched: true, preflightOnly: true });
     toaster.info({
       title: `${imported.length} variable${imported.length === 1 ? "" : "s"} added`,
       description: "Save to keep them",
@@ -105,29 +97,6 @@
     if (selected !== undefined) merge(parseDotenv(await selected.text()));
   }
 
-  async function reset() {
-    rows = toRows(await environment, rows);
-  }
-
-  function save() {
-    toaster.promise(
-      updateEnvironment(variables).then(() => {
-        rows = rows.filter(isFilled);
-      }),
-      {
-        loading: { title: "Saving environment.." },
-        success: {
-          title: "Environment saved",
-          description: "Redeploy the clusters to give it to them",
-        },
-        error: (error) => ({
-          title: "Error",
-          description: JSON.parse(error as string)?.message ?? "An error occurred",
-        }),
-      },
-    );
-  }
-
   async function redeploy() {
     const layout = (await clusters).map(({ id, shardIds }) => ({ id, shardIds }));
 
@@ -142,7 +111,24 @@
   }
 </script>
 
-<section class="flex flex-col gap-3" aria-labelledby="environment-title">
+<form
+  {...form.enhance(({ submit }) => {
+    toaster.promise(submit(), {
+      loading: { title: "Saving environment.." },
+      success: {
+        title: "Environment saved",
+        description: "Redeploy the clusters to give it to them",
+      },
+      error: (error) => ({
+        title: "Error",
+        description: JSON.parse(error as string)?.message ?? "An error occurred",
+      }),
+    });
+  })}
+  class="flex flex-col gap-3"
+  aria-labelledby="environment-title"
+  oninput={() => form.validate({ preflightOnly: true })}
+>
   <header class="flex items-start justify-between gap-4">
     <div class="flex flex-col gap-0.5">
       <h6 id="environment-title" class="h6 font-normal">Environment</h6>
@@ -179,7 +165,7 @@
     </div>
   </header>
 
-  {#if rows.length === 0}
+  {#if ids.length === 0}
     <p
       class="card border border-dashed border-surface-300-700 p-4 text-center text-sm text-surface-700-300"
     >
@@ -187,44 +173,44 @@
     </p>
   {:else}
     <ul class="flex flex-col gap-2" aria-label="Environment variables">
-      {#each rows as row (row.id)}
-        {@const issue = issues.get(row.id)}
+      {#each ids as id, index (id)}
+        {@const variable = fields[index]}
+        {@const key = variable.key.value() || "the new variable"}
+        {@const [issue] = variable.allIssues() ?? []}
 
-        <li class="flex flex-col gap-1" transition:slide={{ duration: 150 }}>
+        <li class="flex flex-col gap-1" in:slide={{ duration: 150 }}>
           <div class="grid grid-cols-[minmax(0,2fr)_minmax(0,3fr)_auto] items-center gap-2">
             <input
+              {...variable.key.as("text")}
               class={["input font-mono text-sm", issue && "border-error-500"]}
               placeholder="NAME"
               aria-label="Name"
-              aria-invalid={!!issue}
               autocomplete="off"
               spellcheck="false"
-              data-row={row.id}
-              bind:value={row.key}
+              data-row={id}
               onpaste={paste}
               {@attach focus}
             />
             <input
+              {...variable.value.as(shown ? "text" : "password")}
               class="input font-mono text-sm"
-              type={shown ? "text" : "password"}
               placeholder="value"
-              aria-label={`Value of ${row.key || "the new variable"}`}
+              aria-label={`Value of ${key}`}
               autocomplete="off"
               spellcheck="false"
-              bind:value={row.value}
             />
             <button
               type="button"
               class="btn-icon btn-icon-sm hover:preset-tonal-error"
-              aria-label={`Remove ${row.key || "the new variable"}`}
-              onclick={() => remove(row.id)}
+              aria-label={`Remove ${key}`}
+              onclick={() => remove(index)}
             >
               <Trash2Icon size={16} />
             </button>
           </div>
 
           {#if issue}
-            <p class="ml-1 text-xs text-error-500" role="alert">{issue}</p>
+            <p class="ml-1 text-xs text-error-500" role="alert">{issue.message}</p>
           {/if}
         </li>
       {/each}
@@ -241,36 +227,31 @@
         type="button"
         class="btn btn-sm not-disabled:hover:underline"
         disabled={!changed}
-        onclick={reset}
+        onclick={async () => load(await environment)}
       >
         Reset
       </button>
-      <button
-        type="button"
-        class="btn preset-filled-primary-500 btn-sm"
-        disabled={!changed || !result.success || !!updateEnvironment.pending}
-        onclick={save}
-      >
+      <button class="btn preset-filled-primary-500 btn-sm" disabled={!changed || !!form.pending}>
         Save
       </button>
     </div>
   </footer>
+</form>
 
-  <aside class="flex items-center justify-between gap-3 card preset-tonal-surface p-3">
-    <p class="text-xs text-surface-700-300">
-      Running clusters keep the variables they started with until they are redeployed.
-    </p>
-    <ConfirmButton
-      label="Redeploy clusters"
-      icon={{ icon: RotateCwIcon, size: 16 }}
-      class="shrink-0 preset-tonal btn-sm"
-      title={changed
-        ? "Save your changes first"
-        : deployed
-          ? undefined
-          : "No cluster is deployed yet"}
-      disabled={changed || !deployed || !!updateBotLayout.pending}
-      onclick={redeploy}
-    />
-  </aside>
-</section>
+<aside class="flex items-center justify-between gap-3 card preset-tonal-surface p-3">
+  <p class="text-xs text-surface-700-300">
+    Running clusters keep the variables they started with until they are redeployed.
+  </p>
+  <ConfirmButton
+    label="Redeploy clusters"
+    icon={{ icon: RotateCwIcon, size: 16 }}
+    class="shrink-0 preset-tonal btn-sm"
+    title={changed
+      ? "Save your changes first"
+      : deployed
+        ? undefined
+        : "No cluster is deployed yet"}
+    disabled={changed || !deployed || !!updateBotLayout.pending}
+    onclick={redeploy}
+  />
+</aside>
