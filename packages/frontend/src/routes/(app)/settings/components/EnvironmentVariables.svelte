@@ -2,10 +2,9 @@
   import ConfirmButton from "$lib/components/ConfirmButton.svelte";
   import { getEnvironment, updateBotLayout, updateEnvironment } from "$lib/remotes/bot.remote";
   import { getClusters } from "$lib/remotes/clusters.remote";
-  import { EnvironmentFormSchema } from "$lib/schemas/environment";
   import parseDotenv from "$lib/utils/parseDotenv";
   import toaster from "$lib/utils/toaster";
-  import type { EnvironmentVariables } from "@hallmaster/backend/schemas";
+  import { EnvironmentSchema, type EnvironmentVariables } from "@hallmaster/backend/schemas";
   import {
     EyeIcon,
     EyeOffIcon,
@@ -19,7 +18,7 @@
 
   const environment = getEnvironment();
   const clusters = getClusters();
-  const form = updateEnvironment.preflight(EnvironmentFormSchema);
+  const form = updateEnvironment.preflight(EnvironmentSchema);
   const fields = form.fields.variables;
 
   let ids = $state<string[]>([]);
@@ -33,7 +32,7 @@
       variables.map(({ key, value }) => [key, value]).sort(([a], [b]) => a.localeCompare(b)),
     );
 
-  let changed = $derived(serialize(current()) !== serialize(await environment));
+  let changed = $derived(serialize(current()) !== serialize((await environment).variables));
   let deployed = $derived((await clusters).length > 0);
 
   function load(variables: EnvironmentVariables) {
@@ -46,7 +45,7 @@
     fields.set(variables);
   }
 
-  load(await environment);
+  load((await environment).variables);
 
   const focus: Attachment<HTMLInputElement> = (input) => {
     if (input.dataset.row === focused) input.focus();
@@ -227,7 +226,7 @@
         type="button"
         class="btn btn-sm not-disabled:hover:underline"
         disabled={!changed}
-        onclick={async () => load(await environment)}
+        onclick={async () => load((await environment).variables)}
       >
         Reset
       </button>
