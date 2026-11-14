@@ -10,8 +10,8 @@ async function call(path: string, init: { method?: string; body?: unknown } = {}
   return { status: response.status, body: (await response.json()) as unknown };
 }
 
-function putEnvironment(body: unknown) {
-  return call("/bot/environment", { method: "PUT", body });
+function putEnvironment(variables: unknown) {
+  return call("/bot/environment", { method: "PUT", body: { variables } });
 }
 
 afterAll(async () => {
@@ -29,7 +29,7 @@ describe("environment variables", () => {
   });
 
   it("starts empty", async () => {
-    expect(await call("/bot/environment")).toEqual({ status: 200, body: [] });
+    expect(await call("/bot/environment")).toEqual({ status: 200, body: { variables: [] } });
   });
 
   it("replaces every variable at once", async () => {
@@ -47,27 +47,31 @@ describe("environment variables", () => {
       { key: "DATABASE_URL", value: "postgres://bot:secret@db/bot?ssl=true" },
       { key: "LOG_LEVEL", value: "info" },
     ];
-    expect(updated).toEqual({ status: 200, body: variables });
-    expect(await call("/bot/environment")).toEqual({ status: 200, body: variables });
+    expect(updated).toEqual({ status: 200, body: { variables } });
+    expect(await call("/bot/environment")).toEqual({ status: 200, body: { variables } });
   });
 
   it.each([
-    ["a variable set by HallMaster", [{ key: "DISCORD_BOT_TOKEN", value: "other" }], "0.key"],
-    ["an invalid name", [{ key: "1_FOO", value: "bar" }], "0.key"],
+    [
+      "a variable set by HallMaster",
+      [{ key: "DISCORD_BOT_TOKEN", value: "other" }],
+      "variables.0.key",
+    ],
+    ["an invalid name", [{ key: "1_FOO", value: "bar" }], "variables.0.key"],
     [
       "a variable set twice",
       [
         { key: "FOO", value: "1" },
         { key: "FOO", value: "2" },
       ],
-      "1.key",
+      "variables.1.key",
     ],
   ])("refuses %s", async (_case, variables, path) => {
     const { status, body } = await putEnvironment(variables);
 
     expect(status).toBe(400);
     expect(body).toMatchObject({ issues: [{ path }] });
-    expect((await call("/bot/environment")).body).toEqual([]);
+    expect((await call("/bot/environment")).body).toEqual({ variables: [] });
   });
 });
 
