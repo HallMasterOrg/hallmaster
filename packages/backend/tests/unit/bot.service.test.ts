@@ -166,7 +166,7 @@ describe("missing bot", () => {
     ["delete it", () => BotService.delete()],
     ["read its Discord profile", () => BotService.discordProfile()],
     ["read its environment", () => BotService.getEnvironment()],
-    ["change its environment", () => BotService.updateEnvironment([])],
+    ["change its environment", () => BotService.updateEnvironment({ variables: [] })],
   ])("refuses to %s", async (_case, action) => {
     await expect(action()).rejects.toMatchObject({ status: 404, message: "Bot not found" });
     expect(DiscordService.getGatewayBot).not.toHaveBeenCalled();
@@ -190,7 +190,7 @@ describe("environment", () => {
     vi.mocked(BotRepository.findFirstId).mockResolvedValue({ id: "bot" });
     vi.mocked(EnvironmentVariableRepository.replaceAll).mockResolvedValue(variables);
 
-    expect(await BotService.updateEnvironment(variables)).toEqual(variables);
+    expect(await BotService.updateEnvironment({ variables })).toEqual({ variables });
     expect(EnvironmentVariableRepository.replaceAll).toHaveBeenCalledWith("bot", variables);
   });
 });

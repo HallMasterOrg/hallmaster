@@ -10,7 +10,7 @@ import {
   CreateBotSchema,
   RecommendedShardsSchema,
 } from "#schemas/bot.schema";
-import { EnvironmentVariablesSchema } from "#schemas/environment.schema";
+import { EnvironmentSchema } from "#schemas/environment.schema";
 import { ApiErrorSchema } from "#schemas/error.schema";
 import BotService from "#services/bot.service";
 
@@ -383,7 +383,7 @@ const botController = new Hono()
         200: {
           description: "OK",
           content: {
-            "application/json": { schema: resolver(EnvironmentVariablesSchema) },
+            "application/json": { schema: resolver(EnvironmentSchema) },
           },
         },
         404: {
@@ -413,7 +413,7 @@ const botController = new Hono()
         200: {
           description: "OK",
           content: {
-            "application/json": { schema: resolver(EnvironmentVariablesSchema) },
+            "application/json": { schema: resolver(EnvironmentSchema) },
           },
         },
         400: {
@@ -423,7 +423,7 @@ const botController = new Hono()
               schema: resolver(ApiErrorSchema),
               example: {
                 message: "Validation failed",
-                issues: [{ path: "0.key", message: "Reserved by HallMaster" }],
+                issues: [{ path: "variables.0.key", message: "Reserved by HallMaster" }],
               },
             },
           },
@@ -439,10 +439,10 @@ const botController = new Hono()
         },
       },
     }),
-    validator("json", EnvironmentVariablesSchema),
+    validator("json", EnvironmentSchema),
     async (c) => {
-      const variables = c.req.valid("json");
-      const environment = await BotService.updateEnvironment(variables);
+      const body = c.req.valid("json");
+      const environment = await BotService.updateEnvironment(body);
 
       return c.json(environment, 200);
     },

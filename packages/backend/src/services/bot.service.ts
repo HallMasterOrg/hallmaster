@@ -3,7 +3,7 @@ import BotRepository from "#repositories/bot.repository";
 import ContainerImageRepository from "#repositories/container-image.repository";
 import EnvironmentVariableRepository from "#repositories/environment-variable.repository";
 import type { Bot, ContainerImage, CreateBot } from "#schemas/bot.schema";
-import type { EnvironmentVariables } from "#schemas/environment.schema";
+import type { Environment } from "#schemas/environment.schema";
 
 import ClusterService from "./cluster.service";
 import DiscordService from "./discord.service";
@@ -98,20 +98,18 @@ export default class BotService {
     return DiscordService.getBotProfile(bot.token);
   }
 
-  public static async getEnvironment(): Promise<EnvironmentVariables> {
+  public static async getEnvironment(): Promise<Environment> {
     const bot = await BotRepository.findFirstId();
     if (bot === null) throw new NotFoundException({ message: "Bot not found" });
 
-    return EnvironmentVariableRepository.findMany();
+    return { variables: await EnvironmentVariableRepository.findMany() };
   }
 
-  public static async updateEnvironment(
-    variables: EnvironmentVariables,
-  ): Promise<EnvironmentVariables> {
+  public static async updateEnvironment({ variables }: Environment): Promise<Environment> {
     const bot = await BotRepository.findFirstId();
     if (bot === null) throw new NotFoundException({ message: "Bot not found" });
 
-    return EnvironmentVariableRepository.replaceAll(bot.id, variables);
+    return { variables: await EnvironmentVariableRepository.replaceAll(bot.id, variables) };
   }
 
   public static async createContainerImage({
