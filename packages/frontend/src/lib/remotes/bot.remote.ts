@@ -1,16 +1,16 @@
 import { command, form, getRequestEvent, query } from "$app/server";
 import { env } from "$env/dynamic/private";
-import { EnvironmentFormSchema } from "$lib/schemas/environment";
 import {
   ContainerImageSchema,
   CreateBotSchema,
+  EnvironmentSchema,
   UpdateClustersSchema,
   type ApiError,
   type Bot,
   type BotDiscordProfile,
   type Cluster,
   type ContainerImage,
-  type EnvironmentVariables,
+  type Environment,
   type RecommendedShards,
 } from "@hallmaster/backend/schemas";
 import { error, redirect } from "@sveltejs/kit";
@@ -137,7 +137,7 @@ export const getContainerImage = query<Omit<ContainerImage, "password">>(async (
   }
 });
 
-export const getEnvironment = query<EnvironmentVariables>(async () => {
+export const getEnvironment = query<Environment>(async () => {
   const response = await fetch(new URL("/api/bot/environment", env.API_URL), {
     headers: {
       "Content-Type": "application/json",
@@ -237,19 +237,19 @@ export const updateBotImage = form(ContainerImageSchema, async (payload) => {
   }
 });
 
-export const updateEnvironment = form(EnvironmentFormSchema, async ({ variables }) => {
+export const updateEnvironment = form(EnvironmentSchema, async (payload) => {
   const response = await fetch(new URL("/api/bot/environment", env.API_URL), {
     method: "PUT",
     headers: {
       "Content-Type": "application/json",
       Authorization: `Bearer ${getRequestEvent().cookies.get("token")}`,
     },
-    body: JSON.stringify(variables),
+    body: JSON.stringify(payload),
   });
 
   switch (response.status) {
     case 200:
-      getEnvironment().set((await response.json()) as EnvironmentVariables);
+      getEnvironment().set((await response.json()) as Environment);
       return;
     case 400:
       return error(400, ((await response.json()) as ApiError).message);
