@@ -20,6 +20,13 @@ export async function containerState(clusterId: number) {
   return (await findContainer(clusterId))?.State;
 }
 
+export async function containerEnvironment(clusterId: number) {
+  const container = await findContainer(clusterId);
+  if (container === undefined) return undefined;
+
+  return (await containers.get(container.Id)).Config.Env;
+}
+
 export async function stopContainerOutsideHallMaster(clusterId: number) {
   const container = await findContainer(clusterId);
   if (container !== undefined) {

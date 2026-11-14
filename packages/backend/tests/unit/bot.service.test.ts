@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import BotRepository from "#repositories/bot.repository";
 import ContainerImageRepository from "#repositories/container-image.repository";
+import EnvironmentVariableRepository from "#repositories/environment-variable.repository";
 import BotService from "#services/bot.service";
 import ClusterService from "#services/cluster.service";
 import DiscordService from "#services/discord.service";
@@ -30,6 +31,13 @@ vi.mock("#repositories/container-image.repository", () => ({
     create: vi.fn(),
     findFirst: vi.fn(),
     update: vi.fn(),
+  },
+}));
+
+vi.mock("#repositories/environment-variable.repository", () => ({
+  default: {
+    findMany: vi.fn(),
+    replaceAll: vi.fn(),
   },
 }));
 
@@ -157,10 +165,13 @@ describe("missing bot", () => {
     ["update its token", () => BotService.update({ token: "new.token" })],
     ["delete it", () => BotService.delete()],
     ["read its Discord profile", () => BotService.discordProfile()],
+    ["read its environment", () => BotService.getEnvironment()],
+    ["change its environment", () => BotService.updateEnvironment([])],
   ])("refuses to %s", async (_case, action) => {
     await expect(action()).rejects.toMatchObject({ status: 404, message: "Bot not found" });
     expect(DiscordService.getGatewayBot).not.toHaveBeenCalled();
     expect(ClusterService.stopAll).not.toHaveBeenCalled();
+    expect(EnvironmentVariableRepository.replaceAll).not.toHaveBeenCalled();
   });
 
   it("refuses a container image", async () => {
@@ -170,6 +181,17 @@ describe("missing bot", () => {
       status: 404,
       message: "Bot not found",
     });
+  });
+});
+
+describe("environment", () => {
+  it("replaces every variable of the bot", async () => {
+    const variables = [{ key: "DATABASE_URL", value: "postgres://bot" }];
+    vi.mocked(BotRepository.findFirstId).mockResolvedValue({ id: "bot" });
+    vi.mocked(EnvironmentVariableRepository.replaceAll).mockResolvedValue(variables);
+
+    expect(await BotService.updateEnvironment(variables)).toEqual(variables);
+    expect(EnvironmentVariableRepository.replaceAll).toHaveBeenCalledWith("bot", variables);
   });
 });
 

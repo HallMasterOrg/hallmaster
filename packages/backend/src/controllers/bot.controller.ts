@@ -10,6 +10,7 @@ import {
   CreateBotSchema,
   RecommendedShardsSchema,
 } from "#schemas/bot.schema";
+import { EnvironmentVariablesSchema } from "#schemas/environment.schema";
 import { ApiErrorSchema } from "#schemas/error.schema";
 import BotService from "#services/bot.service";
 
@@ -371,6 +372,79 @@ const botController = new Hono()
       const containerImage = await BotService.updateContainerImage(data);
 
       return c.json(containerImage, 200);
+    },
+  )
+  .get(
+    "/environment",
+    describeRoute({
+      tags,
+      description: "Get the environment variables given to every cluster",
+      responses: {
+        200: {
+          description: "OK",
+          content: {
+            "application/json": { schema: resolver(EnvironmentVariablesSchema) },
+          },
+        },
+        404: {
+          description: "Not Found",
+          content: {
+            "application/json": {
+              schema: resolver(ApiErrorSchema),
+              example: { message: "Bot not found" },
+            },
+          },
+        },
+      },
+    }),
+    async (c) => {
+      const environment = await BotService.getEnvironment();
+
+      return c.json(environment, 200);
+    },
+  )
+  .put(
+    "/environment",
+    describeRoute({
+      tags,
+      description:
+        "Replace the environment variables given to every cluster, applied when the clusters are next deployed",
+      responses: {
+        200: {
+          description: "OK",
+          content: {
+            "application/json": { schema: resolver(EnvironmentVariablesSchema) },
+          },
+        },
+        400: {
+          description: "Bad Request",
+          content: {
+            "application/json": {
+              schema: resolver(ApiErrorSchema),
+              example: {
+                message: "Validation failed",
+                issues: [{ path: "0.key", message: "Set by HallMaster on every cluster" }],
+              },
+            },
+          },
+        },
+        404: {
+          description: "Not Found",
+          content: {
+            "application/json": {
+              schema: resolver(ApiErrorSchema),
+              example: { message: "Bot not found" },
+            },
+          },
+        },
+      },
+    }),
+    validator("json", EnvironmentVariablesSchema),
+    async (c) => {
+      const variables = c.req.valid("json");
+      const environment = await BotService.updateEnvironment(variables);
+
+      return c.json(environment, 200);
     },
   );
 

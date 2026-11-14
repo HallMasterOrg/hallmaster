@@ -13,11 +13,12 @@ model User {
 }
 
 model Bot {
-  id             String          @id
-  token          String
-  totalShards    Int             @map("total_shards")
-  clusters       Cluster[]
-  containerImage ContainerImage?
+  id                   String                @id
+  token                String
+  totalShards          Int                   @map("total_shards")
+  clusters             Cluster[]
+  containerImage       ContainerImage?
+  environmentVariables EnvironmentVariable[]
 
   @@map("bot")
 }
@@ -50,4 +51,14 @@ model Cluster {
 
   @@id([botId, id])
   @@map("cluster")
+}
+
+model EnvironmentVariable {
+  botId String @map("bot_id")
+  key   String
+  value String
+  bot   Bot    @relation(fields: [botId], references: [id], onDelete: Cascade)
+
+  @@id([botId, key])
+  @@map("environment_variable")
 }

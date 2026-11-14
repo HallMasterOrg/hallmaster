@@ -3,6 +3,7 @@ import type { Bot, Cluster as ClusterRow, ContainerImage } from "#prisma/client"
 import BotRepository from "#repositories/bot.repository";
 import ClusterRepository from "#repositories/cluster.repository";
 import ContainerImageRepository from "#repositories/container-image.repository";
+import EnvironmentVariableRepository from "#repositories/environment-variable.repository";
 import type {
   Cluster,
   ClusterAction,
@@ -12,6 +13,7 @@ import type {
   ClusterStatus,
   UpdateClusters,
 } from "#schemas/cluster.schema";
+import type { EnvironmentVariables } from "#schemas/environment.schema";
 
 import DockerService from "./docker.service";
 
@@ -90,6 +92,7 @@ export default class ClusterService {
     cluster: Pick<ClusterRow, "id" | "shardIds" | "desiredStatus">,
     bot: Pick<Bot, "id" | "token" | "totalShards">,
     containerImage: Pick<ContainerImage, "serverName" | "image" | "tag">,
+    environment: EnvironmentVariables,
   ) {
     const shards = cluster.shardIds.join(",");
 
@@ -97,6 +100,7 @@ export default class ClusterService {
       {
         Image: `${containerImage.serverName}/${containerImage.image}:${containerImage.tag}`,
         Env: [
+          ...environment.map(({ key, value }) => `${key}=${value}`),
           `DISCORD_BOT_TOKEN=${bot.token}`,
           `TOTAL_SHARDS=${bot.totalShards}`,
           `SHARD_ID_LIST=${shards}`,
@@ -340,6 +344,7 @@ export default class ClusterService {
       throw new NotFoundException({ message: "Container image not found" });
 
     await DockerService.ensureImage(containerImage);
+    const environment = await EnvironmentVariableRepository.findMany();
 
     const affectedIds = [...new Set([...previousIds, ...clusters.map(({ id }) => id!)])];
     await this.track(affectedIds, "UPDATING", async () => {
@@ -359,6 +364,7 @@ export default class ClusterService {
             { id: cluster.id!, shardIds: cluster.shardIds, desiredStatus },
             { ...bot, totalShards: updatedBot.totalShards },
             containerImage,
+            environment,
           );
 
           if (desiredStatus === "RUNNING") {
