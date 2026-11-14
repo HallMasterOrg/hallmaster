@@ -147,8 +147,7 @@
     <div class="flex flex-col gap-0.5">
       <h6 id="environment-title" class="h6 font-normal">Environment</h6>
       <p class="text-xs text-surface-700-300">
-        Given to every cluster when it is deployed. Paste a whole .env into a name field to add its
-        variables.
+        Paste a whole .env into a name field to add its variables.
       </p>
     </div>
 

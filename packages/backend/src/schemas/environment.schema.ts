@@ -10,7 +10,7 @@ export const EnvironmentVariableSchema = z.object({
       "Use letters, digits and underscores, not starting with a digit",
     )
     .max(256)
-    .refine((key) => !RESERVED_ENVIRONMENT_KEYS.includes(key), "Set by HallMaster on every cluster")
+    .refine((key) => !RESERVED_ENVIRONMENT_KEYS.includes(key), "Reserved by HallMaster")
     .meta({ description: "Name of the variable" }),
   value: z.string().max(32_768).meta({ description: "Value of the variable" }),
 });
@@ -30,5 +30,5 @@ export const EnvironmentVariablesSchema = z
       keys.add(key);
     }
   })
-  .meta({ description: "Environment variables given to every cluster of the bot" });
+  .meta({ description: "Environment variables of the bot" });
 export type EnvironmentVariables = z.infer<typeof EnvironmentVariablesSchema>;
