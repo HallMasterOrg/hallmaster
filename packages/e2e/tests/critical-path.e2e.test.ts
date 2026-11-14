@@ -56,6 +56,7 @@ async function expectNoRequestLoop(page: Page) {
 }
 
 const names = (inputs: HTMLInputElement[]) => inputs.map((input) => input.value);
+const focusedElement = (element: Element) => element === document.activeElement;
 
 function containerEnvironment(clusterId: number) {
   const output = execFileSync("docker", [
@@ -154,6 +155,7 @@ describe("environment", () => {
 
     await visible(page.getByLabel("Value of GREETING"));
     await page.getByRole("button", { name: "Add variable" }).click();
+    await expect.poll(() => page.getByLabel("Name").last().evaluate(focusedElement)).toBe(true);
     await page.getByRole("button", { name: "Save", exact: true }).click();
     await visible(page.getByRole("alert").getByText("Name is required"));
 
