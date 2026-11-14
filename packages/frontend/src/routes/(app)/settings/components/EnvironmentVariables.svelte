@@ -23,8 +23,8 @@
 
   let ids = $state<string[]>([]);
   let shown = $state(false);
-  let focused = $state<string>();
-  let file = $state<HTMLInputElement>();
+  let focused: string | undefined;
+  let file: HTMLInputElement;
 
   const current = () => (fields.value() ?? []) as EnvironmentVariables;
   const serialize = (variables: EnvironmentVariables) =>
@@ -151,7 +151,7 @@
         {/if}
       </button>
 
-      <button type="button" class="btn preset-tonal btn-sm" onclick={() => file?.click()}>
+      <button type="button" class="btn preset-tonal btn-sm" onclick={() => file.click()}>
         <FileUpIcon size={16} /> Import .env
       </button>
       <input
