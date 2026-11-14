@@ -1,9 +1,9 @@
 import { command, form, getRequestEvent, query } from "$app/server";
 import { env } from "$env/dynamic/private";
+import { EnvironmentFormSchema } from "$lib/schemas/environment";
 import {
   ContainerImageSchema,
   CreateBotSchema,
-  EnvironmentVariablesSchema,
   UpdateClustersSchema,
   type ApiError,
   type Bot,
@@ -237,14 +237,14 @@ export const updateBotImage = form(ContainerImageSchema, async (payload) => {
   }
 });
 
-export const updateEnvironment = command(EnvironmentVariablesSchema, async (payload) => {
+export const updateEnvironment = form(EnvironmentFormSchema, async ({ variables }) => {
   const response = await fetch(new URL("/api/bot/environment", env.API_URL), {
     method: "PUT",
     headers: {
       "Content-Type": "application/json",
       Authorization: `Bearer ${getRequestEvent().cookies.get("token")}`,
     },
-    body: JSON.stringify(payload),
+    body: JSON.stringify(variables),
   });
 
   switch (response.status) {
