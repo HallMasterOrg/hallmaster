@@ -34,5 +34,5 @@ export const EnvironmentVariablesSchema = z
   .meta({ description: "Environment variables of the bot" });
 export type EnvironmentVariables = z.infer<typeof EnvironmentVariablesSchema>;
 
-export const EnvironmentSchema = z.object({ variables: EnvironmentVariablesSchema.default([]) });
+export const EnvironmentSchema = z.object({ variables: EnvironmentVariablesSchema });
 export type Environment = z.infer<typeof EnvironmentSchema>;
