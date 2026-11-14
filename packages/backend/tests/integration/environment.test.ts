@@ -51,6 +51,13 @@ describe("environment variables", () => {
     expect(await call("/bot/environment")).toEqual({ status: 200, body: { variables } });
   });
 
+  it("refuses a body without variables", async () => {
+    const { status, body } = await call("/bot/environment", { method: "PUT", body: {} });
+
+    expect(status).toBe(400);
+    expect(body).toMatchObject({ issues: [{ path: "variables" }] });
+  });
+
   it.each([
     [
       "a variable set by HallMaster",
