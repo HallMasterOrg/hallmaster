@@ -5,6 +5,7 @@ export const RESERVED_ENVIRONMENT_KEYS = ["DISCORD_BOT_TOKEN", "TOTAL_SHARDS", "
 export const EnvironmentVariableSchema = z.object({
   key: z
     .string()
+    .min(1, "Name is required")
     .regex(
       /^[A-Za-z_][A-Za-z0-9_]*$/,
       "Use letters, digits and underscores, not starting with a digit",
