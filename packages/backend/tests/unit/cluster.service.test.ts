@@ -297,7 +297,7 @@ describe("cluster layout update", () => {
     );
   });
 
-  it("gives the environment variables to every cluster without overriding HallMaster's", async () => {
+  it("adds the environment variables without overriding HallMaster's", async () => {
     vi.mocked(EnvironmentVariableRepository.findMany).mockResolvedValue([
       { key: "DATABASE_URL", value: "postgres://bot" },
       { key: "GREETING", value: "a=b c" },

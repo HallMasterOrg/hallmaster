@@ -378,7 +378,7 @@ const botController = new Hono()
     "/environment",
     describeRoute({
       tags,
-      description: "Get the environment variables given to every cluster",
+      description: "Get the environment variables of the bot",
       responses: {
         200: {
           description: "OK",
@@ -408,7 +408,7 @@ const botController = new Hono()
     describeRoute({
       tags,
       description:
-        "Replace the environment variables given to every cluster, applied when the clusters are next deployed",
+        "Replace the environment variables of the bot, applied when the clusters are next deployed",
       responses: {
         200: {
           description: "OK",
@@ -423,7 +423,7 @@ const botController = new Hono()
               schema: resolver(ApiErrorSchema),
               example: {
                 message: "Validation failed",
-                issues: [{ path: "0.key", message: "Set by HallMaster on every cluster" }],
+                issues: [{ path: "0.key", message: "Reserved by HallMaster" }],
               },
             },
           },
