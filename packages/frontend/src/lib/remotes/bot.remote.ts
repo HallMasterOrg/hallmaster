@@ -237,14 +237,14 @@ export const updateBotImage = form(ContainerImageSchema, async (payload) => {
   }
 });
 
-export const updateEnvironment = form(EnvironmentSchema, async (payload) => {
+export const updateEnvironment = form(EnvironmentSchema.partial(), async ({ variables = [] }) => {
   const response = await fetch(new URL("/api/bot/environment", env.API_URL), {
     method: "PUT",
     headers: {
       "Content-Type": "application/json",
       Authorization: `Bearer ${getRequestEvent().cookies.get("token")}`,
     },
-    body: JSON.stringify(payload),
+    body: JSON.stringify({ variables }),
   });
 
   switch (response.status) {

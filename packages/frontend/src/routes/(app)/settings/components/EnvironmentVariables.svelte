@@ -18,7 +18,7 @@
 
   const environment = getEnvironment();
   const clusters = getClusters();
-  const form = updateEnvironment.preflight(EnvironmentSchema);
+  const form = updateEnvironment.preflight(EnvironmentSchema.partial());
   const fields = form.fields.variables;
 
   let ids = $state<string[]>([]);
