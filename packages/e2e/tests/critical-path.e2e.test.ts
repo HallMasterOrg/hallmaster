@@ -120,6 +120,11 @@ describe("environment", () => {
     });
 
     await visible(page.getByLabel("Value of GREETING"));
+    await page.getByRole("button", { name: "Add variable" }).click();
+    await page.getByRole("button", { name: "Save", exact: true }).click();
+    await visible(page.getByRole("alert").getByText("Name is required"));
+
+    await page.getByRole("button", { name: "Remove the new variable" }).click();
     await page.getByRole("button", { name: "Save", exact: true }).click();
     await visible(page.getByText("Environment saved"));
     expect(await page.getByLabel("Name").evaluateAll(names)).toEqual(["LOG_LEVEL", "GREETING"]);
