@@ -199,6 +199,19 @@ describe("redeploy", () => {
   });
 });
 
+describe("empty environment", () => {
+  it("saves once the last variable is removed", async () => {
+    await page.goto("/settings");
+    await page.getByRole("button", { name: "Remove LOG_LEVEL" }).click();
+    await page.getByRole("button", { name: "Remove GREETING" }).click();
+    await page.getByRole("button", { name: "Save", exact: true }).click();
+    await visible(page.getByText("Environment saved"));
+
+    await page.reload();
+    await visible(page.getByText("No variables yet"));
+  });
+});
+
 describe("session", () => {
   it("logs out and refuses a wrong password", async () => {
     await page.getByRole("button", { name: "Log out" }).click();
