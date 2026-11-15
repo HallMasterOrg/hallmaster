@@ -217,10 +217,12 @@ describe("redeploy", () => {
     await page.getByLabel("Value of LOG_LEVEL").fill("info");
     await page.getByRole("button", { name: "Save", exact: true }).click();
     await visible(page.getByText("Environment saved"));
+    await visible(page.getByText("Changes not deployed to 2 clusters"));
 
     await page.getByRole("button", { name: "Redeploy clusters" }).click();
     await page.getByRole("button", { name: "Confirm action" }).click();
     await visible(page.getByText("Clusters redeployed"));
+    await page.getByText("Changes not deployed").waitFor({ state: "hidden" });
 
     expect(containerEnvironment(0)).toContain("LOG_LEVEL=info");
     expect(containerEnvironment(1)).toContain("LOG_LEVEL=info");
