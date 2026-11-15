@@ -35,7 +35,8 @@
       variables.map(({ key, value }) => [key, value]).sort(([a], [b]) => a.localeCompare(b)),
     );
 
-  let changed = $derived(serialize(current()) !== serialize((await environment).variables));
+  let saved = $derived(serialize((await environment).variables));
+  let changed = $derived(serialize(current()) !== saved);
   let deployed = $derived((await clusters).length > 0);
 
   function load(variables: EnvironmentVariables) {
