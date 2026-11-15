@@ -21,7 +21,10 @@
   const form = updateEnvironment.preflight(EnvironmentSchema.partial());
   const fields = form.fields.variables;
 
-  let ids = $state<string[]>([]);
+  const initial = (await environment).variables;
+  fields.set(initial);
+
+  let ids = $state<string[]>(initial.map(() => crypto.randomUUID()));
   let shown = $state(false);
   let focused: string | undefined;
   let file: HTMLInputElement;
@@ -44,8 +47,6 @@
     );
     fields.set(variables);
   }
-
-  load((await environment).variables);
 
   const focus: Attachment<HTMLInputElement> = (input) => {
     if (input.dataset.row === focused) input.focus();
