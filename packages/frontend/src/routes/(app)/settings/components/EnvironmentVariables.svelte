@@ -224,6 +224,18 @@
     </button>
 
     <div class="flex gap-2">
+      <ConfirmButton
+        label="Redeploy clusters"
+        icon={{ icon: RotateCwIcon, size: 16 }}
+        class="preset-tonal btn-sm"
+        title={changed
+          ? "Save your changes first"
+          : deployed
+            ? "Give the saved variables to the running clusters"
+            : "No cluster is deployed yet"}
+        disabled={changed || !deployed || !!updateBotLayout.pending}
+        onclick={redeploy}
+      />
       <button
         type="button"
         class="btn btn-sm not-disabled:hover:underline"
@@ -238,21 +250,3 @@
     </div>
   </footer>
 </form>
-
-<aside class="flex items-center justify-between gap-3 card preset-tonal-surface p-3">
-  <p class="text-xs text-surface-700-300">
-    Running clusters keep the variables they started with until they are redeployed.
-  </p>
-  <ConfirmButton
-    label="Redeploy clusters"
-    icon={{ icon: RotateCwIcon, size: 16 }}
-    class="shrink-0 preset-tonal btn-sm"
-    title={changed
-      ? "Save your changes first"
-      : deployed
-        ? undefined
-        : "No cluster is deployed yet"}
-    disabled={changed || !deployed || !!updateBotLayout.pending}
-    onclick={redeploy}
-  />
-</aside>
