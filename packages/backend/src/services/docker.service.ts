@@ -147,6 +147,18 @@ export default class DockerService {
     return new Map(containers.map(({ Id, State }) => [Id, State]));
   }
 
+  public static async containerLabels(containerIds: string[]) {
+    if (containerIds.length === 0) {
+      return new Map<string, Record<string, string>>();
+    }
+
+    const containers = await this.call(
+      this.containers.list({ all: true, filters: { id: containerIds } }),
+    );
+
+    return new Map(containers.map(({ Id, Labels }) => [Id, Labels]));
+  }
+
   public static async create(...options: MethodParameters<typeof DockerContainersAPI, "create">) {
     const [, name] = options;
     if (name === undefined) {
