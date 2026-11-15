@@ -1,23 +1,13 @@
 <script lang="ts">
-  import ConfirmButton from "$lib/components/ConfirmButton.svelte";
-  import { getEnvironment, updateBotLayout, updateEnvironment } from "$lib/remotes/bot.remote";
-  import { getClusters } from "$lib/remotes/clusters.remote";
+  import { getEnvironment, updateEnvironment } from "$lib/remotes/bot.remote";
   import parseDotenv from "$lib/utils/parseDotenv";
   import toaster from "$lib/utils/toaster";
   import { EnvironmentSchema, type EnvironmentVariables } from "@hallmaster/backend/schemas";
-  import {
-    EyeIcon,
-    EyeOffIcon,
-    FileUpIcon,
-    PlusIcon,
-    RotateCwIcon,
-    Trash2Icon,
-  } from "@lucide/svelte";
+  import { EyeIcon, EyeOffIcon, FileUpIcon, PlusIcon, Trash2Icon } from "@lucide/svelte";
   import type { Attachment } from "svelte/attachments";
   import { slide } from "svelte/transition";
 
   const environment = getEnvironment();
-  const clusters = getClusters();
   const form = updateEnvironment.preflight(EnvironmentSchema.partial());
   const fields = form.fields.variables;
 
@@ -37,7 +27,6 @@
 
   let saved = $derived(serialize((await environment).variables));
   let changed = $derived(serialize(current()) !== saved);
-  let deployed = $derived((await clusters).length > 0);
 
   function load(variables: EnvironmentVariables) {
     const previous = current();
@@ -97,19 +86,6 @@
     input.value = "";
     if (selected !== undefined) merge(parseDotenv(await selected.text()));
   }
-
-  async function redeploy() {
-    const layout = (await clusters).map(({ id, shardIds }) => ({ id, shardIds }));
-
-    toaster.promise(updateBotLayout(layout), {
-      loading: { title: "Redeploying clusters.." },
-      success: { title: "Clusters redeployed" },
-      error: (error) => ({
-        title: "Error",
-        description: JSON.parse(error as string)?.message ?? "An error occurred",
-      }),
-    });
-  }
 </script>
 
 <form
@@ -118,7 +94,7 @@
       loading: { title: "Saving environment.." },
       success: {
         title: "Environment saved",
-        description: "Redeploy the clusters to give it to them",
+        description: "Redeploy the clusters to apply it",
       },
       error: (error) => ({
         title: "Error",
@@ -224,18 +200,6 @@
     </button>
 
     <div class="flex gap-2">
-      <ConfirmButton
-        label="Redeploy clusters"
-        icon={{ icon: RotateCwIcon, size: 16 }}
-        class="preset-tonal btn-sm"
-        title={changed
-          ? "Save your changes first"
-          : deployed
-            ? "Give the saved variables to the running clusters"
-            : "No cluster is deployed yet"}
-        disabled={changed || !deployed || !!updateBotLayout.pending}
-        onclick={redeploy}
-      />
       <button
         type="button"
         class="btn btn-sm not-disabled:hover:underline"
