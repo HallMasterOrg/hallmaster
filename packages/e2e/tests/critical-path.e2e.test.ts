@@ -167,6 +167,32 @@ describe("environment", () => {
     await page.reload();
     await visible(page.getByLabel("Value of LOG_LEVEL"));
   });
+
+  it("merges a pasted .env and resets to the saved variables", async () => {
+    await page.getByRole("button", { name: "Add variable" }).click();
+    await page
+      .getByLabel("Name")
+      .last()
+      .evaluate((input) => {
+        const clipboardData = new DataTransfer();
+        clipboardData.setData("text/plain", "LOG_LEVEL=warn\nEXTRA=1");
+        input.dispatchEvent(
+          new ClipboardEvent("paste", { clipboardData, bubbles: true, cancelable: true }),
+        );
+      });
+
+    await expect
+      .poll(() => page.getByLabel("Name").evaluateAll(names))
+      .toEqual(["GREETING", "LOG_LEVEL", "EXTRA"]);
+    expect(await page.getByLabel("Value of LOG_LEVEL").inputValue()).toBe("warn");
+    expect(await page.getByLabel("Value of EXTRA").inputValue()).toBe("1");
+
+    await page.getByRole("button", { name: "Reset" }).click();
+    await expect
+      .poll(() => page.getByLabel("Name").evaluateAll(names))
+      .toEqual(["GREETING", "LOG_LEVEL"]);
+    expect(await page.getByLabel("Value of LOG_LEVEL").inputValue()).toBe("debug");
+  });
 });
 
 describe("cluster layout", () => {
