@@ -220,7 +220,7 @@ export const getOutdatedClusters = query(async (): Promise<Cluster["id"][]> => {
     case 200:
       return response.json();
     case 401:
-      return redirect(303, "/login");
+      return [];
 
     default:
       console.error(await response.text());
