@@ -1,19 +1,30 @@
 <script lang="ts">
   import type { Cluster } from "@hallmaster/backend/schemas";
-  import { ChevronRightIcon } from "@lucide/svelte";
+  import { ChevronRightIcon, TriangleAlertIcon } from "@lucide/svelte";
   import { Collapsible } from "@skeletonlabs/skeleton-svelte";
 
   interface Props {
     cluster: Cluster;
+    outdated: boolean;
   }
 
-  let { cluster }: Props = $props();
+  let { cluster, outdated }: Props = $props();
 </script>
 
 <Collapsible.Trigger class="btn grow justify-start">
   <Collapsible.Indicator class="group">
     <ChevronRightIcon class="transition-transform group-data-[state=open]:rotate-90" />
   </Collapsible.Indicator>
+
+  {#if outdated}
+    <span
+      class="badge preset-tonal-warning"
+      title="Runs older settings than the saved ones, redeploy it from the settings"
+    >
+      <TriangleAlertIcon size={14} />
+      outdated
+    </span>
+  {/if}
 
   <div
     class={{
