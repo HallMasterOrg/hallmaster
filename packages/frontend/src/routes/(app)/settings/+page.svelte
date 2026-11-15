@@ -17,7 +17,7 @@
   import RedeployClusters from "./components/RedeployClusters.svelte";
 </script>
 
-<header class="flex items-center justify-between gap-4">
+<header class="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
   <h6 class="h6 font-normal">Deployment</h6>
 
   <svelte:boundary>
