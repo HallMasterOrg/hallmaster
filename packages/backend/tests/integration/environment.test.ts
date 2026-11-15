@@ -129,6 +129,32 @@ describe("clusters", () => {
     expect(await containerEnvironment(0)).toContain("LOG_LEVEL=info");
     expect(await containerEnvironment(1)).toContain("LOG_LEVEL=info");
   });
+
+  it("are outdated until they are redeployed with the saved variables", async () => {
+    const layout = [{ shardIds: [0] }, { shardIds: [1] }];
+    await call("/clusters", { method: "PUT", body: layout });
+    expect(await call("/clusters/outdated")).toEqual({ status: 200, body: [] });
+
+    await putEnvironment([{ key: "LOG_LEVEL", value: "info" }]);
+    expect((await call("/clusters/outdated")).body).toEqual([0, 1]);
+
+    await call("/clusters", {
+      method: "PUT",
+      body: layout.map((cluster, id) => ({ ...cluster, id })),
+    });
+    expect((await call("/clusters/outdated")).body).toEqual([]);
+  });
+
+  it("are outdated once the image changes", async () => {
+    await call("/clusters", { method: "PUT", body: [{ shardIds: [0] }] });
+
+    const updated = await call("/bot/container-image", {
+      method: "PUT",
+      body: { url: "nginx:stable-alpine" },
+    });
+    expect(updated.status).toBe(200);
+    expect((await call("/clusters/outdated")).body).toEqual([0]);
+  });
 });
 
 describe("without a bot", () => {
