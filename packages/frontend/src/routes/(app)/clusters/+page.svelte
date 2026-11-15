@@ -1,6 +1,6 @@
 <script lang="ts">
   import BoundaryFailed from "$lib/components/BoundaryFailed.svelte";
-  import { getClusters, getClustersLive } from "$lib/remotes/clusters.remote";
+  import { getClusters, getClustersLive, getOutdatedClusters } from "$lib/remotes/clusters.remote";
   import follow from "$lib/utils/follow";
   import handleLiveError from "$lib/utils/handleLiveError";
   import type { Cluster } from "@hallmaster/backend/schemas";
@@ -14,6 +14,8 @@
   import CollapsibleTrigger from "./components/CollapsibleTrigger.svelte";
 
   let query = getClusters();
+  const outdated = getOutdatedClusters();
+  let outdatedIds = $derived(await outdated);
   onMount(() => {
     let unmounted = false;
     (async () => {
@@ -51,7 +53,7 @@
               aria-label={`select-cluster-${cluster.id}`}
               bind:group
             />
-            <CollapsibleTrigger {cluster} />
+            <CollapsibleTrigger {cluster} outdated={outdatedIds.includes(cluster.id)} />
             <ClusterActions id={cluster.id} status={cluster.status} />
           </div>
 
