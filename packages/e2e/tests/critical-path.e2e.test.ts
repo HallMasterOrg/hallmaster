@@ -215,6 +215,12 @@ describe("cluster actions", () => {
 describe("redeploy", () => {
   it("gives the saved variables to the running clusters", async () => {
     await page.goto("/settings");
+    await page.getByRole("button", { name: "Add variable" }).click();
+    await expect
+      .poll(() => page.getByLabel("Name").evaluateAll(names))
+      .toEqual(["GREETING", "LOG_LEVEL", ""]);
+    await page.getByRole("button", { name: "Remove the new variable" }).click();
+
     await page.getByLabel("Value of LOG_LEVEL").fill("info");
     await page.getByRole("button", { name: "Save", exact: true }).click();
     await visible(page.getByText("Environment saved"));
