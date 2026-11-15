@@ -252,6 +252,11 @@ describe("redeploy", () => {
     await visible(page.getByText("Environment saved"));
     await visible(page.getByText("Changes not deployed to 2 clusters"));
 
+    await page.goto("/clusters");
+    await visible(clusterRow(page, 0).getByText("outdated"));
+    await visible(clusterRow(page, 1).getByText("outdated"));
+
+    await page.goto("/settings");
     await page.getByRole("button", { name: "Redeploy clusters" }).click();
     await page.getByRole("button", { name: "Confirm action" }).click();
     await visible(page.getByText("Clusters redeployed"));
@@ -263,6 +268,7 @@ describe("redeploy", () => {
     await page.goto("/clusters");
     await visible(clusterRow(page, 0).getByText("running", { exact: true }));
     await visible(clusterRow(page, 1).getByText("running", { exact: true }));
+    expect(await page.getByText("outdated").count()).toBe(0);
   });
 });
 
