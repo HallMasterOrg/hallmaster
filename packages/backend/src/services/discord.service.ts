@@ -1,7 +1,11 @@
 import type { HTTPException } from "hono/http-exception";
 import type z from "zod";
 
-import { FailedDependancyException, UnauthorizedException } from "#exceptions/http-exceptions";
+import {
+  BadRequestException,
+  FailedDependancyException,
+  UnauthorizedException,
+} from "#exceptions/http-exceptions";
 import env from "#lib/env";
 import type { BotDiscordProfile } from "#schemas/bot.schema";
 import {
@@ -55,10 +59,14 @@ export default class DiscordService {
     path: `/${string}`,
     token: string,
     schema: S,
+    errors: DiscordRequestInit["errors"] = {},
   ): Promise<z.infer<S>> {
     return await this.request(path, schema, {
       headers: { Authorization: `Bot ${token}` },
-      errors: { 401: new FailedDependancyException({ message: "Invalid Discord bot token" }) },
+      errors: {
+        401: new FailedDependancyException({ message: "Invalid Discord bot token" }),
+        ...errors,
+      },
     });
   }
 
@@ -89,6 +97,12 @@ export default class DiscordService {
       bannerUrl: this.cdnUrl("banners", user.id, user.banner ?? null),
       accentColor: user.accent_color ?? null,
     };
+  }
+
+  public static async getUserById(token: string, id: string): Promise<DiscordUser> {
+    return await this.botRequest(`/users/${id}`, token, DiscordUserSchema, {
+      404: new BadRequestException({ message: "No Discord user has this ID" }),
+    });
   }
 
   public static authorizationUrl(redirectUri: string, state: string) {
