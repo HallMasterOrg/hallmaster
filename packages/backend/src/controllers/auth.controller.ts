@@ -1,22 +1,22 @@
 import { Hono } from "hono";
 import { describeRoute, resolver } from "hono-openapi";
-import type { JwtVariables } from "hono/jwt";
 
-import authMiddlewares from "#middlewares/auth.middlware";
+import authMiddlewares, { type AuthEnv } from "#middlewares/auth.middlware";
 import validator from "#middlewares/validator.middleware";
 import {
   DiscordAuthorizationSchema,
   DiscordAuthorizationUrlSchema,
   DiscordLoginSchema,
-  UserSchema,
   UserTokenResponseSchema,
 } from "#schemas/auth.schema";
 import { ApiErrorSchema } from "#schemas/error.schema";
+import { UserSchema } from "#schemas/user.schema";
 import { AuthService } from "#services/auth.service";
+import UserService from "#services/user.service";
 
 const tags = ["Authentication"];
 
-const authController = new Hono<{ Variables: JwtVariables<{ sub: string }> }>()
+const authController = new Hono<AuthEnv>()
   .get(
     "/me",
     describeRoute({
@@ -32,11 +32,7 @@ const authController = new Hono<{ Variables: JwtVariables<{ sub: string }> }>()
       },
     }),
     ...authMiddlewares,
-    async (c) => {
-      const user = await AuthService.me(c.get("jwtPayload").sub);
-
-      return c.json(user);
-    },
+    (c) => c.json(UserService.toUser(c.get("user"))),
   )
   .get(
     "/discord",

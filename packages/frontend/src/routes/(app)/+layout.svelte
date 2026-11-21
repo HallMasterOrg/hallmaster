@@ -9,6 +9,7 @@
     ContainerIcon,
     LayoutDashboardIcon,
     SettingsIcon,
+    ShieldUserIcon,
   } from "@lucide/svelte";
   import { AppBar } from "@skeletonlabs/skeleton-svelte";
 
@@ -24,6 +25,7 @@
     ],
     administration: [
       { label: "Layout", icon: LayoutDashboardIcon, path: "/layout" },
+      { label: "Admins", icon: ShieldUserIcon, path: "/admins" },
       { label: "Settings", icon: SettingsIcon, path: "/settings" },
     ],
   };

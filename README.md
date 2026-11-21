@@ -8,7 +8,7 @@ HallMaster is an open-source platform designed to centralize the orchestration a
 
 ## What it does today
 
-- Logs you in with Discord. The first Discord account to log in to a new instance becomes its account.
+- Logs you in with Discord. The first Discord account to log in to a new instance becomes its owner, who can then give other Discord accounts admin access, remove them, or hand the instance over to one of them.
 - Registers one Discord bot (its token is checked against Discord) and the container image of your bot.
 - Splits the bot's shards into clusters from the dashboard. Each cluster runs as a Docker container that receives `DISCORD_BOT_TOKEN`, `TOTAL_SHARDS` and `SHARD_ID_LIST`, so your bot knows which shards to handle.
 - Starts, stops and restarts one cluster or several at once.
@@ -16,7 +16,7 @@ HallMaster is an open-source platform designed to centralize the orchestration a
 
 ## What it does not do
 
-- It manages a single bot and a single user account per instance.
+- It manages a single bot per instance, and every admin can do everything except manage the admins.
 - It only runs containers on the machine where the backend runs (through the local Docker socket). There is no multi-machine setup yet.
 - It does not build your bot: push its image to a registry first, then give HallMaster the image URL.
 - It does not scale or reshard on its own: you change the cluster layout by hand.
