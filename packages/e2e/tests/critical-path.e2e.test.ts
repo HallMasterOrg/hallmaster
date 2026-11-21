@@ -191,7 +191,7 @@ describe("admins", () => {
   });
 
   it("gives another Discord account access", async () => {
-    await page.goto("/admins");
+    await page.goto("/team");
     await page.getByLabel("Discord user ID").fill(STRANGER.id);
     await page.getByRole("button", { name: "Add admin" }).click();
 
@@ -206,7 +206,7 @@ describe("admins", () => {
     await discordLogin(stranger).click();
     await stranger.waitForURL("**/clusters");
 
-    await stranger.goto("/admins");
+    await stranger.goto("/team");
     await visible(stranger.getByText("Only the owner can add admins"));
     expect(await stranger.getByLabel("Discord user ID").count()).toBe(0);
   });

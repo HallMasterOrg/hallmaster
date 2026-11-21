@@ -5,7 +5,7 @@
   let { children }: LayoutProps = $props();
 </script>
 
-{@render appbar(["Administration", "Admins"])}
+{@render appbar(["Administration", "Team"])}
 
 <main class="mx-auto flex max-w-2xl flex-col gap-4">
   {@render children()}

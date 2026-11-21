@@ -41,7 +41,7 @@ export function countRemoteCalls(page: Page) {
 
 export function adminRow(page: Page, user: { username: string }) {
   return page
-    .getByRole("list", { name: "Admins" })
+    .getByRole("list", { name: "Team" })
     .getByRole("listitem")
     .filter({ hasText: `@${user.username}` });
 }

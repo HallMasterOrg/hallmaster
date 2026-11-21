@@ -14,7 +14,7 @@
 </script>
 
 <div>
-  <h6 class="h6 font-normal">Admins</h6>
+  <h6 class="h6 font-normal">Team</h6>
   <p class="text-xs opacity-60">
     These Discord accounts can log in and manage the bot. The owner also manages this list.
   </p>
@@ -26,11 +26,11 @@
   {:else}
     <p class="flex items-center gap-2 card preset-tonal-surface p-3 text-xs">
       <InfoIcon class="shrink-0" size={16} />
-      Only the owner can add admins, remove them or hand over the instance.
+      Only the owner can manage members.
     </p>
   {/if}
 
-  <ul class="flex flex-col gap-2" aria-label="Admins">
+  <ul class="flex flex-col gap-2">
     {#each await users as user (user.id)}
       <li
         class="flex items-center gap-3 card preset-outlined-surface-200-800 p-3"
