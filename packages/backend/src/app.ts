@@ -6,6 +6,7 @@ import { HTTPException } from "hono/http-exception";
 import { logger } from "hono/logger";
 import z from "zod";
 
+import alertController from "#controllers/alert.controller";
 import authController from "#controllers/auth.controller";
 import botController from "#controllers/bot.controller";
 import clusterController from "#controllers/cluster.controller";
@@ -82,6 +83,7 @@ app.get(
 );
 
 const routes = app
+  .route("/api/alerts", alertController)
   .route("/api/auth", authController)
   .route("/api/bot", botController)
   .route("/api/clusters", clusterController)

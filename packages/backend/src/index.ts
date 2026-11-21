@@ -1,6 +1,7 @@
 import { serve } from "@hono/node-server";
 
 import env from "#lib/env";
+import AlertService from "#services/alert.service";
 
 import app from "./app";
 
@@ -13,3 +14,5 @@ serve(
     console.log(`Server is running on http://localhost:${info.port}`);
   },
 );
+
+AlertService.watch();

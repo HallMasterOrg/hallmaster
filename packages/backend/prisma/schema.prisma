@@ -20,6 +20,7 @@ model Bot {
   totalShards    Int             @map("total_shards")
   clusters       Cluster[]
   containerImage ContainerImage?
+  alerts         Alert[]
 
   @@map("bot")
 }
@@ -52,4 +53,25 @@ model Cluster {
 
   @@id([botId, id])
   @@map("cluster")
+}
+
+enum AlertKind {
+  STOPPED
+  CRASH_LOOP
+  OOM_KILLED
+}
+
+model Alert {
+  id         String    @id @default(uuid())
+  botId      String    @map("bot_id")
+  clusterId  Int       @map("cluster_id")
+  kind       AlertKind
+  message    String
+  startedAt  DateTime  @default(now()) @map("started_at")
+  resolvedAt DateTime? @map("resolved_at")
+  bot        Bot       @relation(fields: [botId], references: [id], onDelete: Cascade)
+
+  @@index([botId, resolvedAt])
+  @@index([botId, startedAt])
+  @@map("alert")
 }
