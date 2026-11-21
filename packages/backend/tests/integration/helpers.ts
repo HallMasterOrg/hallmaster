@@ -1,11 +1,24 @@
 import { DockerContainersAPI } from "@hallmaster/docker.js";
+import { vi } from "vitest";
 
 import prisma from "#lib/database";
 import socket from "#lib/docker";
+import type { DiscordUser } from "#schemas/discord.schema";
+import DiscordService from "#services/discord.service";
 
 import app from "../../src/app";
 
 export const BOT_ID = "424242424242424242";
+
+export const REDIRECT_URI = "http://localhost/login/discord/callback";
+
+export const OWNER: DiscordUser = {
+  id: "111111111111111111",
+  username: "owner",
+  global_name: "Owner",
+  discriminator: "0",
+  avatar: null,
+};
 
 const containers = new DockerContainersAPI(socket);
 
@@ -65,11 +78,18 @@ export function request(
   });
 }
 
-export async function register() {
-  const response = await request("/auth/register", {
+export function logInWithDiscord(user: DiscordUser) {
+  vi.spyOn(DiscordService, "getAccessToken").mockResolvedValue("access-token");
+  vi.spyOn(DiscordService, "getUser").mockResolvedValue(user);
+
+  return request("/auth/discord", {
     method: "POST",
-    body: { username: "admin", password: "password123" },
+    body: { code: "code", redirectUri: REDIRECT_URI },
   });
+}
+
+export async function register() {
+  const response = await logInWithDiscord(OWNER);
   const { token } = (await response.json()) as { token: string };
 
   return token;

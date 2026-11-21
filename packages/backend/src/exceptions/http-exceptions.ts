@@ -19,6 +19,12 @@ export class UnauthorizedException extends HTTPException {
   }
 }
 
+export class ForbiddenException extends HTTPException {
+  constructor(options: HTTPExceptionOptions) {
+    super(403, options);
+  }
+}
+
 type NotFoundExceptionOptions =
   | Omit<HTTPExceptionOptions, "message">
   | { message?: `${string} not found` };

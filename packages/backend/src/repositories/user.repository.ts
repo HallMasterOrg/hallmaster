@@ -7,15 +7,14 @@ export default class UserRepository {
   }
 
   static async create(data: User) {
-    return prisma.user.create({ select: { username: true }, data });
+    return prisma.user.create({ data });
   }
 
-  static async findFirstByUsername(username: User["username"]) {
-    return prisma.user.findFirst({
-      select: { username: true, passwordHash: true },
-      where: {
-        username,
-      },
-    });
+  static async findById(id: User["id"]) {
+    return prisma.user.findUnique({ where: { id } });
+  }
+
+  static async update({ id, ...data }: User) {
+    return prisma.user.update({ where: { id }, data });
   }
 }

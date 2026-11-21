@@ -6,7 +6,6 @@ allowBuilds:
   '@prisma/engines': true
   '@scarf/scarf': true
   '@swc/core': true
-  argon2: true
   cpu-features: false
   esbuild: true
   prisma: true

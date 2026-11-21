@@ -1,17 +1,26 @@
 import { execFileSync, spawn, type ChildProcess } from "node:child_process";
 import { createWriteStream, mkdirSync } from "node:fs";
-import { createServer, type Server } from "node:http";
+import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
 import { createServer as createNetServer, type AddressInfo } from "node:net";
 import { fileURLToPath } from "node:url";
 
 import { PostgreSqlContainer } from "@testcontainers/postgresql";
 import type { TestProject } from "vitest/node";
 
-import { BOT_ID, BOT_PROFILE, BOT_TOKEN, RECOMMENDED_SHARDS } from "./fixtures";
+import {
+  BOT_ID,
+  BOT_PROFILE,
+  BOT_TOKEN,
+  DISCORD_CLIENT,
+  OWNER,
+  RECOMMENDED_SHARDS,
+  STRANGER,
+} from "./fixtures";
 
 declare module "vitest" {
   export interface ProvidedContext {
     baseURL: string;
+    discordURL: string;
   }
 }
 
@@ -64,29 +73,85 @@ async function waitUntilUp(name: string, url: string, child: ChildProcess) {
   throw new Error(`${name} did not answer on ${url} within 60 s, see .logs/${name}.log`);
 }
 
-// Answers the two Discord routes the backend calls, so the tests never reach Discord.
-async function startFakeDiscord(port: number) {
-  const server: Server = createServer((request, response) => {
-    const reply = (status: number, body: unknown) => {
-      response.writeHead(status, { "Content-Type": "application/json" });
-      response.end(JSON.stringify(body));
-    };
+const DISCORD_USERS = new Map([OWNER, STRANGER].map((user) => [user.id, user]));
+const CLIENT_CREDENTIALS = Buffer.from(`${DISCORD_CLIENT.id}:${DISCORD_CLIENT.secret}`);
 
-    if (request.headers.authorization !== `Bot ${BOT_TOKEN}`) {
-      reply(401, { message: "401: Unauthorized", code: 0 });
+function readBody(request: IncomingMessage) {
+  return new Promise<URLSearchParams>((resolve) => {
+    let body = "";
+    request.on("data", (chunk: Buffer) => (body += chunk.toString()));
+    request.on("end", () => resolve(new URLSearchParams(body)));
+  });
+}
+
+function discordUser(request: IncomingMessage) {
+  const id = request.headers.cookie?.match(/(?:^|; )user=(\d+)/)?.[1] ?? OWNER.id;
+
+  return DISCORD_USERS.get(id);
+}
+
+function bearerUser(authorization: string | undefined) {
+  return DISCORD_USERS.get(authorization?.replace("Bearer access-", "") ?? "");
+}
+
+async function answerDiscord(request: IncomingMessage, response: ServerResponse) {
+  const reply = (status: number, body: unknown) => {
+    response.writeHead(status, { "Content-Type": "application/json" });
+    response.end(JSON.stringify(body));
+  };
+  const url = new URL(request.url ?? "/", `http://${request.headers.host}`);
+  const { authorization } = request.headers;
+
+  switch (`${request.method} ${url.pathname}`) {
+    case "GET /oauth2/authorize": {
+      const callback = new URL(url.searchParams.get("redirect_uri") ?? "");
+      callback.searchParams.set("code", discordUser(request)?.id ?? "");
+      callback.searchParams.set("state", url.searchParams.get("state") ?? "");
+      response.writeHead(302, { Location: callback.toString() });
+      response.end();
       return;
     }
+    case "POST /api/v10/oauth2/token": {
+      if (authorization !== `Basic ${CLIENT_CREDENTIALS.toString("base64")}`) {
+        reply(401, { error: "invalid_client" });
+        return;
+      }
 
-    switch (request.url) {
-      case "/gateway/bot":
-        reply(200, { url: "wss://gateway.discord.gg", shards: RECOMMENDED_SHARDS });
+      const code = (await readBody(request)).get("code") ?? "";
+      if (!DISCORD_USERS.has(code)) {
+        reply(400, { error: "invalid_grant" });
         return;
-      case "/users/@me":
-        reply(200, BOT_PROFILE);
-        return;
-      default:
-        reply(404, { message: "404: Not Found", code: 0 });
+      }
+
+      reply(200, { access_token: `access-${code}`, token_type: "Bearer" });
+      return;
     }
+    case "GET /api/v10/users/@me": {
+      const user = authorization === `Bot ${BOT_TOKEN}` ? BOT_PROFILE : bearerUser(authorization);
+      if (user === undefined) {
+        reply(401, { message: "401: Unauthorized", code: 0 });
+        return;
+      }
+
+      reply(200, user);
+      return;
+    }
+    case "GET /api/v10/gateway/bot":
+      if (authorization !== `Bot ${BOT_TOKEN}`) {
+        reply(401, { message: "401: Unauthorized", code: 0 });
+        return;
+      }
+
+      reply(200, { url: "wss://gateway.discord.gg", shards: RECOMMENDED_SHARDS });
+      return;
+    default:
+      reply(404, { message: "404: Not Found", code: 0 });
+  }
+}
+
+async function startFakeDiscord(port: number) {
+  const server: Server = createServer((request, response) => {
+    void answerDiscord(request, response);
   });
 
   await new Promise<void>((resolve) => server.listen(port, "127.0.0.1", resolve));
@@ -127,6 +192,7 @@ export default async function setup(project: TestProject) {
     await freePort(),
     await freePort(),
   ];
+  const discordURL = `http://127.0.0.1:${discordPort}`;
   const discord = await startFakeDiscord(discordPort);
 
   const backend = start("backend", ["dist/index.mjs"], backendDir, {
@@ -135,7 +201,9 @@ export default async function setup(project: TestProject) {
     DATABASE_URL: databaseUrl,
     SECRET: "e2e-secret-e2e-secret-e2e-secret",
     PORT: String(backendPort),
-    DISCORD_API_URL: `http://127.0.0.1:${discordPort}`,
+    DISCORD_URL: discordURL,
+    DISCORD_CLIENT_ID: DISCORD_CLIENT.id,
+    DISCORD_CLIENT_SECRET: DISCORD_CLIENT.secret,
   });
   await waitUntilUp("backend", `http://127.0.0.1:${backendPort}/openapi.json`, backend);
 
@@ -151,6 +219,7 @@ export default async function setup(project: TestProject) {
   await waitUntilUp("frontend", `${baseURL}/login`, frontend);
 
   project.provide("baseURL", baseURL);
+  project.provide("discordURL", discordURL);
 
   return async () => {
     frontend.kill();

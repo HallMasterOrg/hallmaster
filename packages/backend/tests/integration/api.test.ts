@@ -1,34 +1,67 @@
 import { beforeEach, describe, expect, it } from "vitest";
 
-import { register, request, resetState } from "./helpers";
+import prisma from "#lib/database";
+
+import { logInWithDiscord, OWNER, REDIRECT_URI, register, request, resetState } from "./helpers";
 
 beforeEach(async () => {
   await resetState();
 });
 
 describe("authentication", () => {
-  it("registers a single user", async () => {
-    expect(await register()).toEqual(expect.any(String));
+  it("sends the user to the Discord authorization page", async () => {
+    const query = new URLSearchParams({ redirectUri: REDIRECT_URI, state: "state" });
+    const response = await request(`/auth/discord?${query}`);
+    const { url } = (await response.json()) as { url: string };
 
-    const second = await request("/auth/register", {
-      method: "POST",
-      body: { username: "other", password: "password123" },
-    });
-
-    expect(second.status).toBe(409);
-    expect(await second.json()).toEqual({ message: "A user is already registered" });
+    expect(response.status).toBe(200);
+    expect(new URL(url).searchParams.get("client_id")).toBe("integration-client");
+    expect(new URL(url).searchParams.get("redirect_uri")).toBe(REDIRECT_URI);
   });
 
-  it("rejects a wrong password", async () => {
-    await register();
+  it("creates the account of the first Discord user and logs it back in", async () => {
+    const first = await logInWithDiscord(OWNER);
+    const second = await logInWithDiscord({ ...OWNER, global_name: "Renamed", avatar: "a_new" });
 
-    const response = await request("/auth/login", {
-      method: "POST",
-      body: { username: "admin", password: "wrong-password" },
+    expect(first.status).toBe(200);
+    expect(second.status).toBe(200);
+    expect(await prisma.user.findMany()).toEqual([
+      { id: OWNER.id, username: OWNER.username, displayName: "Renamed", avatar: "a_new" },
+    ]);
+  });
+
+  it("returns the Discord profile of the logged in user", async () => {
+    const token = await register();
+
+    const response = await request("/auth/me", { token });
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({
+      id: OWNER.id,
+      username: OWNER.username,
+      displayName: OWNER.global_name,
+      avatarUrl: null,
     });
+  });
+
+  it("refuses the session of an account that no longer exists", async () => {
+    const token = await register();
+    await prisma.user.deleteMany();
+
+    const response = await request("/auth/me", { token });
 
     expect(response.status).toBe(401);
-    expect(await response.json()).toEqual({ message: "Invalid username or password" });
+  });
+
+  it("refuses another Discord account", async () => {
+    await register();
+
+    const response = await logInWithDiscord({ ...OWNER, id: "222222222222222222" });
+
+    expect(response.status).toBe(403);
+    expect(await response.json()).toEqual({
+      message: "This Discord account cannot access this instance",
+    });
   });
 
   it("rejects a request without a token", async () => {
@@ -42,18 +75,18 @@ describe("authentication", () => {
 
 describe("error responses", () => {
   it("lists invalid fields without echoing the submitted values", async () => {
-    const response = await request("/auth/register", {
+    const response = await request("/auth/discord", {
       method: "POST",
-      body: { username: "admin", password: "short" },
+      body: { code: "code", redirectUri: "not-an-uri" },
     });
     const body = await response.text();
 
     expect(response.status).toBe(400);
     expect(JSON.parse(body)).toEqual({
       message: "Validation failed",
-      issues: [{ path: "password", message: expect.any(String) }],
+      issues: [{ path: "redirectUri", message: expect.any(String) }],
     });
-    expect(body).not.toContain("short");
+    expect(body).not.toContain("not-an-uri");
   });
 
   it("reports invalid path parameters", async () => {
