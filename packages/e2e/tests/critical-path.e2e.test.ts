@@ -207,7 +207,7 @@ describe("admins", () => {
     await stranger.waitForURL("**/clusters");
 
     await stranger.goto("/team");
-    await visible(stranger.getByText("Only the owner can add admins"));
+    await visible(stranger.getByText("Only the owner can manage members"));
     expect(await stranger.getByLabel("Discord user ID").count()).toBe(0);
   });
 
@@ -216,7 +216,7 @@ describe("admins", () => {
     await page.getByRole("button", { name: "Confirm action" }).click();
 
     await visible(adminRow(page, STRANGER).getByText("Owner", { exact: true }));
-    await visible(page.getByText("Only the owner can add admins"));
+    await visible(page.getByText("Only the owner can manage members"));
   });
 
   it("ends the session of a removed admin", async () => {
