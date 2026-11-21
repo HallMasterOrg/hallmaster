@@ -1,7 +1,10 @@
+import { execFileSync } from "node:child_process";
+
 import type { Browser, Page } from "playwright";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
 import {
+  BOT_ID,
   BOT_PROFILE,
   BOT_TOKEN,
   CONTAINER_IMAGE,
@@ -163,6 +166,28 @@ describe("cluster actions", () => {
 
     await page.getByRole("button", { name: "start cluster 01" }).click();
     await visible(row.getByText("running", { exact: true }));
+  });
+});
+
+describe("alerts", () => {
+  it("flags a cluster stopped outside HallMaster until it starts again", async () => {
+    await page.waitForTimeout(1_500);
+    execFileSync("docker", ["stop", `${BOT_ID}-1`]);
+
+    await visible(clusterRow(page, 1).getByText("down"));
+
+    await page.goto("/alerts");
+    await visible(page.getByRole("region", { name: "Active" }).getByText("Cluster 01"));
+
+    await page.goto("/clusters");
+    await page.getByRole("button", { name: "start cluster 01" }).click();
+    await visible(clusterRow(page, 1).getByText("running", { exact: true }));
+    await expect
+      .poll(() => clusterRow(page, 1).getByText("down").count(), { timeout: 10_000 })
+      .toBe(0);
+
+    await page.goto("/alerts");
+    await visible(page.getByRole("region", { name: "History" }).getByText("Cluster 01"));
   });
 });
 
