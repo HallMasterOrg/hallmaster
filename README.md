@@ -13,6 +13,7 @@ HallMaster is an open-source platform designed to centralize the orchestration a
 - Splits the bot's shards into clusters from the dashboard. Each cluster runs as a Docker container that receives `DISCORD_BOT_TOKEN`, `TOTAL_SHARDS` and `SHARD_ID_LIST`, so your bot knows which shards to handle.
 - Starts, stops and restarts one cluster or several at once.
 - Shows the live status, logs, CPU and memory of each cluster, and the total for the bot.
+- Raises an alert when a cluster that should run stops, keeps crashing or runs out of memory.
 
 ## What it does not do
 
