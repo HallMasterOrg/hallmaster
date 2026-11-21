@@ -3,6 +3,7 @@
   import LabeledInput from "$lib/components/LabeledInput.svelte";
   import { getContainerImage, updateBotImage, updateBotToken } from "$lib/remotes/bot.remote";
   import toaster from "$lib/utils/toaster";
+  import toastError from "$lib/utils/toastError";
   import {
     BracesIcon,
     ContainerIcon,
@@ -26,10 +27,7 @@
             element.reset();
             return { title: "Successfully applied deployment config" };
           },
-          error: (error) => ({
-            title: "Error",
-            description: JSON.parse(error as string)?.message ?? "An error occurred",
-          }),
+          error: toastError,
         });
       })}
       class="flex flex-col gap-3"
@@ -103,10 +101,7 @@
           element.reset();
           return { title: "Successfully registered token" };
         },
-        error: (error) => ({
-          title: "Error",
-          description: JSON.parse(error as string)?.message ?? "An error occurred",
-        }),
+        error: toastError,
       });
     })}
   >

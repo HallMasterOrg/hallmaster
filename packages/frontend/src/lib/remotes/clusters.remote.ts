@@ -29,7 +29,7 @@ async function clusterAction(
     case 200:
       return await getClusters().refresh();
     case 401:
-      return redirect(303, "/login");
+      return error(401, "Unauthorized");
     case 404:
       return error(404, "Cluster not found");
     case 424:
