@@ -4,12 +4,14 @@ import BatchStream from "$lib/utils/BatchStream";
 import {
   ClusterIdSchema,
   ClusterLogsQuerySchema,
+  ClusterStatsHistoryRangeSchema,
   SseIntervalQuerySchema,
   type ApiError,
   type Cluster,
   type ClusterLogs,
   type ClusterStats,
   type ClustersStats,
+  type ClustersStatsHistory,
 } from "@hallmaster/backend/schemas";
 import { error, redirect } from "@sveltejs/kit";
 import { EventSourceParserStream, type EventSourceMessage } from "eventsource-parser/stream";
@@ -207,6 +209,32 @@ export const getClusters = query(async (): Promise<Cluster[]> => {
       return error(500, "An error occurred");
   }
 });
+
+export const getClustersStatsHistory = query(
+  ClusterStatsHistoryRangeSchema,
+  async (range): Promise<ClustersStatsHistory | null> => {
+    const response = await fetch(
+      new URL(`/api/clusters/stats/history?range=${range}`, env.API_URL),
+      {
+        headers: {
+          Accept: "application/json",
+          Authorization: `Bearer ${getRequestEvent().cookies.get("token")}`,
+        },
+      },
+    );
+
+    switch (response.status) {
+      case 200:
+        return response.json();
+      case 401:
+        return null;
+
+      default:
+        console.error(await response.text());
+        return error(500, "An error occurred");
+    }
+  },
+);
 
 export const getClustersLive = query.live(async function* () {
   const response = await fetch(new URL("/api/clusters/sse", env.API_URL), {
