@@ -131,3 +131,32 @@ export const ClusterLogsSchema = z.array(ClusterLogSchema).meta({
   description: "Logs (line by line) of a container",
 });
 export type ClusterLogs = z.infer<typeof ClusterLogsSchema>;
+
+export const ClusterStatsHistoryRangeSchema = z.enum(["1h", "6h", "24h", "7d"]).meta({
+  description: "How far back the history goes",
+});
+export type ClusterStatsHistoryRange = z.infer<typeof ClusterStatsHistoryRangeSchema>;
+
+export const ClusterStatsHistoryQuerySchema = z.object({
+  range: ClusterStatsHistoryRangeSchema.optional().default("1h"),
+});
+
+export const ClusterStatsPointSchema = ClusterStatsSchema.pick({
+  cpuPercentage: true,
+  memory: true,
+}).extend({
+  at: z.iso.datetime().meta({ description: "Start of the period averaged by this point" }),
+});
+export type ClusterStatsPoint = z.infer<typeof ClusterStatsPointSchema>;
+
+export const ClustersStatsHistorySchema = z.object({
+  from: z.iso.datetime().meta({ description: "Start of the history" }),
+  to: z.iso.datetime().meta({ description: "End of the history" }),
+  interval: z.number().int().positive().meta({
+    description: "Number of seconds averaged by each point",
+  }),
+  clusters: z.record(ClusterIdSchema, z.array(ClusterStatsPointSchema)).meta({
+    description: "Averaged stats of every cluster keyed by ID, from the oldest to the newest point",
+  }),
+});
+export type ClustersStatsHistory = z.infer<typeof ClustersStatsHistorySchema>;

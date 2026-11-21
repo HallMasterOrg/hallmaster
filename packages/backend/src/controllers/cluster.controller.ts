@@ -14,13 +14,16 @@ import {
   ClustersBulkActionResultSchema,
   ClusterSchema,
   ClustersSchema,
+  ClustersStatsHistorySchema,
   ClustersStatsSchema,
+  ClusterStatsHistoryQuerySchema,
   ClusterStatsSchema,
   SseIntervalQuerySchema,
   UpdateClustersSchema,
 } from "#schemas/cluster.schema";
 import { ApiErrorSchema } from "#schemas/error.schema";
 import ClusterService from "#services/cluster.service";
+import MetricsService from "#services/metrics.service";
 
 const tags = ["Clusters"];
 
@@ -118,6 +121,28 @@ const clusterController = new Hono()
           await stream.sleep(query.interval * 1000);
         }
       });
+    },
+  )
+  .get(
+    "/stats/history",
+    describeRoute({
+      tags,
+      description: "Get the stats history of every cluster, averaged over regular periods",
+      responses: {
+        200: {
+          description: "OK",
+          content: {
+            "application/json": { schema: resolver(ClustersStatsHistorySchema) },
+          },
+        },
+      },
+    }),
+    validator("query", ClusterStatsHistoryQuerySchema),
+    async (c) => {
+      const { range } = c.req.valid("query");
+      const history = await MetricsService.history(range);
+
+      return c.json(history, 200);
     },
   )
   .get(
