@@ -54,10 +54,11 @@ const clusterController = new Hono()
     "/",
     describeRoute({
       tags,
-      description: "Update cluster layout",
+      description:
+        "Replace the cluster layout, then start the clusters one by one in the background, each once the previous one is ready",
       responses: {
-        200: {
-          description: "OK",
+        202: {
+          description: "Layout saved, the clusters are starting",
           content: {
             "application/json": { schema: resolver(ClustersSchema) },
           },
@@ -70,6 +71,17 @@ const clusterController = new Hono()
               examples: {
                 "Bot not found": { value: { message: "Bot not found" } },
                 "Container image not found": { value: { message: "Container image not found" } },
+              },
+            },
+          },
+        },
+        409: {
+          description: "Another operation is running on the clusters",
+          content: {
+            "application/json": {
+              schema: resolver(ApiErrorSchema),
+              example: {
+                message: "Another operation is running on the clusters, retry once it is done",
               },
             },
           },
@@ -90,7 +102,51 @@ const clusterController = new Hono()
       const layout = c.req.valid("json");
       const clusters = await ClusterService.updateAll(layout);
 
-      return c.json(clusters, 200);
+      return c.json(clusters, 202);
+    },
+  )
+  .post(
+    "/redeploy",
+    describeRoute({
+      tags,
+      description:
+        "Replace the clusters one by one in the background with the saved token, image and environment variables. A cluster that is not ready brings every cluster back to the previous version.",
+      responses: {
+        202: {
+          description: "Redeploy started",
+          content: {
+            "application/json": { schema: resolver(ClustersSchema) },
+          },
+        },
+        404: {
+          description: "Not Found",
+          content: {
+            "application/json": {
+              schema: resolver(ApiErrorSchema),
+              examples: {
+                "Bot not found": { value: { message: "Bot not found" } },
+                "Container image not found": { value: { message: "Container image not found" } },
+              },
+            },
+          },
+        },
+        409: {
+          description: "Another operation is running on the clusters",
+          content: {
+            "application/json": {
+              schema: resolver(ApiErrorSchema),
+              example: {
+                message: "Another operation is running on the clusters, retry once it is done",
+              },
+            },
+          },
+        },
+      },
+    }),
+    async (c) => {
+      const { clusters } = await ClusterService.redeploy();
+
+      return c.json(clusters, 202);
     },
   )
   .get(

@@ -26,6 +26,7 @@
         if (unmounted) break;
         query.set(live);
         void activeAlerts.refresh();
+        void outdated.refresh();
       }
     })().catch(handleLiveError);
 

@@ -12,6 +12,7 @@ export default class ClusterOperationService {
   private static readonly locked = new Set<Key>();
   private static readonly settledAt = new Map<Key, number>();
   private static readonly holder = new AsyncLocalStorage<true>();
+  private static readonly background = new Set<Promise<unknown>>();
 
   private static conflict(keys: Key[]) {
     if (keys.includes(LAYOUT)) {
@@ -66,6 +67,36 @@ export default class ClusterOperationService {
 
   public static async runOnLayout<T>(operation: () => Promise<T>) {
     return this.hold([LAYOUT], operation);
+  }
+
+  public static async startOnLayout<T, R>(
+    prepare: () => Promise<T>,
+    rollout: (prepared: T) => Promise<R>,
+  ) {
+    const release = this.acquire([LAYOUT]);
+
+    let prepared: T;
+    try {
+      prepared = await this.holder.run(true, prepare);
+    } catch (error) {
+      release();
+      throw error;
+    }
+
+    const finished = this.holder.run(true, () => rollout(prepared)).finally(release);
+    const tracked = finished.catch((error: unknown) => {
+      console.error("Cluster operation failed", error);
+    });
+    this.background.add(tracked);
+    void tracked.finally(() => this.background.delete(tracked));
+
+    return { prepared, finished };
+  }
+
+  public static async idle() {
+    while (this.background.size > 0) {
+      await Promise.all(this.background);
+    }
   }
 
   public static isBusy(id: ClusterId, at = Date.now()) {

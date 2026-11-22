@@ -9,8 +9,9 @@ function pending() {
   return { promise, finish };
 }
 
-afterEach(() => {
+afterEach(async () => {
   vi.useRealTimers();
+  await ClusterOperationService.idle();
 });
 
 describe("cluster operations", () => {
@@ -63,6 +64,43 @@ describe("cluster operations", () => {
     );
 
     await expect(result).resolves.toBe("nested");
+  });
+
+  it("holds the layout until the background rollout is over", async () => {
+    const rollout = pending();
+
+    const { prepared, finished } = await ClusterOperationService.startOnLayout(
+      () => Promise.resolve([0, 1]),
+      async (ids) => {
+        await rollout.promise;
+        return ids.length;
+      },
+    );
+
+    expect(prepared).toEqual([0, 1]);
+    expect(ClusterOperationService.isBusy(1)).toBe(true);
+    await expect(ClusterOperationService.run([1], async () => {})).rejects.toMatchObject({
+      status: 409,
+    });
+
+    rollout.finish();
+    await expect(finished).resolves.toBe(2);
+    await expect(ClusterOperationService.run([1], () => Promise.resolve("free"))).resolves.toBe(
+      "free",
+    );
+  });
+
+  it("releases the layout when the preparation fails", async () => {
+    await expect(
+      ClusterOperationService.startOnLayout(
+        () => Promise.reject(new Error("Container image not found")),
+        async () => {},
+      ),
+    ).rejects.toThrow("Container image not found");
+
+    await expect(ClusterOperationService.runOnLayout(() => Promise.resolve("free"))).resolves.toBe(
+      "free",
+    );
   });
 
   it("keeps a cluster busy for a second after its operation", async () => {

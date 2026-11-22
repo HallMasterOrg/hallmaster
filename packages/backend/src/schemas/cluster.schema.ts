@@ -6,8 +6,11 @@ export const ClusterIdSchema = z.coerce.number().int().nonnegative().meta({
 export type ClusterId = z.infer<typeof ClusterIdSchema>;
 
 export const ClusterStatusSchema = z
-  .enum(["STARTING", "RUNNING", "STOPPED", "ERROR", "UPDATING"])
-  .meta({ description: "Status of the cluster" });
+  .enum(["STARTING", "RUNNING", "STOPPED", "ERROR", "UPDATING", "WAITING"])
+  .meta({
+    description:
+      "Status of the cluster. WAITING: a deployment starts or replaces the clusters one by one, and this one waits for its turn",
+  });
 export type ClusterStatus = z.infer<typeof ClusterStatusSchema>;
 
 export const ClusterSchema = z.object({

@@ -8,6 +8,7 @@ import {
   removeContainerOutsideHallMaster,
   request,
   resetState,
+  settled,
   stopContainerOutsideHallMaster,
 } from "./helpers";
 
@@ -18,8 +19,10 @@ let unwatch: () => void;
 
 async function call(path: string, init: { method?: string; body?: unknown } = {}) {
   const response = await request(path, { ...init, token });
+  const body = (await response.json()) as unknown;
+  await settled();
 
-  return { status: response.status, body: (await response.json()) as unknown };
+  return { status: response.status, body };
 }
 
 function settle() {
@@ -56,7 +59,7 @@ beforeEach(async () => {
     method: "PUT",
     body: [{ shardIds: [0] }, { shardIds: [1] }],
   });
-  expect(status).toBe(200);
+  expect(status).toBe(202);
 
   await settle();
 });

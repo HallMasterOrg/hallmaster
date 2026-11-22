@@ -278,7 +278,7 @@ export const updateBotLayout = command(UpdateClustersSchema, async (payload) => 
   });
 
   switch (response.status) {
-    case 200:
+    case 202:
       getClusters().set((await response.json()) as Cluster[]);
       await getOutdatedClusters().refresh();
       return;
@@ -290,6 +290,29 @@ export const updateBotLayout = command(UpdateClustersSchema, async (payload) => 
       return error(401, "Unauthorized");
     case 404:
       return error(404, "Bot not found");
+
+    default:
+      console.error(await response.text());
+      return error(500, "An error occurred");
+  }
+});
+
+export const redeployClusters = command(async () => {
+  const response = await fetch(new URL("/api/clusters/redeploy", env.API_URL), {
+    method: "POST",
+    headers: { Authorization: `Bearer ${getRequestEvent().cookies.get("token")}` },
+  });
+
+  switch (response.status) {
+    case 202:
+      getClusters().set((await response.json()) as Cluster[]);
+      return;
+    case 404:
+    case 409:
+    case 424:
+      return error(response.status, ((await response.json()) as ApiError).message);
+    case 401:
+      return error(401, "Unauthorized");
 
     default:
       console.error(await response.text());

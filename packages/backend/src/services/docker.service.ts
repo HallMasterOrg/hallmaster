@@ -1,7 +1,13 @@
 import { createInterface } from "node:readline";
 import { Transform, type Readable } from "node:stream";
+import { setTimeout as sleep } from "node:timers/promises";
 
-import { DockerAPIHttpError, DockerContainersAPI, DockerImagesAPI } from "@hallmaster/docker.js";
+import {
+  DockerAPIHttpError,
+  DockerContainersAPI,
+  DockerImagesAPI,
+  type DockerContainer,
+} from "@hallmaster/docker.js";
 
 import { FailedDependancyException } from "#exceptions/http-exceptions";
 import socket from "#lib/docker";
@@ -26,9 +32,42 @@ type RegistryImage = {
   password?: string | null;
 };
 
+type ContainerState = Pick<DockerContainer["State"], "Status" | "ExitCode"> & {
+  Health?: DockerContainer["State"]["Health"];
+};
+
+export type Readiness = {
+  delayMs: number;
+  timeoutMs: number;
+};
+
+const READY_POLL_INTERVAL = 1_000;
+
 export default class DockerService {
   private static readonly images = new DockerImagesAPI(socket);
   private static readonly containers = new DockerContainersAPI(socket);
+
+  private static reason(error: DockerAPIHttpError) {
+    try {
+      return (JSON.parse(error.message) as { message?: string }).message ?? error.message;
+    } catch {
+      return error.message;
+    }
+  }
+
+  private static failure(error: unknown) {
+    if (!(error instanceof DockerAPIHttpError)) {
+      return new FailedDependancyException({
+        message: "Docker Engine API returned an unexpected response",
+        cause: error,
+      });
+    }
+
+    return new FailedDependancyException({
+      message: `Docker Engine API returned a ${error.status} ${this.reason(error)}`,
+      cause: error,
+    });
+  }
 
   private static async call<T>(request: Promise<T>): Promise<T>;
   private static async call<T>(
@@ -37,21 +76,11 @@ export default class DockerService {
   ): Promise<T | undefined>;
   private static async call<T>(request: Promise<T>, ignoredStatuses: number[] = []) {
     return request.catch((error: unknown) => {
-      if (!(error instanceof DockerAPIHttpError)) {
-        throw new FailedDependancyException({
-          message: "Docker Engine API returned an unexpected response",
-          cause: error,
-        });
-      }
-
-      if (ignoredStatuses.includes(error.status)) {
+      if (error instanceof DockerAPIHttpError && ignoredStatuses.includes(error.status)) {
         return undefined;
       }
 
-      throw new FailedDependancyException({
-        message: `Docker Engine API returned a ${error.status} ${error.message}`,
-        cause: error,
-      });
+      throw this.failure(error);
     });
   }
 
@@ -112,14 +141,12 @@ export default class DockerService {
     return `${image.replace(/^library\//, "")}:${tag}`;
   }
 
-  private static async pullImage(image: RegistryImage) {
-    return this.call(
-      this.images.create({
-        fromImage: `${image.serverName}/${image.image}`,
-        tag: image.tag,
-        auth: this.registryAuth(image),
-      }),
-    );
+  private static pull(image: RegistryImage) {
+    return this.images.create({
+      fromImage: `${image.serverName}/${image.image}`,
+      tag: image.tag,
+      auth: this.registryAuth(image),
+    });
   }
 
   private static async hasImage(image: RegistryImage) {
@@ -135,7 +162,7 @@ export default class DockerService {
       return;
     }
 
-    await this.pullImage(image);
+    await this.call(this.pull(image));
   }
 
   public static async containerStates(containerIds: string[]) {
@@ -234,6 +261,61 @@ export default class DockerService {
     ...options: MethodParameters<typeof DockerContainersAPI, "remove">
   ) {
     return this.call(this.containers.remove(...options), [404]);
+  }
+
+  public static async renameContainer(containerId: string, name: string) {
+    return this.call(
+      socket.apiCall<void>("POST", `/containers/${containerId}/rename`, { query: { name } }),
+    );
+  }
+
+  public static async findContainerId(nameOrId: string) {
+    const container = await this.call(this.containers.get(nameOrId), [404]);
+
+    return container?.Id;
+  }
+
+  private static readinessFailure({ Status, ExitCode, Health }: ContainerState) {
+    if (Status === "exited" || Status === "dead") {
+      return `the container exited with code ${ExitCode}`;
+    }
+
+    if (Health?.Status === "unhealthy") {
+      const check = Health.Log.at(-1);
+      const output = check?.Output.trim() || `its health check exited with code ${check?.ExitCode}`;
+
+      return `the container is unhealthy: ${output}`;
+    }
+
+    return null;
+  }
+
+  private static isReady({ Status, Health }: ContainerState, elapsedMs: number, delayMs: number) {
+    if (Status !== "running") return false;
+    if (Health === undefined) return elapsedMs >= delayMs;
+
+    return Health.Status === "healthy";
+  }
+
+  public static async waitUntilReady(containerId: string, { delayMs, timeoutMs }: Readiness) {
+    const startedAt = Date.now();
+    const deadline = startedAt + timeoutMs;
+
+    for (; Date.now() < deadline; await sleep(READY_POLL_INTERVAL)) {
+      const { State } = await this.call(this.containers.get(containerId));
+      const failure = this.readinessFailure(State);
+      if (failure !== null) {
+        throw new FailedDependancyException({ message: failure });
+      }
+
+      if (this.isReady(State, Date.now() - startedAt, delayMs)) {
+        return;
+      }
+    }
+
+    throw new FailedDependancyException({
+      message: `the container was not ready after ${timeoutMs / 1_000} seconds`,
+    });
   }
 
   public static async containerLogs(

@@ -1,13 +1,15 @@
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 
-import { containerEnvironment, createBot, register, request, resetState } from "./helpers";
+import { containerEnvironment, createBot, register, request, resetState, settled } from "./helpers";
 
 let token: string;
 
 async function call(path: string, init: { method?: string; body?: unknown } = {}) {
   const response = await request(path, { ...init, token });
+  const body = (await response.json()) as unknown;
+  await settled();
 
-  return { status: response.status, body: (await response.json()) as unknown };
+  return { status: response.status, body };
 }
 
 function putEnvironment(variables: unknown) {
@@ -120,9 +122,9 @@ describe("clusters", () => {
     });
 
     expect(redeployed).toEqual({
-      status: 200,
+      status: 202,
       body: [
-        { id: 0, shardIds: [0], status: "RUNNING" },
+        { id: 0, shardIds: [0], status: "STARTING" },
         { id: 1, shardIds: [1], status: "STOPPED" },
       ],
     });

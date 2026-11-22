@@ -5,7 +5,7 @@ import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from "vites
 import prisma from "#lib/database";
 import MetricsService from "#services/metrics.service";
 
-import { BOT_ID, createBot, register, request, resetState } from "./helpers";
+import { BOT_ID, createBot, register, request, resetState, settled } from "./helpers";
 
 type History = {
   from: string;
@@ -141,6 +141,7 @@ describe("collector", () => {
   async function call(path: string, init: { method?: string; body?: unknown } = {}) {
     const response = await request(path, { ...init, token });
     expect(response.status).toBeLessThan(300);
+    await settled();
   }
 
   async function count() {

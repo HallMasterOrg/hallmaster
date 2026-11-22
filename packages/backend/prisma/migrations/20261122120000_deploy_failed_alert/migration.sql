@@ -1,0 +1,2 @@
+-- AlterEnum
+ALTER TYPE "AlertKind" ADD VALUE 'DEPLOY_FAILED';

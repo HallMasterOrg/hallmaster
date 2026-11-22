@@ -1,17 +1,31 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import BotRepository from "#repositories/bot.repository";
 import ClusterRepository from "#repositories/cluster.repository";
 import ContainerImageRepository from "#repositories/container-image.repository";
 import EnvironmentVariableRepository from "#repositories/environment-variable.repository";
+import AlertService from "#services/alert.service";
 import ClusterOperationService from "#services/cluster-operation.service";
 import ClusterService from "#services/cluster.service";
 import DockerService from "#services/docker.service";
 
+vi.mock("#lib/env", () => ({
+  default: { CLUSTER_READY_DELAY_SECONDS: 10, CLUSTER_READY_TIMEOUT_SECONDS: 300 },
+}));
+
+vi.mock("#services/alert.service", () => ({
+  default: {
+    deployed: vi.fn(),
+    deploymentFailed: vi.fn(),
+  },
+}));
+
 vi.mock("#repositories/bot.repository", () => ({
   default: {
+    findFirstId: vi.fn(),
     findFirstIdAndToken: vi.fn(),
     findFirstIdContainerImageTotalShardsAndToken: vi.fn(),
+    findFirstIdTokenAndTotalShards: vi.fn(),
     updateTotalShards: vi.fn(),
   },
 }));
@@ -51,13 +65,24 @@ vi.mock("#services/docker.service", () => ({
     containerStats: vi.fn(),
     create: vi.fn(),
     ensureImage: vi.fn(),
+    findContainerId: vi.fn(),
     removeContainer: vi.fn(),
+    renameContainer: vi.fn(),
     restartContainer: vi.fn(),
     startContainer: vi.fn(),
     stopContainer: vi.fn(),
     streamContainerLogs: vi.fn(),
+    waitUntilReady: vi.fn(),
   },
 }));
+
+const containerImage = {
+  serverName: "docker.io",
+  image: "library/alpine",
+  tag: "latest",
+  username: null,
+  password: null,
+};
 
 type ObservedCluster = {
   id: number;
@@ -104,6 +129,12 @@ function givenClusters(clusters: ObservedCluster[]) {
 
 beforeEach(() => {
   vi.resetAllMocks();
+  vi.mocked(AlertService.deployed).mockResolvedValue(undefined);
+  vi.mocked(AlertService.deploymentFailed).mockResolvedValue(undefined);
+});
+
+afterEach(async () => {
+  await ClusterOperationService.idle();
 });
 
 describe("cluster status", () => {
@@ -320,17 +351,15 @@ describe("cluster logs", () => {
 
 describe("cluster layout update", () => {
   beforeEach(() => {
-    vi.mocked(BotRepository.findFirstIdAndToken).mockResolvedValue({ id: "bot", token: "token" });
+    vi.mocked(BotRepository.findFirstIdTokenAndTotalShards).mockResolvedValue({
+      id: "bot",
+      token: "token",
+      totalShards: 2,
+    });
     vi.mocked(BotRepository.updateTotalShards).mockImplementation(({ totalShards }) =>
       Promise.resolve({ id: "bot", totalShards }),
     );
-    vi.mocked(ContainerImageRepository.findFirst).mockResolvedValue({
-      serverName: "docker.io",
-      image: "library/alpine",
-      tag: "latest",
-      username: null,
-      password: null,
-    });
+    vi.mocked(ContainerImageRepository.findFirst).mockResolvedValue(containerImage);
     vi.mocked(EnvironmentVariableRepository.findMany).mockResolvedValue([]);
     vi.mocked(DockerService.create).mockImplementation((_body, name) =>
       Promise.resolve({ Id: `container-${name}`, Warnings: [] }),
@@ -364,6 +393,7 @@ describe("cluster layout update", () => {
 
   it("keeps stopped clusters stopped and starts the others", async () => {
     await ClusterService.updateAll([{ id: 0, shardIds: [0] }, { shardIds: [1, 2] }]);
+    await ClusterOperationService.idle();
 
     expect(ClusterRepository.create).toHaveBeenCalledWith(
       expect.objectContaining({ id: 0, desiredStatus: "STOPPED", shardIds: [0] }),
@@ -410,7 +440,7 @@ describe("cluster layout update", () => {
   });
 
   it("refuses a layout when no bot is registered", async () => {
-    vi.mocked(BotRepository.findFirstIdAndToken).mockResolvedValue(null);
+    vi.mocked(BotRepository.findFirstIdTokenAndTotalShards).mockResolvedValue(null);
 
     await expect(ClusterService.updateAll([{ shardIds: [0] }])).rejects.toMatchObject({
       status: 404,
@@ -448,23 +478,93 @@ describe("cluster layout update", () => {
     expect(DockerService.removeContainer).not.toHaveBeenCalled();
   });
 
-  it("refuses the actions on a cluster while the layout is applied", async () => {
-    let started = () => {};
-    vi.mocked(DockerService.startContainer).mockReturnValueOnce(
-      new Promise((resolve) => (started = () => resolve(undefined))),
+  it("starts the clusters one by one, each once the previous one is ready", async () => {
+    vi.mocked(ClusterRepository.findMany).mockResolvedValue([]);
+    await ClusterService.updateAll([{ shardIds: [0] }, { shardIds: [1] }, { shardIds: [2] }]);
+    await ClusterOperationService.idle();
+
+    const calls = [
+      ...vi
+        .mocked(DockerService.startContainer)
+        .mock.invocationCallOrder.map((order, index) => [
+          order,
+          `start ${vi.mocked(DockerService.startContainer).mock.calls[index][0]}`,
+        ]),
+      ...vi
+        .mocked(DockerService.waitUntilReady)
+        .mock.invocationCallOrder.map((order, index) => [
+          order,
+          `ready ${vi.mocked(DockerService.waitUntilReady).mock.calls[index][0]}`,
+        ]),
+    ].sort(([a], [b]) => Number(a) - Number(b));
+
+    expect(calls.map(([, call]) => call)).toEqual([
+      "start container-bot-0",
+      "ready container-bot-0",
+      "start container-bot-1",
+      "ready container-bot-1",
+      "start container-bot-2",
+      "ready container-bot-2",
+    ]);
+    expect(DockerService.waitUntilReady).toHaveBeenCalledWith("container-bot-0", {
+      delayMs: 10_000,
+      timeoutMs: 300_000,
+    });
+  });
+
+  it("reports the cluster being started and the ones waiting for their turn", async () => {
+    vi.mocked(ClusterRepository.findMany).mockResolvedValue([]);
+    let ready = () => {};
+    vi.mocked(DockerService.waitUntilReady).mockReturnValueOnce(
+      new Promise((resolve) => (ready = () => resolve(undefined))),
     );
-    givenClusters([{ id: 1, desiredStatus: "RUNNING" }]);
+    vi.mocked(DockerService.containerStates).mockResolvedValue(new Map());
+    vi.mocked(ClusterRepository.findManyWithContainerId).mockResolvedValue([
+      { id: 0, shardIds: [0], desiredStatus: "RUNNING", containerId: "container-bot-0" },
+      { id: 1, shardIds: [1], desiredStatus: "RUNNING", containerId: "container-bot-1" },
+    ]);
 
-    const applying = ClusterService.updateAll([{ shardIds: [0] }, { shardIds: [1] }]);
-    await vi.waitFor(() => expect(DockerService.startContainer).toHaveBeenCalled());
-    const stop = ClusterService.stop(1);
-    started();
+    const clusters = await ClusterService.updateAll([{ shardIds: [0] }, { shardIds: [1] }]);
+    ready();
 
-    await expect(stop).rejects.toMatchObject({
+    expect(clusters.map(({ status }) => status)).toEqual(["STARTING", "WAITING"]);
+  });
+
+  it("raises an alert for a cluster that is not ready and goes on with the next one", async () => {
+    vi.mocked(ClusterRepository.findMany).mockResolvedValue([]);
+    vi.mocked(DockerService.waitUntilReady).mockRejectedValueOnce(
+      new Error("the container exited with code 1"),
+    );
+
+    await ClusterService.updateAll([{ shardIds: [0] }, { shardIds: [1] }]);
+    await ClusterOperationService.idle();
+
+    expect(AlertService.deploymentFailed).toHaveBeenCalledWith(
+      0,
+      "Did not start: the container exited with code 1",
+    );
+    expect(DockerService.startContainer).toHaveBeenCalledWith("container-bot-1");
+    expect(AlertService.deployed).toHaveBeenCalledWith([1]);
+  });
+
+  it("refuses a layout while the clusters are being started", async () => {
+    vi.mocked(ClusterRepository.findMany).mockResolvedValue([]);
+    let ready = () => {};
+    vi.mocked(DockerService.waitUntilReady).mockReturnValueOnce(
+      new Promise((resolve) => (ready = () => resolve(undefined))),
+    );
+
+    await ClusterService.updateAll([{ shardIds: [0] }]);
+    givenClusters([{ id: 0, desiredStatus: "RUNNING" }]);
+
+    await expect(ClusterService.updateAll([{ shardIds: [0] }])).rejects.toMatchObject({
+      status: 409,
+    });
+    await expect(ClusterService.stop(0)).rejects.toMatchObject({
       status: 409,
       message: "The clusters are being updated, retry once it is done",
     });
-    await applying;
+    ready();
   });
 
   it("refuses a layout while an action runs on a cluster", async () => {
@@ -481,5 +581,167 @@ describe("cluster layout update", () => {
     finish();
     await action;
     expect(DockerService.stopContainer).not.toHaveBeenCalled();
+  });
+});
+
+describe("cluster redeploy", () => {
+  let containers: Map<string, string>;
+
+  function clusters(...desiredStatuses: ("RUNNING" | "STOPPED")[]) {
+    return desiredStatuses.map((desiredStatus, id) => ({
+      id,
+      shardIds: [id],
+      desiredStatus,
+      containerId: `old-${id}`,
+    }));
+  }
+
+  beforeEach(() => {
+    containers = new Map([
+      ["bot-0", "old-0"],
+      ["bot-1", "old-1"],
+      ["bot-2", "old-2"],
+    ]);
+    vi.mocked(BotRepository.findFirstIdTokenAndTotalShards).mockResolvedValue({
+      id: "bot",
+      token: "token",
+      totalShards: 3,
+    });
+    vi.mocked(ContainerImageRepository.findFirst).mockResolvedValue(containerImage);
+    vi.mocked(EnvironmentVariableRepository.findMany).mockResolvedValue([]);
+    vi.mocked(ClusterRepository.findManyWithContainerId).mockResolvedValue(
+      clusters("RUNNING", "STOPPED", "RUNNING"),
+    );
+    vi.mocked(DockerService.containerStates).mockResolvedValue(new Map());
+    vi.mocked(DockerService.findContainerId).mockImplementation((nameOrId) =>
+      Promise.resolve(
+        containers.get(nameOrId) ??
+          ([...containers.values()].includes(nameOrId) ? nameOrId : undefined),
+      ),
+    );
+    vi.mocked(DockerService.renameContainer).mockImplementation((id, name) => {
+      for (const [current, containerId] of containers) {
+        if (containerId === id) containers.delete(current);
+      }
+      containers.set(name, id);
+      return Promise.resolve();
+    });
+    vi.mocked(DockerService.create).mockImplementation((_body, name) => {
+      containers.set(name!, `new-${name}`);
+      return Promise.resolve({ Id: `new-${name}`, Warnings: [] });
+    });
+    vi.mocked(DockerService.removeContainer).mockImplementation((id) => {
+      for (const [name, containerId] of containers) {
+        if (containerId === id) containers.delete(name);
+      }
+      return Promise.resolve(undefined);
+    });
+  });
+
+  it("replaces the clusters one by one, then removes the previous containers", async () => {
+    const { finished } = await ClusterService.redeploy();
+
+    await expect(finished).resolves.toEqual({ failure: null });
+    expect(DockerService.stopContainer).toHaveBeenCalledWith("old-0");
+    expect(ClusterRepository.updateContainerIdById).toHaveBeenCalledWith("new-bot-0", 0);
+    expect(ClusterRepository.updateContainerIdById).toHaveBeenCalledWith("new-bot-1", 1);
+    expect(ClusterRepository.updateContainerIdById).toHaveBeenCalledWith("new-bot-2", 2);
+    expect(DockerService.startContainer).toHaveBeenCalledTimes(2);
+    expect(DockerService.startContainer).not.toHaveBeenCalledWith("new-bot-1");
+    expect(DockerService.waitUntilReady).toHaveBeenCalledTimes(2);
+    expect(
+      vi.mocked(DockerService.waitUntilReady).mock.invocationCallOrder[0] <
+        vi.mocked(DockerService.stopContainer).mock.invocationCallOrder[1],
+    ).toBe(true);
+    expect(Object.fromEntries(containers)).toEqual({
+      "bot-0": "new-bot-0",
+      "bot-1": "new-bot-1",
+      "bot-2": "new-bot-2",
+    });
+    expect(AlertService.deployed).toHaveBeenCalledWith([0, 1, 2]);
+  });
+
+  it("brings every cluster back to its previous container when one is not ready", async () => {
+    vi.mocked(DockerService.waitUntilReady)
+      .mockResolvedValueOnce(undefined)
+      .mockRejectedValueOnce(new Error("the container exited with code 1"));
+
+    const { finished } = await ClusterService.redeploy();
+
+    await expect(finished).resolves.toEqual({
+      failure:
+        "Cluster 2 could not run docker.io/library/alpine:latest, the container exited with code 1. Every cluster went back to the previous version",
+    });
+    expect(Object.fromEntries(containers)).toEqual({
+      "bot-0": "old-0",
+      "bot-1": "old-1",
+      "bot-2": "old-2",
+    });
+    expect(ClusterRepository.updateContainerIdById).toHaveBeenLastCalledWith("old-0", 0);
+    expect(DockerService.startContainer).toHaveBeenCalledWith("old-2");
+    expect(DockerService.startContainer).toHaveBeenCalledWith("old-0");
+    expect(DockerService.startContainer).not.toHaveBeenCalledWith("old-1");
+    expect(AlertService.deploymentFailed).toHaveBeenCalledWith(
+      2,
+      "Could not run docker.io/library/alpine:latest: the container exited with code 1. Every cluster went back to the previous version",
+    );
+  });
+
+  it("reports the cluster being replaced and the ones waiting for their turn", async () => {
+    let ready = () => {};
+    vi.mocked(DockerService.waitUntilReady).mockReturnValueOnce(
+      new Promise((resolve) => (ready = () => resolve(undefined))),
+    );
+
+    const { clusters, finished } = await ClusterService.redeploy();
+    const start = ClusterService.start(1);
+    ready();
+
+    expect(clusters.map(({ status }) => status)).toEqual(["UPDATING", "WAITING", "WAITING"]);
+    await expect(start).rejects.toMatchObject({ status: 409 });
+    await finished;
+    expect((await ClusterService.getAll()).map(({ status }) => status)).not.toContain("UPDATING");
+  });
+
+  it("refuses a redeploy while a cluster is busy", async () => {
+    let finish = () => {};
+    const stop = ClusterOperationService.run(
+      [1],
+      () => new Promise<void>((resolve) => (finish = resolve)),
+    );
+
+    await expect(ClusterService.redeploy()).rejects.toMatchObject({
+      status: 409,
+      message: "Another operation is running on the clusters, retry once it is done",
+    });
+    finish();
+    await stop;
+  });
+
+  it("rolls back the deployment a restart interrupted", async () => {
+    vi.mocked(BotRepository.findFirstId).mockResolvedValue({ id: "bot" });
+    containers = new Map([
+      ["bot-0", "new-bot-0"],
+      ["bot-0-previous", "old-0"],
+      ["bot-1-previous", "old-1"],
+      ["bot-2", "old-2"],
+    ]);
+    vi.mocked(ClusterRepository.findManyWithContainerId).mockResolvedValue([
+      { id: 0, shardIds: [0], desiredStatus: "RUNNING", containerId: "new-bot-0" },
+      { id: 1, shardIds: [1], desiredStatus: "RUNNING", containerId: "old-1" },
+      { id: 2, shardIds: [2], desiredStatus: "RUNNING", containerId: "old-2" },
+    ]);
+
+    await ClusterService.recover();
+
+    expect(Object.fromEntries(containers)).toEqual({
+      "bot-0": "old-0",
+      "bot-1": "old-1",
+      "bot-2": "old-2",
+    });
+    expect(ClusterRepository.updateContainerIdById).toHaveBeenCalledWith("old-0", 0);
+    expect(ClusterRepository.updateContainerIdById).toHaveBeenCalledWith("old-1", 1);
+    expect(DockerService.startContainer).toHaveBeenCalledWith("old-0");
+    expect(DockerService.startContainer).toHaveBeenCalledWith("old-1");
   });
 });

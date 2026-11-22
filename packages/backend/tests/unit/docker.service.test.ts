@@ -1,14 +1,16 @@
 import { once } from "node:events";
 import { PassThrough, Readable } from "node:stream";
+import { setTimeout as sleep } from "node:timers/promises";
 
 import { DockerAPIHttpError } from "@hallmaster/docker.js";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import DockerService from "#services/docker.service";
 
 const { containers, images, streamAPICall } = vi.hoisted(() => ({
   containers: {
     create: vi.fn(),
+    get: vi.fn(),
     list: vi.fn(),
     remove: vi.fn(),
     stats: vi.fn(),
@@ -20,6 +22,8 @@ const { containers, images, streamAPICall } = vi.hoisted(() => ({
   },
   streamAPICall: vi.fn(),
 }));
+
+vi.mock("node:timers/promises", () => ({ setTimeout: vi.fn() }));
 
 vi.mock("@hallmaster/docker.js", () => ({
   DockerAPIHttpError: class extends Error {
@@ -284,5 +288,107 @@ describe("cluster events", () => {
 
     await expect(next).resolves.toEqual({ done: true, value: undefined });
     expect(response.destroyed).toBe(true);
+  });
+});
+
+describe("container lookup", () => {
+  it("finds a container by name", async () => {
+    containers.get.mockResolvedValue({ Id: "abc" });
+
+    await expect(DockerService.findContainerId("bot-0")).resolves.toBe("abc");
+  });
+
+  it("tells when no container has the name", async () => {
+    containers.get.mockRejectedValue(new DockerAPIHttpError(404, "No such container"));
+
+    await expect(DockerService.findContainerId("bot-0-previous")).resolves.toBeUndefined();
+  });
+});
+
+describe("container readiness", () => {
+  const readiness = { delayMs: 10_000, timeoutMs: 300_000 };
+
+  function state(Status: string, health?: { Status: string; Output?: string; ExitCode?: number }) {
+    return {
+      State: {
+        Status,
+        ExitCode: 3,
+        Health: health && {
+          Status: health.Status,
+          Log: [{ Output: health.Output ?? "", ExitCode: health.ExitCode ?? 1 }],
+        },
+      },
+    };
+  }
+
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.mocked(sleep).mockImplementation((delay?: number) => {
+      vi.setSystemTime(Date.now() + (delay ?? 0));
+      return Promise.resolve();
+    });
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("waits until the health check of the container passes", async () => {
+    containers.get
+      .mockResolvedValueOnce(state("running", { Status: "starting" }))
+      .mockResolvedValueOnce(state("running", { Status: "healthy" }));
+
+    await expect(DockerService.waitUntilReady("next", readiness)).resolves.toBeUndefined();
+    expect(containers.get).toHaveBeenCalledTimes(2);
+  });
+
+  it("is ready once a container without health check has run for the delay", async () => {
+    containers.get.mockResolvedValue(state("running"));
+
+    await expect(DockerService.waitUntilReady("next", readiness)).resolves.toBeUndefined();
+    expect(containers.get).toHaveBeenCalledTimes(11);
+  });
+
+  it("fails a container without health check that exits within the delay", async () => {
+    containers.get
+      .mockResolvedValueOnce(state("running"))
+      .mockResolvedValueOnce(state("running"))
+      .mockResolvedValue(state("exited"));
+
+    await expect(DockerService.waitUntilReady("next", readiness)).rejects.toMatchObject({
+      status: 424,
+      message: "the container exited with code 3",
+    });
+  });
+
+  it.each([
+    ["exits", state("exited"), "the container exited with code 3"],
+    [
+      "turns unhealthy",
+      state("running", { Status: "unhealthy", Output: "shards not ready\n" }),
+      "the container is unhealthy: shards not ready",
+    ],
+    [
+      "turns unhealthy without output",
+      state("running", { Status: "unhealthy", ExitCode: 1 }),
+      "the container is unhealthy: its health check exited with code 1",
+    ],
+  ])("fails when the container %s", async (_case, inspected, message) => {
+    containers.get.mockResolvedValue(inspected);
+
+    await expect(DockerService.waitUntilReady("next", readiness)).rejects.toMatchObject({
+      status: 424,
+      message,
+    });
+  });
+
+  it("gives up after the timeout", async () => {
+    containers.get.mockResolvedValue(state("running", { Status: "starting" }));
+
+    await expect(DockerService.waitUntilReady("next", readiness)).rejects.toMatchObject({
+      status: 424,
+      message: "the container was not ready after 300 seconds",
+    });
+    expect(containers.get).toHaveBeenCalledTimes(300);
   });
 });

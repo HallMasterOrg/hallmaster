@@ -9,6 +9,8 @@ const EnvironmentSchema = z.object({
   DISCORD_URL: z.url().default("https://discord.com"),
   METRICS_INTERVAL_SECONDS: z.coerce.number().int().positive().default(15),
   METRICS_RETENTION_DAYS: z.coerce.number().int().positive().default(7),
+  CLUSTER_READY_DELAY_SECONDS: z.coerce.number().int().nonnegative().default(10),
+  CLUSTER_READY_TIMEOUT_SECONDS: z.coerce.number().int().positive().default(300),
 });
 
 const env = EnvironmentSchema.parse(process.env);

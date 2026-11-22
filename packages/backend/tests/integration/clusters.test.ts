@@ -3,13 +3,16 @@ import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import prisma from "#lib/database";
 
 import {
+  containerId,
   containerState,
   createBot,
   openEvents,
+  previousContainerState,
   register,
   removeContainerOutsideHallMaster,
   request,
   resetState,
+  settled,
   stopContainerOutsideHallMaster,
 } from "./helpers";
 
@@ -19,13 +22,15 @@ let token: string;
 
 async function call(path: string, init: { method?: string; body?: unknown } = {}) {
   const response = await request(path, { ...init, token });
+  const body = (await response.json()) as unknown;
+  await settled();
 
-  return { status: response.status, body: (await response.json()) as unknown };
+  return { status: response.status, body };
 }
 
 async function applyLayout(layout: { id?: number; shardIds: number[] }[]) {
   const { status, body } = await call("/clusters", { method: "PUT", body: layout });
-  expect(status).toBe(200);
+  expect(status).toBe(202);
 
   return body as Cluster[];
 }
@@ -51,6 +56,10 @@ describe("cluster layout", () => {
     const clusters = await applyLayout([{ shardIds: [0] }, { shardIds: [1, 2] }]);
 
     expect(clusters).toEqual([
+      { id: 0, shardIds: [0], status: "STARTING" },
+      { id: 1, shardIds: [1, 2], status: "WAITING" },
+    ]);
+    expect((await call("/clusters")).body).toEqual([
       { id: 0, shardIds: [0], status: "RUNNING" },
       { id: 1, shardIds: [1, 2], status: "RUNNING" },
     ]);
@@ -67,7 +76,7 @@ describe("cluster layout", () => {
 
     expect(clusters).toEqual([
       { id: 0, shardIds: [0], status: "STOPPED" },
-      { id: 1, shardIds: [1], status: "RUNNING" },
+      { id: 1, shardIds: [1], status: "STARTING" },
     ]);
   });
 
@@ -77,7 +86,7 @@ describe("cluster layout", () => {
 
     const clusters = await applyLayout([{ id: 0, shardIds: [0] }]);
 
-    expect(clusters).toEqual([{ id: 0, shardIds: [0], status: "RUNNING" }]);
+    expect(clusters).toEqual([{ id: 0, shardIds: [0], status: "STARTING" }]);
     expect(await containerState(0)).toBe("running");
   });
 
@@ -87,7 +96,7 @@ describe("cluster layout", () => {
 
     const clusters = await applyLayout([{ shardIds: [0] }]);
 
-    expect(clusters).toEqual([{ id: 0, shardIds: [0], status: "RUNNING" }]);
+    expect(clusters).toEqual([{ id: 0, shardIds: [0], status: "STARTING" }]);
     expect(await containerState(0)).toBe("running");
   });
 });
@@ -259,5 +268,36 @@ describe("cluster streams", () => {
     const response = await request("/clusters/42/stats/sse", { token });
 
     expect(response.status).toBe(404);
+  });
+});
+
+describe("redeploy", () => {
+  it("replaces every cluster with the saved settings and keeps their status", async () => {
+    await applyLayout([{ shardIds: [0] }, { shardIds: [1] }]);
+    await call("/clusters/1/stop", { method: "POST" });
+    const previous = await containerId(0);
+
+    const { status, body } = await call("/clusters/redeploy", { method: "POST" });
+
+    expect(status).toBe(202);
+    expect(body).toEqual([
+      { id: 0, shardIds: [0], status: "UPDATING" },
+      { id: 1, shardIds: [1], status: "WAITING" },
+    ]);
+    expect((await call("/clusters")).body).toEqual([
+      { id: 0, shardIds: [0], status: "RUNNING" },
+      { id: 1, shardIds: [1], status: "STOPPED" },
+    ]);
+    expect(await containerId(0)).not.toBe(previous);
+    expect(await previousContainerState(0)).toBeUndefined();
+  });
+
+  it("refuses a redeploy without a container image", async () => {
+    await prisma.containerImage.deleteMany();
+
+    expect(await call("/clusters/redeploy", { method: "POST" })).toEqual({
+      status: 404,
+      body: { message: "Container image not found" },
+    });
   });
 });
