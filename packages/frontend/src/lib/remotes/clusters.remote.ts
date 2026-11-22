@@ -210,6 +210,26 @@ export const getClusters = query(async (): Promise<Cluster[]> => {
   }
 });
 
+export const getOutdatedClusters = query(async (): Promise<Cluster["id"][]> => {
+  const response = await fetch(new URL("/api/clusters/outdated", env.API_URL), {
+    headers: {
+      Accept: "application/json",
+      Authorization: `Bearer ${getRequestEvent().cookies.get("token")}`,
+    },
+  });
+
+  switch (response.status) {
+    case 200:
+      return response.json();
+    case 401:
+      return [];
+
+    default:
+      console.error(await response.text());
+      return error(500, "An error occurred");
+  }
+});
+
 export const getClustersStatsHistory = query(
   ClusterStatsHistoryRangeSchema,
   async (range): Promise<ClustersStatsHistory | null> => {

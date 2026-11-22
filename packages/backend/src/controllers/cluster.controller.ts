@@ -18,6 +18,7 @@ import {
   ClustersStatsSchema,
   ClusterStatsHistoryQuerySchema,
   ClusterStatsSchema,
+  OutdatedClustersSchema,
   SseIntervalQuerySchema,
   UpdateClustersSchema,
 } from "#schemas/cluster.schema";
@@ -121,6 +122,26 @@ const clusterController = new Hono()
           await stream.sleep(query.interval * 1000);
         }
       });
+    },
+  )
+  .get(
+    "/outdated",
+    describeRoute({
+      tags,
+      description: "List the clusters that need a redeploy to get the saved settings",
+      responses: {
+        200: {
+          description: "OK",
+          content: {
+            "application/json": { schema: resolver(OutdatedClustersSchema) },
+          },
+        },
+      },
+    }),
+    async (c) => {
+      const outdated = await ClusterService.getOutdated();
+
+      return c.json(outdated, 200);
     },
   )
   .get(
