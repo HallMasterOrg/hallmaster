@@ -15,7 +15,7 @@ import {
 } from "@hallmaster/backend/schemas";
 import { error, redirect } from "@sveltejs/kit";
 
-import { getClusters } from "./clusters.remote";
+import { getClusters, getOutdatedClusters } from "./clusters.remote";
 
 export const createBot = form(
   CreateBotSchema.extend(ContainerImageSchema.shape),
@@ -196,6 +196,7 @@ export const updateBotToken = form(CreateBotSchema, async (payload) => {
   switch (response.status) {
     case 200:
       getBot().set((await response.json()) as Bot);
+      await getOutdatedClusters().refresh();
       return;
     case 401:
       return redirect(303, "/login");
@@ -223,6 +224,7 @@ export const updateBotImage = form(ContainerImageSchema, async (payload) => {
   switch (response.status) {
     case 200:
       getContainerImage().set((await response.json()) as Omit<ContainerImage, "password">);
+      await getOutdatedClusters().refresh();
       return;
     case 401:
       return redirect(303, "/login");
@@ -250,6 +252,7 @@ export const updateEnvironment = form(EnvironmentSchema.partial(), async ({ vari
   switch (response.status) {
     case 200:
       getEnvironment().set((await response.json()) as Environment);
+      await getOutdatedClusters().refresh();
       return;
     case 400:
       return error(400, ((await response.json()) as ApiError).message);
@@ -277,6 +280,7 @@ export const updateBotLayout = command(UpdateClustersSchema, async (payload) => 
   switch (response.status) {
     case 200:
       getClusters().set((await response.json()) as Cluster[]);
+      await getOutdatedClusters().refresh();
       return;
     case 400:
     case 424:
