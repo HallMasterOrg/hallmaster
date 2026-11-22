@@ -79,12 +79,15 @@ cp packages/backend/.env.example packages/backend/.env
 cp packages/frontend/.env.example packages/frontend/.env
 ```
 
-Start PostgreSQL (`pnpm prisma:dev` starts a local one), then run the migrations:
+Start PostgreSQL (`pnpm prisma:dev` starts a local one), then run the migrations and generate the Prisma client:
 
 ```sh
 cd packages/backend
 pnpm prisma:deploy
+pnpm prisma:generate
 ```
+
+Run `pnpm prisma:generate` again whenever the schema changes, for example after a `git pull`, otherwise the backend fails to start or uses an outdated client.
 
 The dashboard logs you in with Discord. In the [Discord developer portal](https://discord.com/developers/applications), open an application (the one of your bot works), add `http://localhost:5173/login/discord/callback` to its OAuth2 redirects, and copy its client ID and client secret to `DISCORD_CLIENT_ID` and `DISCORD_CLIENT_SECRET` in `packages/backend/.env`.
 
