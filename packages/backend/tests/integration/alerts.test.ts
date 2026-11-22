@@ -76,19 +76,22 @@ describe("alerts", () => {
       .toEqual([{ clusterId: 1, kind: "STOPPED", message: "Exited with code 0", active: false }]);
   });
 
-  it("raises an alert when a cluster container is removed outside HallMaster", async () => {
+  it("raises an alert when a cluster container is removed outside HallMaster and resolves it once recreated", async () => {
+    const removed = {
+      clusterId: 0,
+      kind: "STOPPED",
+      message: "Container removed outside HallMaster",
+    };
+
     await removeContainerOutsideHallMaster(0);
 
     await expect
       .poll(() => alerts("?active=true"), { timeout: 10_000 })
-      .toEqual([
-        {
-          clusterId: 0,
-          kind: "STOPPED",
-          message: "Container removed outside HallMaster",
-          active: true,
-        },
-      ]);
+      .toEqual([{ ...removed, active: true }]);
+
+    await call("/clusters/0/start", { method: "POST" });
+
+    await expect.poll(() => alerts(), { timeout: 10_000 }).toEqual([{ ...removed, active: false }]);
   });
 
   it("stays quiet while HallMaster stops, restarts and recreates the clusters", async () => {
