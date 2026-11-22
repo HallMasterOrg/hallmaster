@@ -307,6 +307,26 @@ describe("empty environment", () => {
   });
 });
 
+describe("deploy webhook", () => {
+  it("shows a new token once, then replaces it", async () => {
+    await page.goto("/settings");
+    const token = page.getByLabel("Deploy webhook token");
+
+    await page.getByRole("button", { name: "Generate", exact: true }).click();
+    await expect.poll(() => token.inputValue(), { timeout: 5_000 }).toMatch(/^[\w-]{43}$/);
+    const generated = await token.inputValue();
+    await visible(page.getByText("HallMaster only keeps its hash"));
+
+    await page.getByRole("button", { name: "Regenerate webhook token" }).click();
+    await page.getByRole("button", { name: "Confirm action" }).click();
+    await expect.poll(() => token.inputValue(), { timeout: 5_000 }).not.toBe(generated);
+
+    await page.reload();
+    expect(await token.inputValue()).toBe("");
+    await visible(page.getByRole("button", { name: "Regenerate webhook token" }));
+  });
+});
+
 describe("session", () => {
   it("logs out", async () => {
     await page.getByRole("button", { name: "Log out" }).click();

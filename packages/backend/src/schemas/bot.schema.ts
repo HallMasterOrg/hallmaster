@@ -73,6 +73,21 @@ export const RecommendedShardsSchema = BotSchema.pick({ shards: true }).meta({
 });
 export type RecommendedShards = z.infer<typeof RecommendedShardsSchema>;
 
+export const WebhookStatusSchema = z.object({
+  enabled: z.boolean().meta({
+    description: "Whether a token is generated, the deploy webhook is disabled until then",
+  }),
+});
+export type WebhookStatus = z.infer<typeof WebhookStatusSchema>;
+
+export const WebhookTokenSchema = z.object({
+  token: z.string().meta({
+    description:
+      "Bearer token a CI sends to the deploy webhook. Only HallMaster's hash of it is stored, so it is shown once",
+  }),
+});
+export type WebhookToken = z.infer<typeof WebhookTokenSchema>;
+
 // export const UpdateBotSchema = CreateBotSchema.extend({
 //   layout: BotClusterLayoutSchema.meta({ description: "Cluster layout" }),
 // });

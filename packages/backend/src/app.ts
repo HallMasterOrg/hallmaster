@@ -12,6 +12,7 @@ import botController from "#controllers/bot.controller";
 import clusterController from "#controllers/cluster.controller";
 import statusController from "#controllers/status.controller";
 import userController from "#controllers/user.controller";
+import webhookController from "#controllers/webhook.controller";
 import { ValidationException } from "#exceptions/http-exceptions";
 import { ApiErrorSchema, type ApiError } from "#schemas/error.schema";
 
@@ -67,6 +68,11 @@ app.get(
             scheme: "bearer",
             bearerFormat: "JWT",
           },
+          webhookToken: {
+            type: "http",
+            scheme: "bearer",
+            description: "Webhook token generated in the settings of the dashboard",
+          },
         },
       },
     },
@@ -89,7 +95,8 @@ const routes = app
   .route("/api/bot", botController)
   .route("/api/clusters", clusterController)
   .route("/api/status", statusController)
-  .route("/api/users", userController);
+  .route("/api/users", userController)
+  .route("/api/webhooks", webhookController);
 
 export default app;
 export type AppType = typeof routes;

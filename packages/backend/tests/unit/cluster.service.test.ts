@@ -49,6 +49,7 @@ vi.mock("#repositories/cluster.repository", () => ({
 vi.mock("#repositories/container-image.repository", () => ({
   default: {
     findFirst: vi.fn(),
+    updateTag: vi.fn(),
   },
 }));
 
@@ -658,7 +659,19 @@ describe("cluster redeploy", () => {
       "bot-1": "new-bot-1",
       "bot-2": "new-bot-2",
     });
+    expect(ContainerImageRepository.updateTag).not.toHaveBeenCalled();
     expect(AlertService.deployed).toHaveBeenCalledWith([0, 1, 2]);
+  });
+
+  it("saves the deployed tag once every cluster runs it", async () => {
+    const { finished } = await ClusterService.redeploy("2.0");
+
+    await expect(finished).resolves.toEqual({ failure: null });
+    expect(DockerService.create).toHaveBeenCalledWith(
+      expect.objectContaining({ Image: "docker.io/library/alpine:2.0" }),
+      "bot-0",
+    );
+    expect(ContainerImageRepository.updateTag).toHaveBeenCalledWith("2.0");
   });
 
   it("brings every cluster back to its previous container when one is not ready", async () => {
@@ -666,11 +679,11 @@ describe("cluster redeploy", () => {
       .mockResolvedValueOnce(undefined)
       .mockRejectedValueOnce(new Error("the container exited with code 1"));
 
-    const { finished } = await ClusterService.redeploy();
+    const { finished } = await ClusterService.redeploy("2.0");
 
     await expect(finished).resolves.toEqual({
       failure:
-        "Cluster 2 could not run docker.io/library/alpine:latest, the container exited with code 1. Every cluster went back to the previous version",
+        "Cluster 2 could not run docker.io/library/alpine:2.0, the container exited with code 1. Every cluster went back to the previous version",
     });
     expect(Object.fromEntries(containers)).toEqual({
       "bot-0": "old-0",
@@ -681,9 +694,10 @@ describe("cluster redeploy", () => {
     expect(DockerService.startContainer).toHaveBeenCalledWith("old-2");
     expect(DockerService.startContainer).toHaveBeenCalledWith("old-0");
     expect(DockerService.startContainer).not.toHaveBeenCalledWith("old-1");
+    expect(ContainerImageRepository.updateTag).not.toHaveBeenCalled();
     expect(AlertService.deploymentFailed).toHaveBeenCalledWith(
       2,
-      "Could not run docker.io/library/alpine:latest: the container exited with code 1. Every cluster went back to the previous version",
+      "Could not run docker.io/library/alpine:2.0: the container exited with code 1. Every cluster went back to the previous version",
     );
   });
 

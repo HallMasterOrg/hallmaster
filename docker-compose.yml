@@ -9,7 +9,7 @@ services:
     volumes:
       - hallmaster-database:/var/lib/postgresql/data:rw
     ports:
-      - "127.0.0.1:5432:5432"
+      - "127.0.0.1:${HALLMASTER_DATABASE_PORT:-5432}:5432"
     networks:
       - hallmaster-network
     healthcheck:
@@ -29,7 +29,7 @@ services:
     container_name: hallmaster-backend
     restart: unless-stopped
     ports:
-      - "3000:3000"
+      - "${HALLMASTER_BACKEND_PORT:-3000}:3000"
     env_file:
       - secrets/backend/.env.production
     networks:
@@ -52,8 +52,38 @@ services:
     networks:
       - hallmaster-network
 
+  hallmaster-registry-auth:
+    profiles: [registry]
+    image: httpd:2.4-alpine
+    env_file:
+      - secrets/registry/.env.production
+    entrypoint:
+      ["sh", "-c", 'htpasswd -Bbc /auth/htpasswd "$$REGISTRY_USERNAME" "$$REGISTRY_PASSWORD"']
+    volumes:
+      - hallmaster-registry-auth:/auth:rw
+
+  hallmaster-registry:
+    profiles: [registry]
+    depends_on:
+      hallmaster-registry-auth:
+        condition: service_completed_successfully
+    image: registry:2
+    container_name: hallmaster-registry
+    restart: unless-stopped
+    environment:
+      REGISTRY_AUTH: htpasswd
+      REGISTRY_AUTH_HTPASSWD_REALM: hallmaster
+      REGISTRY_AUTH_HTPASSWD_PATH: /auth/htpasswd
+    ports:
+      - "127.0.0.1:5055:5000"
+    volumes:
+      - hallmaster-registry-auth:/auth:ro
+      - hallmaster-registry:/var/lib/registry:rw
+
 networks:
   hallmaster-network:
 
 volumes:
   hallmaster-database:
+  hallmaster-registry-auth:
+  hallmaster-registry:

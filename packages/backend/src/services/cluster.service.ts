@@ -148,7 +148,7 @@ export default class ClusterService {
       .digest("hex");
   }
 
-  private static async loadDeployment(): Promise<Deployment> {
+  private static async loadDeployment(tag?: ContainerImage["tag"]): Promise<Deployment> {
     const [bot, containerImage, environment] = await Promise.all([
       BotRepository.findFirstIdTokenAndTotalShards(),
       ContainerImageRepository.findFirst(),
@@ -158,9 +158,10 @@ export default class ClusterService {
     if (containerImage === null)
       throw new NotFoundException({ message: "Container image not found" });
 
-    await DockerService.ensureImage(containerImage);
+    const deployed = { ...containerImage, tag: tag ?? containerImage.tag };
+    await DockerService.ensureImage(deployed);
 
-    return { bot, containerImage, environment };
+    return { bot, containerImage: deployed, environment };
   }
 
   private static async createContainer(
@@ -604,6 +605,7 @@ export default class ClusterService {
   private static async rollOut(
     clusters: DeployedCluster[],
     deployment: Deployment,
+    tag?: ContainerImage["tag"],
   ): Promise<RolloutOutcome> {
     const image = this.imageReference(deployment.containerImage);
     const replaced: DeployedCluster[] = [];
@@ -639,15 +641,16 @@ export default class ClusterService {
     await Promise.all(
       replaced.map(({ containerId }) => DockerService.removeContainer(containerId)),
     );
+    if (tag !== undefined) await ContainerImageRepository.updateTag(tag);
     await this.alert(AlertService.deployed(clusters.map(({ id }) => id)));
 
     return { failure: null };
   }
 
-  public static async redeploy() {
+  public static async redeploy(tag?: ContainerImage["tag"]) {
     const { finished } = await ClusterOperationService.startOnLayout(
       async () => {
-        const deployment = await this.loadDeployment();
+        const deployment = await this.loadDeployment(tag);
         const clusters = await ClusterRepository.findManyWithContainerId();
         this.setPending(
           clusters.map(({ id }) => id),
@@ -658,7 +661,7 @@ export default class ClusterService {
       },
       async ({ deployment, clusters }) => {
         try {
-          return await this.rollOut(clusters, deployment);
+          return await this.rollOut(clusters, deployment, tag);
         } finally {
           this.clearPending(clusters.map(({ id }) => id));
         }

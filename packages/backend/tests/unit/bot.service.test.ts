@@ -1,3 +1,5 @@
+import { createHash } from "node:crypto";
+
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import BotRepository from "#repositories/bot.repository";
@@ -14,7 +16,9 @@ vi.mock("#repositories/bot.repository", () => ({
     findFirst: vi.fn(),
     findFirstId: vi.fn(),
     findFirstToken: vi.fn(),
+    findFirstWebhookTokenHash: vi.fn(),
     updateToken: vi.fn(),
+    updateWebhookTokenHash: vi.fn(),
   },
 }));
 
@@ -134,6 +138,79 @@ describe("container image update", () => {
       status: 404,
     });
     expect(DockerService.ensureImage).not.toHaveBeenCalled();
+  });
+});
+
+describe("webhook token", () => {
+  function sha256(value: string) {
+    return createHash("sha256").update(value).digest("hex");
+  }
+
+  it("tells whether a token is generated", async () => {
+    vi.mocked(BotRepository.findFirstWebhookTokenHash).mockResolvedValue({
+      webhookTokenHash: null,
+    });
+
+    await expect(BotService.getWebhook()).resolves.toEqual({ enabled: false });
+  });
+
+  it("stores only the hash of a new random token on each regeneration", async () => {
+    vi.mocked(BotRepository.updateWebhookTokenHash).mockImplementation((data) =>
+      Promise.resolve(data),
+    );
+
+    const first = await BotService.regenerateWebhookToken();
+    const second = await BotService.regenerateWebhookToken();
+
+    expect(first.token).toMatch(/^[\w-]{43}$/);
+    expect(second.token).not.toBe(first.token);
+    expect(BotRepository.updateWebhookTokenHash).toHaveBeenLastCalledWith({
+      webhookTokenHash: sha256(second.token),
+    });
+  });
+
+  it.each([
+    ["reading", () => BotService.getWebhook()],
+    ["regenerating", () => BotService.regenerateWebhookToken()],
+  ])("answers 404 when %s the token of a missing bot", async (_case, call) => {
+    vi.mocked(BotRepository.findFirstWebhookTokenHash).mockResolvedValue(null);
+    vi.mocked(BotRepository.updateWebhookTokenHash).mockResolvedValue(null);
+
+    await expect(call()).rejects.toMatchObject({ status: 404 });
+  });
+
+  it("authorizes the token matching the stored hash", async () => {
+    vi.mocked(BotRepository.findFirstWebhookTokenHash).mockResolvedValue({
+      webhookTokenHash: sha256("stored"),
+    });
+
+    await expect(BotService.authorizeWebhook("stored")).resolves.toBeUndefined();
+  });
+
+  it.each([
+    ["another token", "previous"],
+    ["no token", undefined],
+  ])("refuses %s", async (_case, token) => {
+    vi.mocked(BotRepository.findFirstWebhookTokenHash).mockResolvedValue({
+      webhookTokenHash: sha256("stored"),
+    });
+
+    await expect(BotService.authorizeWebhook(token)).rejects.toMatchObject({
+      status: 401,
+      message: "Invalid webhook token",
+    });
+  });
+
+  it.each([
+    ["no token is generated", { webhookTokenHash: null }],
+    ["no bot is registered", null],
+  ])("disables the webhook while %s", async (_case, bot) => {
+    vi.mocked(BotRepository.findFirstWebhookTokenHash).mockResolvedValue(bot);
+
+    await expect(BotService.authorizeWebhook("stored")).rejects.toMatchObject({
+      status: 403,
+      message: expect.stringContaining("The webhook is disabled"),
+    });
   });
 });
 

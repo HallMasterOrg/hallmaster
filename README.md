@@ -16,6 +16,7 @@ HallMaster is an open-source platform designed to centralize the orchestration a
 - Keeps the CPU and memory of the clusters for 7 days, and shows them over the last hour, 6 hours, 24 hours or 7 days.
 - Raises an alert when a cluster that should run stops, keeps crashing, runs out of memory or fails a deployment.
 - Starts and redeploys the clusters one by one, each once the previous one is ready, and brings every cluster back to the previous version when a redeploy fails (see [Deployments](#deployments)).
+- Deploys a new tag of the bot image when your CI calls a webhook (see [Deploy from your CI](#deploy-from-your-ci)).
 
 ## What it does not do
 
@@ -132,9 +133,11 @@ A `docker-compose.yml` is provided at the root of the repository to run the full
 docker compose up -d
 ```
 
+The dashboard listens on `4411`, the backend on `3000` and PostgreSQL on `127.0.0.1:5432`. When a port is taken, set `HALLMASTER_BACKEND_PORT` or `HALLMASTER_DATABASE_PORT` in a `.env` file next to `docker-compose.yml`.
+
 ## Deployments
 
-HallMaster never restarts every cluster at once. Saving a layout starts the clusters one by one, and a redeploy from the settings replaces them one by one: it stops a cluster, starts its new container, waits until it is ready, then moves on to the next one. Each cluster is down while its new container starts, but the bot never runs two containers for the same shards, so it never receives an event twice.
+HallMaster never restarts every cluster at once. Saving a layout starts the clusters one by one, and a redeploy (from the settings or from your CI) replaces them one by one: it stops a cluster, starts its new container, waits until it is ready, then moves on to the next one. Each cluster is down while its new container starts, but the bot never runs two containers for the same shards, so it never receives an event twice.
 
 A container is ready once it is healthy when the image declares a [`HEALTHCHECK`](https://docs.docker.com/reference/dockerfile/#healthcheck), or once it has run for `CLUSTER_READY_DELAY_SECONDS` (10 by default) otherwise. Declare a health check that passes once the shards of the cluster are connected, so that the next cluster only starts once they are:
 
@@ -151,6 +154,51 @@ When a container exits, turns unhealthy or is not ready after `CLUSTER_READY_TIM
 Either way, the cluster gets a "deploy failed" alert with the reason. Each deployment reconnects every shard to Discord, which counts against the daily session start limit of the bot.
 
 While a deployment runs, the clusters show as updating and the other actions on them answer `409 Conflict`. If the backend stops in the middle of a redeploy, it brings the clusters back to their previous containers when it starts again.
+
+## Deploy from your CI
+
+Once your CI has pushed a new tag of the bot image, it can ask HallMaster to deploy it. HallMaster pulls the tag of the image registered in the dashboard, with the saved credentials, then redeploys every cluster with it (stopped clusters stay stopped). Once every cluster runs it, the tag becomes the saved one. The webhook cannot change the registry, the image or the credentials, so a leaked token cannot run another image with your Discord token.
+
+Enable the webhook by generating a token in the settings of the dashboard and store it as a secret of your CI. HallMaster only keeps a hash of it, so it is shown once. Regenerating the token disables the previous one right away. Then call the backend once the image is pushed, and follow the deployment until it ends:
+
+```sh
+deployment=$(curl --fail-with-body -X POST http://your-backend:3000/api/webhooks/deploy \
+  -H "Authorization: Bearer $HALLMASTER_WEBHOOK_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"tag": "'"$GIT_SHA"'"}' | jq -r .id)
+
+while status=$(curl -fs http://your-backend:3000/api/webhooks/deployments/$deployment \
+  -H "Authorization: Bearer $HALLMASTER_WEBHOOK_TOKEN" | jq -r .status) && [ "$status" = RUNNING ]; do
+  sleep 5
+done
+[ "$status" = SUCCEEDED ]
+```
+
+`POST /api/webhooks/deploy` answers:
+
+| Status | Meaning |
+|--------|---------|
+| `202` | The deployment started. The body gives its `id`. |
+| `400` | The tag is invalid. |
+| `401` | The webhook token is missing or wrong. |
+| `403` | No webhook token is generated yet. |
+| `404` | The tag is not in the registry: it was not pushed (or not fully pushed) yet, or it has a typo. |
+| `409` | The bot is not set up in the dashboard yet, or another operation is running on the clusters. |
+| `424` | Docker could not pull the tag, or the registry refused the saved credentials. |
+
+`GET /api/webhooks/deployments/{id}` gives its `status`: `RUNNING`, `SUCCEEDED` or `FAILED` with a `message`. HallMaster keeps the last 20 deployments in memory.
+
+### Try it locally
+
+The compose file has an optional registry with basic auth on `localhost:5055`, started with the `registry` profile (or `COMPOSE_PROFILES=registry` in `.env`). Its credentials come from `secrets/registry/.env.production`:
+
+```sh
+docker compose --profile registry up -d
+docker login localhost:5055
+docker build -t localhost:5055/bot:v1 . && docker push localhost:5055/bot:v1
+```
+
+Register `localhost:5055/bot:v1` with the same credentials in the dashboard and apply a layout. Then push `localhost:5055/bot:v2` and call the webhook with `{"tag": "v2"}`. The registry only listens on `127.0.0.1`: a CI on another machine cannot push to it.
 
 ## Contributing
 

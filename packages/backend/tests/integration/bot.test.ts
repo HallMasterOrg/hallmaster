@@ -137,3 +137,27 @@ describe("container image", () => {
     expect(status).toBe(404);
   });
 });
+
+describe("webhook token", () => {
+  it("is disabled until a token is generated, then gives a new token on each regeneration", async () => {
+    await call("/bot", { method: "POST", body: { token: DISCORD_TOKEN } });
+    expect(await call("/bot/webhook")).toEqual({ status: 200, body: { enabled: false } });
+
+    const first = await call("/bot/webhook/token", { method: "POST" });
+    const second = await call("/bot/webhook/token", { method: "POST" });
+
+    expect(first).toEqual({ status: 200, body: { token: expect.any(String) } });
+    expect(second.body).not.toEqual(first.body);
+    expect(await call("/bot/webhook")).toEqual({ status: 200, body: { enabled: true } });
+  });
+
+  it("reports that no bot is registered", async () => {
+    expect((await call("/bot/webhook")).status).toBe(404);
+    expect((await call("/bot/webhook/token", { method: "POST" })).status).toBe(404);
+  });
+
+  it("needs a dashboard session", async () => {
+    expect((await request("/bot/webhook")).status).toBe(401);
+    expect((await request("/bot/webhook/token", { method: "POST" })).status).toBe(401);
+  });
+});

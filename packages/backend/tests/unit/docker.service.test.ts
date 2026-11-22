@@ -291,6 +291,65 @@ describe("cluster events", () => {
   });
 });
 
+describe("deployment pull", () => {
+  const image = {
+    serverName: "registry.example.com:5000",
+    image: "bot",
+    tag: "2.0",
+    username: "ci",
+    password: "secret",
+  };
+
+  function dockerError(status: number, message: string) {
+    return new DockerAPIHttpError(status, JSON.stringify({ message }));
+  }
+
+  it("pulls with the registry credentials", async () => {
+    images.create.mockResolvedValue(undefined);
+
+    await DockerService.pullImage(image);
+
+    expect(images.create).toHaveBeenCalledWith({
+      fromImage: "registry.example.com:5000/bot",
+      tag: "2.0",
+      auth: { serveraddress: "registry.example.com:5000", username: "ci", password: "secret" },
+    });
+  });
+
+  it("reports a missing tag as not found", async () => {
+    images.create.mockRejectedValue(
+      dockerError(404, "registry.example.com:5000/bot:2.0: not found"),
+    );
+
+    await expect(DockerService.pullImage(image)).rejects.toMatchObject({
+      status: 404,
+      message: "Image registry.example.com:5000/bot:2.0 not found",
+    });
+  });
+
+  it.each([
+    "unexpected status from HEAD request to http://registry.example.com:5000/v2/bot/manifests/2.0: 401 Unauthorized",
+    "pull access denied, repository does not exist or may require authorization: authorization failed: no basic auth credentials",
+    'Get "https://registry.example.com:5000/v2/": unauthorized: authentication required',
+  ])("reports a refused authentication as a failed dependency: %s", async (reason) => {
+    images.create.mockRejectedValue(dockerError(500, reason));
+
+    await expect(DockerService.pullImage(image)).rejects.toMatchObject({
+      status: 424,
+      message: `Registry registry.example.com:5000 refused the saved credentials: ${reason}`,
+    });
+  });
+
+  it("reports other failures with the reason given by Docker", async () => {
+    images.create.mockRejectedValue(dockerError(500, "dial tcp: i/o timeout"));
+
+    await expect(DockerService.pullImage(image)).rejects.toMatchObject({
+      status: 424,
+      message: "Docker Engine API returned a 500 dial tcp: i/o timeout",
+    });
+  });
+});
+
 describe("container lookup", () => {
   it("finds a container by name", async () => {
     containers.get.mockResolvedValue({ Id: "abc" });
