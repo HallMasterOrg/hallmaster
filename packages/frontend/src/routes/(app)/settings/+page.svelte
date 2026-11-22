@@ -16,6 +16,7 @@
 
   import EnvironmentVariables from "./components/EnvironmentVariables.svelte";
   import RedeployClusters from "./components/RedeployClusters.svelte";
+  import WebhookToken from "./components/WebhookToken.svelte";
 </script>
 
 <header class="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
@@ -150,6 +151,20 @@
 
     {#snippet pending()}
       <div class="h-40 placeholder animate-pulse"></div>
+    {/snippet}
+
+    {#snippet failed(error, reset)}
+      <BoundaryFailed {error} {reset} />
+    {/snippet}
+  </svelte:boundary>
+
+  <hr class="hr" />
+
+  <svelte:boundary>
+    <WebhookToken />
+
+    {#snippet pending()}
+      <div class="h-16 placeholder animate-pulse"></div>
     {/snippet}
 
     {#snippet failed(error, reset)}

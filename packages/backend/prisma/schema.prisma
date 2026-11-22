@@ -28,6 +28,7 @@ model Bot {
   id                   String                @id
   token                String
   totalShards          Int                   @map("total_shards")
+  webhookTokenHash     String?               @map("webhook_token_hash")
   clusters             Cluster[]
   containerImage       ContainerImage?
   environmentVariables EnvironmentVariable[]

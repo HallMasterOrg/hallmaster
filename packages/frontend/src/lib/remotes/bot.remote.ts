@@ -12,6 +12,8 @@ import {
   type ContainerImage,
   type Environment,
   type RecommendedShards,
+  type WebhookStatus,
+  type WebhookToken,
 } from "@hallmaster/backend/schemas";
 import { error, redirect } from "@sveltejs/kit";
 
@@ -313,6 +315,46 @@ export const redeployClusters = command(async () => {
       return error(response.status, ((await response.json()) as ApiError).message);
     case 401:
       return error(401, "Unauthorized");
+
+    default:
+      console.error(await response.text());
+      return error(500, "An error occurred");
+  }
+});
+
+export const getWebhook = query<WebhookStatus>(async () => {
+  const response = await fetch(new URL("/api/bot/webhook", env.API_URL), {
+    headers: { Authorization: `Bearer ${getRequestEvent().cookies.get("token")}` },
+  });
+
+  switch (response.status) {
+    case 200:
+      return response.json();
+    case 401:
+      return redirect(303, "/login");
+    case 404:
+      return redirect(303, "/setup");
+
+    default:
+      console.error(await response.text());
+      return error(500, "An error occurred");
+  }
+});
+
+export const generateWebhookToken = command(async (): Promise<WebhookToken["token"]> => {
+  const response = await fetch(new URL("/api/bot/webhook/token", env.API_URL), {
+    method: "POST",
+    headers: { Authorization: `Bearer ${getRequestEvent().cookies.get("token")}` },
+  });
+
+  switch (response.status) {
+    case 200:
+      getWebhook().set({ enabled: true });
+      return ((await response.json()) as WebhookToken).token;
+    case 401:
+      return error(401, "Unauthorized");
+    case 404:
+      return error(404, "Bot not found");
 
     default:
       console.error(await response.text());

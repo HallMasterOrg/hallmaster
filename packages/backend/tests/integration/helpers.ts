@@ -38,6 +38,10 @@ export async function containerId(clusterId: number) {
   return (await findContainer(clusterId))?.Id;
 }
 
+export async function containerImage(clusterId: number) {
+  return (await findContainer(clusterId))?.Image;
+}
+
 export async function previousContainerState(clusterId: number) {
   return (await findContainer(clusterId, "-previous"))?.State;
 }

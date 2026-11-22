@@ -11,7 +11,7 @@ export default class BotRepository {
     return prisma.bot.count();
   }
 
-  public static async create(data: Omit<Bot, "totalShards">) {
+  public static async create(data: Pick<Bot, "id" | "token">) {
     return prisma.bot.create({
       data: {
         ...data,
@@ -59,6 +59,21 @@ export default class BotRepository {
 
   public static async findFirstIdTokenAndTotalShards() {
     return prisma.bot.findFirst({ select: { id: true, token: true, totalShards: true } });
+  }
+
+  public static async findFirstWebhookTokenHash() {
+    return prisma.bot.findFirst({ select: { webhookTokenHash: true } });
+  }
+
+  public static async updateWebhookTokenHash(data: Pick<Bot, "webhookTokenHash">) {
+    const bot = await this.findFirstId();
+    if (bot === null) return null;
+
+    return prisma.bot.update({
+      data,
+      where: { id: bot.id },
+      select: { webhookTokenHash: true },
+    });
   }
 
   public static async findFirstClusters() {

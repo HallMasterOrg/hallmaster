@@ -9,7 +9,7 @@ import {
   type DockerContainer,
 } from "@hallmaster/docker.js";
 
-import { FailedDependancyException } from "#exceptions/http-exceptions";
+import { FailedDependancyException, NotFoundException } from "#exceptions/http-exceptions";
 import socket from "#lib/docker";
 import {
   DockerContainerStatsSchema,
@@ -42,6 +42,8 @@ export type Readiness = {
 };
 
 const READY_POLL_INTERVAL = 1_000;
+const UNAUTHORIZED_PULL =
+  /unauthorized|authentication required|authorization failed|no basic auth credentials/i;
 
 export default class DockerService {
   private static readonly images = new DockerImagesAPI(socket);
@@ -149,6 +151,27 @@ export default class DockerService {
     });
   }
 
+  private static pullFailure(image: RegistryImage, error: unknown) {
+    if (!(error instanceof DockerAPIHttpError)) {
+      return this.failure(error);
+    }
+
+    if (error.status === 404) {
+      return new NotFoundException({
+        message: `Image ${image.serverName}/${image.image}:${image.tag} not found`,
+      });
+    }
+
+    if (UNAUTHORIZED_PULL.test(error.message)) {
+      return new FailedDependancyException({
+        message: `Registry ${image.serverName} refused the saved credentials: ${this.reason(error)}`,
+        cause: error,
+      });
+    }
+
+    return this.failure(error);
+  }
+
   private static async hasImage(image: RegistryImage) {
     const images = await this.call(
       this.images.list({ filters: { reference: [this.familiarReference(image)] } }),
@@ -163,6 +186,12 @@ export default class DockerService {
     }
 
     await this.call(this.pull(image));
+  }
+
+  public static async pullImage(image: RegistryImage) {
+    await this.pull(image).catch((error: unknown) => {
+      throw this.pullFailure(image, error);
+    });
   }
 
   public static async containerStates(containerIds: string[]) {

@@ -50,6 +50,17 @@ export default class ContainerImageRepository {
     return prisma.containerImage.findFirst({ select: { id: true } });
   }
 
+  public static async updateTag(tag: ContainerImage["tag"]) {
+    const containerImage = await this.findFirstId();
+    if (containerImage === null) return null;
+
+    return prisma.containerImage.update({
+      data: { tag },
+      where: { id: containerImage.id },
+      select: this.DEFAULT_SELECT,
+    });
+  }
+
   public static async update(
     data: Pick<ContainerImage, "image" | "tag" | "serverName" | "username" | "password">,
   ) {

@@ -9,6 +9,8 @@ import {
   ContainerImageSchema,
   CreateBotSchema,
   RecommendedShardsSchema,
+  WebhookStatusSchema,
+  WebhookTokenSchema,
 } from "#schemas/bot.schema";
 import { EnvironmentSchema } from "#schemas/environment.schema";
 import { ApiErrorSchema } from "#schemas/error.schema";
@@ -445,6 +447,65 @@ const botController = new Hono()
       const environment = await BotService.updateEnvironment(body);
 
       return c.json(environment, 200);
+    },
+  )
+  .get(
+    "/webhook",
+    describeRoute({
+      tags,
+      description: "Tell whether the deploy webhook has a token",
+      responses: {
+        200: {
+          description: "OK",
+          content: {
+            "application/json": { schema: resolver(WebhookStatusSchema) },
+          },
+        },
+        404: {
+          description: "Not Found",
+          content: {
+            "application/json": {
+              schema: resolver(ApiErrorSchema),
+              example: { message: "Bot not found" },
+            },
+          },
+        },
+      },
+    }),
+    async (c) => {
+      const webhook = await BotService.getWebhook();
+
+      return c.json(webhook, 200);
+    },
+  )
+  .post(
+    "/webhook/token",
+    describeRoute({
+      tags,
+      description:
+        "Generate a deploy webhook token, shown only in this response. The previous token stops working",
+      responses: {
+        200: {
+          description: "OK",
+          content: {
+            "application/json": { schema: resolver(WebhookTokenSchema) },
+          },
+        },
+        404: {
+          description: "Not Found",
+          content: {
+            "application/json": {
+              schema: resolver(ApiErrorSchema),
+              example: { message: "Bot not found" },
+            },
+          },
+        },
+      },
+    }),
+    async (c) => {
+      const token = await BotService.regenerateWebhookToken();
+
+      return c.json(token, 200);
     },
   );
 

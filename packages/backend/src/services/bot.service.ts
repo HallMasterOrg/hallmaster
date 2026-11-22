@@ -1,8 +1,21 @@
-import { ConflictException, NotFoundException } from "#exceptions/http-exceptions";
+import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
+
+import {
+  ConflictException,
+  ForbiddenException,
+  NotFoundException,
+  UnauthorizedException,
+} from "#exceptions/http-exceptions";
 import BotRepository from "#repositories/bot.repository";
 import ContainerImageRepository from "#repositories/container-image.repository";
 import EnvironmentVariableRepository from "#repositories/environment-variable.repository";
-import type { Bot, ContainerImage, CreateBot } from "#schemas/bot.schema";
+import type {
+  Bot,
+  ContainerImage,
+  CreateBot,
+  WebhookStatus,
+  WebhookToken,
+} from "#schemas/bot.schema";
 import type { Environment } from "#schemas/environment.schema";
 
 import ClusterOperationService from "./cluster-operation.service";
@@ -184,5 +197,40 @@ export default class BotService {
       url: `${containerImage.serverName}/${containerImage.image}:${containerImage.tag}`,
       username: containerImage.username ?? undefined,
     };
+  }
+
+  private static hash(token: string) {
+    return createHash("sha256").update(token).digest("hex");
+  }
+
+  public static async getWebhook(): Promise<WebhookStatus> {
+    const bot = await BotRepository.findFirstWebhookTokenHash();
+    if (bot === null) throw new NotFoundException({ message: "Bot not found" });
+
+    return { enabled: bot.webhookTokenHash !== null };
+  }
+
+  public static async regenerateWebhookToken(): Promise<WebhookToken> {
+    const token = randomBytes(32).toString("base64url");
+    const bot = await BotRepository.updateWebhookTokenHash({ webhookTokenHash: this.hash(token) });
+    if (bot === null) throw new NotFoundException({ message: "Bot not found" });
+
+    return { token };
+  }
+
+  public static async authorizeWebhook(token: string | undefined) {
+    const bot = await BotRepository.findFirstWebhookTokenHash();
+    if (!bot?.webhookTokenHash) {
+      throw new ForbiddenException({
+        message: "The webhook is disabled, generate a token in the dashboard settings to enable it",
+      });
+    }
+
+    if (
+      token === undefined ||
+      !timingSafeEqual(Buffer.from(this.hash(token)), Buffer.from(bot.webhookTokenHash))
+    ) {
+      throw new UnauthorizedException({ message: "Invalid webhook token" });
+    }
   }
 }
