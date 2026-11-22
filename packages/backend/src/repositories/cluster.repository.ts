@@ -111,6 +111,10 @@ export default class ClusterRepository {
     return prisma.cluster.findMany({ select: { id: true, containerId: true } });
   }
 
+  public static async findManyIdBotIdAndContainerId() {
+    return prisma.cluster.findMany({ select: { id: true, botId: true, containerId: true } });
+  }
+
   public static async updateManyDesiredStatusById(
     desiredStatus: Cluster["desiredStatus"],
     ids: Cluster["id"][],

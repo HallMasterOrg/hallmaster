@@ -31,6 +31,7 @@ model Bot {
   clusters             Cluster[]
   containerImage       ContainerImage?
   environmentVariables EnvironmentVariable[]
+  clusterSamples       ClusterSample[]
   alerts               Alert[]
 
   @@map("bot")
@@ -74,6 +75,20 @@ model EnvironmentVariable {
 
   @@id([botId, key])
   @@map("environment_variable")
+}
+
+model ClusterSample {
+  botId            String   @map("bot_id")
+  clusterId        Int      @map("cluster_id")
+  at               DateTime @db.Timestamptz(3)
+  cpuPercentage    Float    @map("cpu_percentage")
+  memoryUsage      BigInt   @map("memory_usage")
+  memoryPercentage Float    @map("memory_percentage")
+  bot              Bot      @relation(fields: [botId], references: [id], onDelete: Cascade)
+
+  @@id([botId, clusterId, at])
+  @@index([at])
+  @@map("cluster_sample")
 }
 
 enum AlertKind {
