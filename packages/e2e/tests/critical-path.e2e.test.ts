@@ -1,7 +1,10 @@
+import { execFileSync } from "node:child_process";
+
 import type { Browser, Page } from "playwright";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
 import {
+  BOT_ID,
   BOT_PROFILE,
   BOT_TOKEN,
   CONTAINER_IMAGE,
@@ -50,6 +53,20 @@ async function expectNoRequestLoop(page: Page) {
 
   expect(remoteCalls() - callsBefore).toBe(0);
   expect(await login.evaluate((link) => link === document.activeElement)).toBe(true);
+}
+
+const names = (inputs: HTMLInputElement[]) => inputs.map((input) => input.value);
+const focusedElement = (element: Element) => element === document.activeElement;
+
+function containerEnvironment(clusterId: number) {
+  const output = execFileSync("docker", [
+    "inspect",
+    "--format",
+    "{{json .Config.Env}}",
+    `${BOT_ID}-${clusterId}`,
+  ]);
+
+  return JSON.parse(output.toString()) as string[];
 }
 
 describe("first visit", () => {
@@ -127,6 +144,57 @@ describe("onboarding", () => {
   });
 });
 
+describe("environment", () => {
+  it("imports a .env file and saves its variables", async () => {
+    await page.goto("/settings");
+    await page.getByLabel("Import a .env file").setInputFiles({
+      name: ".env",
+      mimeType: "text/plain",
+      buffer: Buffer.from('# bot\nLOG_LEVEL=debug\nexport GREETING="hello world"\n'),
+    });
+
+    await visible(page.getByLabel("Value of GREETING"));
+    await page.getByRole("button", { name: "Add variable" }).click();
+    await expect.poll(() => page.getByLabel("Name").last().evaluate(focusedElement)).toBe(true);
+    await page.getByRole("button", { name: "Save", exact: true }).click();
+    await visible(page.getByRole("alert").getByText("Name is required"));
+
+    await page.getByRole("button", { name: "Remove the new variable" }).click();
+    await page.getByRole("button", { name: "Save", exact: true }).click();
+    await visible(page.getByText("Environment saved"));
+    expect(await page.getByLabel("Name").evaluateAll(names)).toEqual(["LOG_LEVEL", "GREETING"]);
+
+    await page.reload();
+    await visible(page.getByLabel("Value of LOG_LEVEL"));
+  });
+
+  it("merges a pasted .env and resets to the saved variables", async () => {
+    await page.getByRole("button", { name: "Add variable" }).click();
+    await page
+      .getByLabel("Name")
+      .last()
+      .evaluate((input) => {
+        const clipboardData = new DataTransfer();
+        clipboardData.setData("text/plain", "LOG_LEVEL=warn\nEXTRA=1");
+        input.dispatchEvent(
+          new ClipboardEvent("paste", { clipboardData, bubbles: true, cancelable: true }),
+        );
+      });
+
+    await expect
+      .poll(() => page.getByLabel("Name").evaluateAll(names))
+      .toEqual(["GREETING", "LOG_LEVEL", "EXTRA"]);
+    expect(await page.getByLabel("Value of LOG_LEVEL").inputValue()).toBe("warn");
+    expect(await page.getByLabel("Value of EXTRA").inputValue()).toBe("1");
+
+    await page.getByRole("button", { name: "Reset" }).click();
+    await expect
+      .poll(() => page.getByLabel("Name").evaluateAll(names))
+      .toEqual(["GREETING", "LOG_LEVEL"]);
+    expect(await page.getByLabel("Value of LOG_LEVEL").inputValue()).toBe("debug");
+  });
+});
+
 describe("cluster layout", () => {
   it("shows the number of shards recommended by Discord", async () => {
     await page.goto("/layout");
@@ -151,6 +219,9 @@ describe("cluster layout", () => {
     await page.goto("/clusters");
     await visible(clusterRow(page, 0).getByText("running", { exact: true }));
     await visible(clusterRow(page, 1).getByText("running", { exact: true }));
+    expect(containerEnvironment(1)).toEqual(
+      expect.arrayContaining(["LOG_LEVEL=debug", "GREETING=hello world"]),
+    );
   });
 });
 
@@ -164,6 +235,75 @@ describe("cluster actions", () => {
 
     await page.getByRole("button", { name: "start cluster 01" }).click();
     await visible(row.getByText("running", { exact: true }));
+  });
+});
+
+describe("alerts", () => {
+  it("flags a cluster stopped outside HallMaster until it starts again", async () => {
+    await page.waitForTimeout(1_500);
+    execFileSync("docker", ["stop", `${BOT_ID}-1`]);
+
+    await visible(clusterRow(page, 1).getByText("down"));
+
+    await page.goto("/alerts");
+    await visible(page.getByRole("region", { name: "Active" }).getByText("Cluster 01"));
+
+    await page.goto("/clusters");
+    await page.getByRole("button", { name: "start cluster 01" }).click();
+    await visible(clusterRow(page, 1).getByText("running", { exact: true }));
+    await expect
+      .poll(() => clusterRow(page, 1).getByText("down").count(), { timeout: 10_000 })
+      .toBe(0);
+
+    await page.goto("/alerts");
+    await visible(page.getByRole("region", { name: "History" }).getByText("Cluster 01"));
+  });
+});
+
+describe("redeploy", () => {
+  it("gives the saved variables to the running clusters", async () => {
+    await page.goto("/settings");
+    await page.getByRole("button", { name: "Add variable" }).click();
+    await expect
+      .poll(() => page.getByLabel("Name").evaluateAll(names))
+      .toEqual(["GREETING", "LOG_LEVEL", ""]);
+    await page.getByRole("button", { name: "Remove the new variable" }).click();
+
+    await page.getByLabel("Value of LOG_LEVEL").fill("info");
+    await page.getByRole("button", { name: "Save", exact: true }).click();
+    await visible(page.getByText("Environment saved"));
+    await visible(page.getByText("Changes not deployed to 2 clusters"));
+
+    await page.goto("/clusters");
+    await visible(clusterRow(page, 0).getByText("outdated"));
+    await visible(clusterRow(page, 1).getByText("outdated"));
+
+    await page.goto("/settings");
+    await page.getByRole("button", { name: "Redeploy clusters" }).click();
+    await page.getByRole("button", { name: "Confirm action" }).click();
+    await visible(page.getByText("Clusters redeployed"));
+    await page.getByText("Changes not deployed").waitFor({ state: "hidden" });
+
+    expect(containerEnvironment(0)).toContain("LOG_LEVEL=info");
+    expect(containerEnvironment(1)).toContain("LOG_LEVEL=info");
+
+    await page.goto("/clusters");
+    await visible(clusterRow(page, 0).getByText("running", { exact: true }));
+    await visible(clusterRow(page, 1).getByText("running", { exact: true }));
+    expect(await page.getByText("outdated").count()).toBe(0);
+  });
+});
+
+describe("empty environment", () => {
+  it("saves once the last variable is removed", async () => {
+    await page.goto("/settings");
+    await page.getByRole("button", { name: "Remove LOG_LEVEL" }).click();
+    await page.getByRole("button", { name: "Remove GREETING" }).click();
+    await page.getByRole("button", { name: "Save", exact: true }).click();
+    await visible(page.getByText("Environment saved"));
+
+    await page.reload();
+    await visible(page.getByText("No variables yet"));
   });
 });
 

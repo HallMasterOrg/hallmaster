@@ -1,8 +1,11 @@
+import { createHash } from "node:crypto";
+
 import { BadRequestException, NotFoundException } from "#exceptions/http-exceptions";
 import type { Bot, Cluster as ClusterRow, ContainerImage } from "#prisma/client";
 import BotRepository from "#repositories/bot.repository";
 import ClusterRepository from "#repositories/cluster.repository";
 import ContainerImageRepository from "#repositories/container-image.repository";
+import EnvironmentVariableRepository from "#repositories/environment-variable.repository";
 import type {
   Cluster,
   ClusterAction,
@@ -12,10 +15,15 @@ import type {
   ClusterStatus,
   UpdateClusters,
 } from "#schemas/cluster.schema";
+import type { EnvironmentVariables } from "#schemas/environment.schema";
 
+import ClusterOperationService from "./cluster-operation.service";
 import DockerService from "./docker.service";
 
 type PendingStatus = Extract<ClusterStatus, "STARTING" | "UPDATING">;
+type ContainerImageReference = Pick<ContainerImage, "serverName" | "image" | "tag">;
+
+const DEPLOYMENT_LABEL = "dev.hallmaster.deployment";
 
 export default class ClusterService {
   private static readonly pendingStatuses = new Map<ClusterId, PendingStatus>();
@@ -30,7 +38,7 @@ export default class ClusterService {
     }
 
     try {
-      return await operation();
+      return await ClusterOperationService.run(ids, operation);
     } finally {
       for (const id of ids) {
         this.pendingStatuses.delete(id);
@@ -86,17 +94,33 @@ export default class ClusterService {
     return cluster;
   }
 
-  private static async create(
-    cluster: Pick<ClusterRow, "id" | "shardIds" | "desiredStatus">,
+  private static imageReference({ serverName, image, tag }: ContainerImageReference) {
+    return `${serverName}/${image}:${tag}`;
+  }
+
+  private static deployment(
+    token: Bot["token"],
+    containerImage: ContainerImageReference,
+    environment: EnvironmentVariables,
+  ) {
+    return createHash("sha256")
+      .update(JSON.stringify([token, this.imageReference(containerImage), environment]))
+      .digest("hex");
+  }
+
+  private static async createContainer(
+    cluster: Pick<ClusterRow, "id" | "shardIds">,
     bot: Pick<Bot, "id" | "token" | "totalShards">,
-    containerImage: Pick<ContainerImage, "serverName" | "image" | "tag">,
+    containerImage: ContainerImageReference,
+    environment: EnvironmentVariables,
   ) {
     const shards = cluster.shardIds.join(",");
 
     const container = await DockerService.create(
       {
-        Image: `${containerImage.serverName}/${containerImage.image}:${containerImage.tag}`,
+        Image: this.imageReference(containerImage),
         Env: [
+          ...environment.map(({ key, value }) => `${key}=${value}`),
           `DISCORD_BOT_TOKEN=${bot.token}`,
           `TOTAL_SHARDS=${bot.totalShards}`,
           `SHARD_ID_LIST=${shards}`,
@@ -104,20 +128,58 @@ export default class ClusterService {
         Labels: {
           "dev.hallmaster.cluster": cluster.id.toString(),
           "dev.hallmaster.shards": shards,
+          [DEPLOYMENT_LABEL]: this.deployment(bot.token, containerImage, environment),
         },
       },
       `${bot.id}-${cluster.id}`,
     );
 
+    return container.Id;
+  }
+
+  private static async create(
+    cluster: Pick<ClusterRow, "id" | "shardIds" | "desiredStatus">,
+    bot: Pick<Bot, "id" | "token" | "totalShards">,
+    containerImage: ContainerImageReference,
+    environment: EnvironmentVariables,
+  ) {
+    const containerId = await this.createContainer(cluster, bot, containerImage, environment);
+
     await ClusterRepository.create({
       id: cluster.id,
       botId: bot.id,
-      containerId: container.Id,
+      containerId,
       shardIds: cluster.shardIds,
       desiredStatus: cluster.desiredStatus,
     });
 
-    return container.Id;
+    return containerId;
+  }
+
+  private static async findWithContainerId(id: ClusterId) {
+    const cluster = await ClusterRepository.findFirstWithContainerIdById(id);
+    if (cluster === null) throw new NotFoundException({ message: `Cluster ${id} not found` });
+
+    return cluster;
+  }
+
+  private static async ensureContainer(
+    cluster: Pick<ClusterRow, "id" | "shardIds" | "containerId">,
+  ) {
+    const states = await DockerService.containerStates([cluster.containerId]);
+    if (states.has(cluster.containerId)) return cluster.containerId;
+
+    const bot = await BotRepository.findFirstIdContainerImageTotalShardsAndToken();
+    if (bot === null) throw new NotFoundException({ message: "Bot not found" });
+    if (bot.containerImage === null)
+      throw new NotFoundException({ message: "Container image not found" });
+
+    await DockerService.ensureImage(bot.containerImage);
+    const environment = await EnvironmentVariableRepository.findMany();
+    const containerId = await this.createContainer(cluster, bot, bot.containerImage, environment);
+    await ClusterRepository.updateContainerIdById(containerId, cluster.id);
+
+    return containerId;
   }
 
   private static async findRunningContainerId(id: ClusterId) {
@@ -189,12 +251,12 @@ export default class ClusterService {
   }
 
   public static async start(id: ClusterId) {
-    const cluster = await ClusterRepository.findFirstContainerIdById(id);
-    if (cluster === null) throw new NotFoundException({ message: `Cluster ${id} not found` });
+    const cluster = await this.findWithContainerId(id);
 
     await this.track([id], "STARTING", async () => {
+      const containerId = await this.ensureContainer(cluster);
       await ClusterRepository.updateDesiredStatusById("RUNNING", id);
-      await DockerService.startContainer(cluster.containerId);
+      await DockerService.startContainer(containerId);
     });
 
     return this.get(id);
@@ -204,19 +266,21 @@ export default class ClusterService {
     const cluster = await ClusterRepository.findFirstContainerIdById(id);
     if (cluster === null) throw new NotFoundException({ message: `Cluster ${id} not found` });
 
-    await ClusterRepository.updateDesiredStatusById("STOPPED", id);
-    await DockerService.stopContainer(cluster.containerId);
+    await ClusterOperationService.run([id], async () => {
+      await ClusterRepository.updateDesiredStatusById("STOPPED", id);
+      await DockerService.stopContainer(cluster.containerId);
+    });
 
     return this.get(id);
   }
 
   public static async restart(id: ClusterId) {
-    const cluster = await ClusterRepository.findFirstContainerIdById(id);
-    if (cluster === null) throw new NotFoundException({ message: `Cluster ${id} not found` });
+    const cluster = await this.findWithContainerId(id);
 
     await this.track([id], "STARTING", async () => {
+      const containerId = await this.ensureContainer(cluster);
       await ClusterRepository.updateDesiredStatusById("RUNNING", id);
-      await DockerService.restartContainer(cluster.containerId);
+      await DockerService.restartContainer(containerId);
     });
 
     return this.get(id);
@@ -255,9 +319,11 @@ export default class ClusterService {
   public static async remove(id: ClusterId): Promise<Cluster> {
     const { shardIds, status, containerId } = await this.findObserved(id);
 
-    await DockerService.stopContainer(containerId);
-    await DockerService.removeContainer(containerId);
-    await ClusterRepository.deleteById(id);
+    await ClusterOperationService.run([id], async () => {
+      await DockerService.stopContainer(containerId);
+      await DockerService.removeContainer(containerId);
+      await ClusterRepository.deleteById(id);
+    });
 
     return { id, shardIds, status };
   }
@@ -268,29 +334,56 @@ export default class ClusterService {
     return clusters.map(({ id, shardIds, status }) => ({ id, shardIds, status }));
   }
 
+  public static async getOutdated(): Promise<ClusterId[]> {
+    const [bot, containerImage, environment, clusters] = await Promise.all([
+      BotRepository.findFirstIdAndToken(),
+      ContainerImageRepository.findFirst(),
+      EnvironmentVariableRepository.findMany(),
+      ClusterRepository.findManyWithContainerId(),
+    ]);
+    if (bot === null || containerImage === null) return [];
+
+    const deployment = this.deployment(bot.token, containerImage, environment);
+    const labels = await DockerService.containerLabels(
+      clusters.map(({ containerId }) => containerId),
+    );
+
+    return clusters
+      .filter(({ containerId }) => labels.get(containerId)?.[DEPLOYMENT_LABEL] !== deployment)
+      .map(({ id }) => id)
+      .sort((a, b) => a - b);
+  }
+
   public static async stopAll() {
     const clusters = await ClusterRepository.findManyIdAndContainerId();
     if (clusters.length === 0) {
       return;
     }
 
-    await Promise.all(clusters.map(({ containerId }) => DockerService.stopContainer(containerId)));
+    const ids = clusters.map(({ id }) => id);
 
-    return ClusterRepository.updateManyDesiredStatusById(
-      "STOPPED",
-      clusters.map(({ id }) => id),
-    );
+    return ClusterOperationService.run(ids, async () => {
+      await Promise.all(
+        clusters.map(({ containerId }) => DockerService.stopContainer(containerId)),
+      );
+
+      return ClusterRepository.updateManyDesiredStatusById("STOPPED", ids);
+    });
   }
 
   public static async removeAll() {
     const clusters = await ClusterRepository.findManyIdAndContainerId();
     if (clusters.length === 0) return;
 
-    await Promise.all(
-      clusters.map(({ containerId }) => DockerService.removeContainer(containerId)),
-    );
+    const ids = clusters.map(({ id }) => id);
 
-    return ClusterRepository.deleteManyById(clusters.map(({ id }) => id));
+    return ClusterOperationService.run(ids, async () => {
+      await Promise.all(
+        clusters.map(({ containerId }) => DockerService.removeContainer(containerId)),
+      );
+
+      return ClusterRepository.deleteManyById(ids);
+    });
   }
 
   public static async updateAll(clusters: UpdateClusters) {
@@ -340,6 +433,7 @@ export default class ClusterService {
       throw new NotFoundException({ message: "Container image not found" });
 
     await DockerService.ensureImage(containerImage);
+    const environment = await EnvironmentVariableRepository.findMany();
 
     const affectedIds = [...new Set([...previousIds, ...clusters.map(({ id }) => id!)])];
     await this.track(affectedIds, "UPDATING", async () => {
@@ -359,6 +453,7 @@ export default class ClusterService {
             { id: cluster.id!, shardIds: cluster.shardIds, desiredStatus },
             { ...bot, totalShards: updatedBot.totalShards },
             containerImage,
+            environment,
           );
 
           if (desiredStatus === "RUNNING") {

@@ -13,9 +13,22 @@
   } from "@lucide/svelte";
   import { Switch } from "@skeletonlabs/skeleton-svelte";
   import { slide } from "svelte/transition";
+
+  import EnvironmentVariables from "./components/EnvironmentVariables.svelte";
+  import RedeployClusters from "./components/RedeployClusters.svelte";
 </script>
 
-<h6 class="h6 font-normal">Deployment</h6>
+<header class="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+  <h6 class="h6 font-normal">Deployment</h6>
+
+  <svelte:boundary>
+    <RedeployClusters />
+
+    {#snippet pending()}
+      <div class="h-8 placeholder w-44 animate-pulse"></div>
+    {/snippet}
+  </svelte:boundary>
+</header>
 
 <div class="flex flex-col gap-4">
   <svelte:boundary>
@@ -25,7 +38,10 @@
           loading: { title: "Updating deployment config.." },
           success: () => {
             element.reset();
-            return { title: "Successfully applied deployment config" };
+            return {
+              title: "Successfully applied deployment config",
+              description: "Redeploy the clusters to apply it",
+            };
           },
           error: toastError,
         });
@@ -99,7 +115,10 @@
         loading: { title: "Updating token.." },
         success: () => {
           element.reset();
-          return { title: "Successfully registered token" };
+          return {
+            title: "Successfully registered token",
+            description: "Redeploy the clusters to apply it",
+          };
         },
         error: toastError,
       });
@@ -123,4 +142,18 @@
       {/snippet}
     </LabeledInput>
   </form>
+
+  <hr class="hr" />
+
+  <svelte:boundary>
+    <EnvironmentVariables />
+
+    {#snippet pending()}
+      <div class="h-40 placeholder animate-pulse"></div>
+    {/snippet}
+
+    {#snippet failed(error, reset)}
+      <BoundaryFailed {error} {reset} />
+    {/snippet}
+  </svelte:boundary>
 </div>

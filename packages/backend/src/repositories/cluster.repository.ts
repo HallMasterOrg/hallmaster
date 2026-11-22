@@ -17,6 +17,27 @@ export default class ClusterRepository {
     });
   }
 
+  public static async findFirstWithContainerIdById(id: Cluster["id"]) {
+    return prisma.cluster.findFirst({
+      where: { id },
+      select: { ...this.DEFAULT_SELECT, containerId: true },
+    });
+  }
+
+  public static async updateContainerIdById(
+    containerId: Cluster["containerId"],
+    id: Cluster["id"],
+  ) {
+    const cluster = await this.findFirstBotIdById(id);
+    if (cluster === null) return null;
+
+    return prisma.cluster.update({
+      data: { containerId },
+      where: { botId_id: { botId: cluster.botId, id } },
+      select: this.DEFAULT_SELECT,
+    });
+  }
+
   public static async create(
     data: Pick<Cluster, "id" | "desiredStatus" | "shardIds" | "botId" | "containerId">,
   ) {
@@ -88,6 +109,10 @@ export default class ClusterRepository {
 
   public static async findManyIdAndContainerId() {
     return prisma.cluster.findMany({ select: { id: true, containerId: true } });
+  }
+
+  public static async findManyIdBotIdAndContainerId() {
+    return prisma.cluster.findMany({ select: { id: true, botId: true, containerId: true } });
   }
 
   public static async updateManyDesiredStatusById(

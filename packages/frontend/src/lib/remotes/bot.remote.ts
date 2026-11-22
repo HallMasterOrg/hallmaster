@@ -3,17 +3,19 @@ import { env } from "$env/dynamic/private";
 import {
   ContainerImageSchema,
   CreateBotSchema,
+  EnvironmentSchema,
   UpdateClustersSchema,
   type ApiError,
   type Bot,
   type BotDiscordProfile,
   type Cluster,
   type ContainerImage,
+  type Environment,
   type RecommendedShards,
 } from "@hallmaster/backend/schemas";
 import { error, redirect } from "@sveltejs/kit";
 
-import { getClusters } from "./clusters.remote";
+import { getClusters, getOutdatedClusters } from "./clusters.remote";
 
 export const createBot = form(
   CreateBotSchema.extend(ContainerImageSchema.shape),
@@ -135,6 +137,28 @@ export const getContainerImage = query<Omit<ContainerImage, "password">>(async (
   }
 });
 
+export const getEnvironment = query<Environment>(async () => {
+  const response = await fetch(new URL("/api/bot/environment", env.API_URL), {
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${getRequestEvent().cookies.get("token")}`,
+    },
+  });
+
+  switch (response.status) {
+    case 200:
+      return response.json();
+    case 401:
+      return redirect(303, "/login");
+    case 404:
+      return redirect(303, "/setup");
+
+    default:
+      console.error(await response.text());
+      return error(500, "An error occurred");
+  }
+});
+
 export const getRecommendedShards = query<RecommendedShards["shards"]>(async () => {
   const response = await fetch(new URL("/api/bot/recommended-shards", env.API_URL), {
     headers: {
@@ -172,6 +196,7 @@ export const updateBotToken = form(CreateBotSchema, async (payload) => {
   switch (response.status) {
     case 200:
       getBot().set((await response.json()) as Bot);
+      await getOutdatedClusters().refresh();
       return;
     case 401:
       return redirect(303, "/login");
@@ -199,6 +224,7 @@ export const updateBotImage = form(ContainerImageSchema, async (payload) => {
   switch (response.status) {
     case 200:
       getContainerImage().set((await response.json()) as Omit<ContainerImage, "password">);
+      await getOutdatedClusters().refresh();
       return;
     case 401:
       return redirect(303, "/login");
@@ -206,6 +232,34 @@ export const updateBotImage = form(ContainerImageSchema, async (payload) => {
       return redirect(303, "/setup");
     case 424:
       return error(424, ((await response.json()) as ApiError).message);
+
+    default:
+      console.error(await response.text());
+      return error(500, "An error occurred");
+  }
+});
+
+export const updateEnvironment = form(EnvironmentSchema.partial(), async ({ variables = [] }) => {
+  const response = await fetch(new URL("/api/bot/environment", env.API_URL), {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${getRequestEvent().cookies.get("token")}`,
+    },
+    body: JSON.stringify({ variables }),
+  });
+
+  switch (response.status) {
+    case 200:
+      getEnvironment().set((await response.json()) as Environment);
+      await getOutdatedClusters().refresh();
+      return;
+    case 400:
+      return error(400, ((await response.json()) as ApiError).message);
+    case 401:
+      return redirect(303, "/login");
+    case 404:
+      return redirect(303, "/setup");
 
     default:
       console.error(await response.text());
@@ -226,6 +280,7 @@ export const updateBotLayout = command(UpdateClustersSchema, async (payload) => 
   switch (response.status) {
     case 200:
       getClusters().set((await response.json()) as Cluster[]);
+      await getOutdatedClusters().refresh();
       return;
     case 400:
     case 424:

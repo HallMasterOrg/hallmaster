@@ -1,4 +1,5 @@
-import { Transform } from "node:stream";
+import { createInterface } from "node:readline";
+import { Transform, type Readable } from "node:stream";
 
 import { DockerAPIHttpError, DockerContainersAPI, DockerImagesAPI } from "@hallmaster/docker.js";
 
@@ -6,6 +7,8 @@ import { FailedDependancyException } from "#exceptions/http-exceptions";
 import socket from "#lib/docker";
 import {
   DockerContainerStatsSchema,
+  DockerEventActionSchema,
+  DockerEventLineSchema,
   type DockerContainerStats,
   type DockerCpuStats,
 } from "#schemas/docker.schema";
@@ -145,6 +148,50 @@ export default class DockerService {
     );
 
     return new Map(containers.map(({ Id, State }) => [Id, State]));
+  }
+
+  public static async containerLabels(containerIds: string[]) {
+    if (containerIds.length === 0) {
+      return new Map<string, Record<string, string>>();
+    }
+
+    const containers = await this.call(
+      this.containers.list({ all: true, filters: { id: containerIds } }),
+    );
+
+    return new Map(containers.map(({ Id, Labels }) => [Id, Labels]));
+  }
+
+  public static async containerStartedAt(containerId: string) {
+    const container = await this.call(this.containers.get(containerId), [404]);
+
+    return container === undefined ? undefined : new Date(container.State.StartedAt);
+  }
+
+  private static async *parseEvents(input: Readable, signal: AbortSignal) {
+    for await (const line of createInterface({ input, crlfDelay: Infinity, signal })) {
+      const result = DockerEventLineSchema.safeParse(line);
+      if (result.success) yield result.data;
+    }
+  }
+
+  public static async streamClusterEvents(signal: AbortSignal) {
+    const response = await this.call(
+      socket.streamAPICall("GET", "/events", {
+        query: {
+          filters: JSON.stringify({
+            type: ["container"],
+            label: ["dev.hallmaster.cluster"],
+            event: DockerEventActionSchema.options,
+          }),
+        },
+      }),
+    );
+
+    if (signal.aborted) response.destroy();
+    else signal.addEventListener("abort", () => response.destroy(), { once: true });
+
+    return this.parseEvents(response, signal);
   }
 
   public static async create(...options: MethodParameters<typeof DockerContainersAPI, "create">) {
