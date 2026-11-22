@@ -26,7 +26,14 @@ describe("authentication", () => {
     expect(first.status).toBe(200);
     expect(second.status).toBe(200);
     expect(await prisma.user.findMany()).toEqual([
-      { id: OWNER.id, username: OWNER.username, displayName: "Renamed", avatar: "a_new" },
+      {
+        id: OWNER.id,
+        username: OWNER.username,
+        displayName: "Renamed",
+        avatar: "a_new",
+        role: "OWNER",
+        createdAt: expect.any(Date),
+      },
     ]);
   });
 
@@ -41,6 +48,8 @@ describe("authentication", () => {
       username: OWNER.username,
       displayName: OWNER.global_name,
       avatarUrl: null,
+      role: "OWNER",
+      createdAt: expect.any(String),
     });
   });
 

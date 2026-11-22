@@ -10,13 +10,14 @@
     ContainerIcon,
     LayoutDashboardIcon,
     SettingsIcon,
+    Users,
   } from "@lucide/svelte";
   import { AppBar } from "@skeletonlabs/skeleton-svelte";
 
   import type { LayoutProps } from "./$types";
   import Navigation from "./components/navigation/Navigation.svelte";
 
-  let { children, params }: LayoutProps = $props();
+  let { children }: LayoutProps = $props();
 
   const items = {
     "": [
@@ -26,6 +27,7 @@
     ],
     administration: [
       { label: "Layout", icon: LayoutDashboardIcon, path: "/layout" },
+      { label: "Team", icon: Users, path: "/team" },
       { label: "Settings", icon: SettingsIcon, path: "/settings" },
     ],
   };

@@ -1,8 +1,16 @@
 import { describeRoute, resolver } from "hono-openapi";
-import { jwt } from "hono/jwt";
+import { createMiddleware } from "hono/factory";
+import { jwt, type JwtVariables } from "hono/jwt";
 
+import { ForbiddenException, UnauthorizedException } from "#exceptions/http-exceptions";
 import env from "#lib/env";
+import type { User } from "#prisma/client";
+import UserRepository from "#repositories/user.repository";
 import { ApiErrorSchema } from "#schemas/error.schema";
+
+export type AuthEnv = {
+  Variables: JwtVariables<{ sub: User["id"] }> & { user: User };
+};
 
 const authMiddlewares = [
   describeRoute({
@@ -28,6 +36,36 @@ const authMiddlewares = [
     secret: env.SECRET,
     alg: "HS256",
   }),
+  createMiddleware<AuthEnv>(async (c, next) => {
+    const user = await UserRepository.findById(c.get("jwtPayload").sub);
+    if (user === null) throw new UnauthorizedException({ message: "Unauthorized" });
+
+    c.set("user", user);
+    await next();
+  }),
 ];
+
+export const ownerOnly = [
+  describeRoute({
+    responses: {
+      403: {
+        description: "Forbidden",
+        content: {
+          "application/json": {
+            schema: resolver(ApiErrorSchema),
+            example: { message: "Only the owner can manage the admins" },
+          },
+        },
+      },
+    },
+  }),
+  createMiddleware<AuthEnv>(async (c, next) => {
+    if (c.get("user").role !== "OWNER") {
+      throw new ForbiddenException({ message: "Only the owner can manage the admins" });
+    }
+
+    await next();
+  }),
+] as const;
 
 export default authMiddlewares;

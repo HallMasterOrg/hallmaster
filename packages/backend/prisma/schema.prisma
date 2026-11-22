@@ -1,26 +1,37 @@
 generator client {
-  provider = "prisma-client"
-  output   = "generated/prisma"
+  provider        = "prisma-client"
+  output          = "generated/prisma"
+  previewFeatures = ["partialIndexes"]
 }
 
 datasource db {
   provider = "postgresql"
 }
 
+enum UserRole {
+  OWNER
+  ADMIN
+}
+
 model User {
-  id          String  @id
+  id          String   @id
   username    String
-  displayName String? @map("display_name")
+  displayName String?  @map("display_name")
   avatar      String?
+  role        UserRole @default(ADMIN)
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  @@unique([role], where: { role: "OWNER" })
 }
 
 model Bot {
-  id             String          @id
-  token          String
-  totalShards    Int             @map("total_shards")
-  clusters       Cluster[]
-  containerImage ContainerImage?
-  alerts         Alert[]
+  id                   String                @id
+  token                String
+  totalShards          Int                   @map("total_shards")
+  clusters             Cluster[]
+  containerImage       ContainerImage?
+  environmentVariables EnvironmentVariable[]
+  alerts               Alert[]
 
   @@map("bot")
 }
@@ -53,6 +64,16 @@ model Cluster {
 
   @@id([botId, id])
   @@map("cluster")
+}
+
+model EnvironmentVariable {
+  botId String @map("bot_id")
+  key   String
+  value String
+  bot   Bot    @relation(fields: [botId], references: [id], onDelete: Cascade)
+
+  @@id([botId, key])
+  @@map("environment_variable")
 }
 
 enum AlertKind {

@@ -1,15 +1,16 @@
 <script lang="ts">
   import alertLabels from "$lib/utils/alertLabels";
   import type { Alert, Cluster } from "@hallmaster/backend/schemas";
-  import { BellRingIcon, ChevronRightIcon } from "@lucide/svelte";
+  import { BellRingIcon, ChevronRightIcon, TriangleAlertIcon } from "@lucide/svelte";
   import { Collapsible } from "@skeletonlabs/skeleton-svelte";
 
   interface Props {
     cluster: Cluster;
     alerts: Alert[];
+    outdated: boolean;
   }
 
-  let { cluster, alerts }: Props = $props();
+  let { cluster, alerts, outdated }: Props = $props();
 </script>
 
 <Collapsible.Trigger class="btn grow justify-start">
@@ -23,6 +24,16 @@
       {alertLabels[alert.kind]}
     </span>
   {/each}
+
+  {#if outdated}
+    <span
+      class="badge preset-tonal-warning"
+      title="Runs older settings than the saved ones, redeploy it from the settings"
+    >
+      <TriangleAlertIcon size={14} />
+      outdated
+    </span>
+  {/if}
 
   <div
     class={{

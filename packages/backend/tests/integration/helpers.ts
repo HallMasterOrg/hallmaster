@@ -33,6 +33,13 @@ export async function containerState(clusterId: number) {
   return (await findContainer(clusterId))?.State;
 }
 
+export async function containerEnvironment(clusterId: number) {
+  const container = await findContainer(clusterId);
+  if (container === undefined) return undefined;
+
+  return (await containers.get(container.Id)).Config.Env;
+}
+
 export async function stopContainerOutsideHallMaster(clusterId: number) {
   const container = await findContainer(clusterId);
   if (container !== undefined) {
@@ -86,6 +93,20 @@ export function logInWithDiscord(user: DiscordUser) {
     method: "POST",
     body: { code: "code", redirectUri: REDIRECT_URI },
   });
+}
+
+export const ADMIN: DiscordUser = {
+  id: "222222222222222222",
+  username: "admin",
+  global_name: "Admin",
+  discriminator: "0",
+  avatar: null,
+};
+
+export function addAdmin(token: string, user: DiscordUser) {
+  vi.spyOn(DiscordService, "getUserById").mockResolvedValue(user);
+
+  return request("/users", { method: "POST", token, body: { id: user.id } });
 }
 
 export async function register() {

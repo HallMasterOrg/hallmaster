@@ -1,7 +1,7 @@
 <script lang="ts">
   import BoundaryFailed from "$lib/components/BoundaryFailed.svelte";
   import { getActiveAlerts } from "$lib/remotes/alerts.remote";
-  import { getClusters, getClustersLive } from "$lib/remotes/clusters.remote";
+  import { getClusters, getClustersLive, getOutdatedClusters } from "$lib/remotes/clusters.remote";
   import follow from "$lib/utils/follow";
   import handleLiveError from "$lib/utils/handleLiveError";
   import type { Cluster } from "@hallmaster/backend/schemas";
@@ -17,6 +17,8 @@
   let query = getClusters();
   const activeAlerts = getActiveAlerts();
   let alerts = $derived(await activeAlerts);
+  const outdated = getOutdatedClusters();
+  let outdatedIds = $derived(await outdated);
   onMount(() => {
     let unmounted = false;
     (async () => {
@@ -58,6 +60,7 @@
             <CollapsibleTrigger
               {cluster}
               alerts={alerts.filter(({ clusterId }) => clusterId === cluster.id)}
+              outdated={outdatedIds.includes(cluster.id)}
             />
             <ClusterActions id={cluster.id} status={cluster.status} />
           </div>
