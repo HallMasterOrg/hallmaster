@@ -9,6 +9,7 @@ import DockerService from "#services/docker.service";
 vi.mock("#repositories/bot.repository", () => ({
   default: {
     findFirstIdAndToken: vi.fn(),
+    findFirstIdContainerImageTotalShardsAndToken: vi.fn(),
     updateTotalShards: vi.fn(),
   },
 }));
@@ -18,10 +19,12 @@ vi.mock("#repositories/cluster.repository", () => ({
     create: vi.fn(),
     deleteManyById: vi.fn(),
     findFirstContainerIdById: vi.fn(),
+    findFirstWithContainerIdById: vi.fn(),
     findMany: vi.fn(),
     findManyId: vi.fn(),
     findManyIdAndContainerId: vi.fn(),
     findManyWithContainerId: vi.fn(),
+    updateContainerIdById: vi.fn(),
     updateDesiredStatusById: vi.fn(),
     updateManyDesiredStatusById: vi.fn(),
   },
@@ -75,6 +78,20 @@ function givenClusters(clusters: ObservedCluster[]) {
       clusters.some((cluster) => cluster.id === id) ? { containerId: `container-${id}` } : null,
     ),
   );
+  vi.mocked(ClusterRepository.findFirstWithContainerIdById).mockImplementation((id) => {
+    const cluster = clusters.find((cluster) => cluster.id === id);
+
+    return Promise.resolve(
+      cluster === undefined
+        ? null
+        : {
+            id,
+            shardIds: [id],
+            desiredStatus: cluster.desiredStatus,
+            containerId: `container-${id}`,
+          },
+    );
+  });
 }
 
 beforeEach(() => {
@@ -165,6 +182,73 @@ describe("cluster actions on every cluster", () => {
     const result = await ClusterService.runActionOnAll("restart");
 
     expect(result).toEqual({ succeeded: [], failed: [{ id: 0, reason: "socket closed" }] });
+  });
+});
+
+describe("cluster whose container was removed", () => {
+  beforeEach(() => {
+    givenClusters([{ id: 0, desiredStatus: "RUNNING" }]);
+    vi.mocked(BotRepository.findFirstIdContainerImageTotalShardsAndToken).mockResolvedValue({
+      id: "bot",
+      token: "token",
+      totalShards: 2,
+      containerImage: {
+        serverName: "docker.io",
+        image: "library/alpine",
+        tag: "latest",
+        username: null,
+        password: null,
+      },
+    });
+    vi.mocked(DockerService.create).mockResolvedValue({ Id: "new-0", Warnings: [] });
+  });
+
+  it("recreates the container before starting it", async () => {
+    await ClusterService.start(0);
+
+    expect(DockerService.ensureImage).toHaveBeenCalledWith(
+      expect.objectContaining({ image: "library/alpine" }),
+    );
+    expect(DockerService.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        Image: "docker.io/library/alpine:latest",
+        Env: ["DISCORD_BOT_TOKEN=token", "TOTAL_SHARDS=2", "SHARD_ID_LIST=0"],
+      }),
+      "bot-0",
+    );
+    expect(ClusterRepository.updateContainerIdById).toHaveBeenCalledWith("new-0", 0);
+    expect(DockerService.startContainer).toHaveBeenCalledWith("new-0");
+  });
+
+  it("recreates the container before restarting it", async () => {
+    await ClusterService.restart(0);
+
+    expect(DockerService.restartContainer).toHaveBeenCalledWith("new-0");
+  });
+
+  it("starts an existing container without recreating it", async () => {
+    givenClusters([{ id: 0, desiredStatus: "RUNNING", containerState: "exited" }]);
+
+    await ClusterService.start(0);
+
+    expect(DockerService.create).not.toHaveBeenCalled();
+    expect(DockerService.startContainer).toHaveBeenCalledWith("container-0");
+  });
+
+  it("refuses to recreate it without a container image", async () => {
+    vi.mocked(BotRepository.findFirstIdContainerImageTotalShardsAndToken).mockResolvedValue({
+      id: "bot",
+      token: "token",
+      totalShards: 2,
+      containerImage: null,
+    });
+
+    await expect(ClusterService.start(0)).rejects.toMatchObject({
+      status: 404,
+      message: "Container image not found",
+    });
+    expect(DockerService.create).not.toHaveBeenCalled();
+    expect(ClusterRepository.updateDesiredStatusById).not.toHaveBeenCalled();
   });
 });
 

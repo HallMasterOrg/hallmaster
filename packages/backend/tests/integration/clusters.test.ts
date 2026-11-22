@@ -110,14 +110,31 @@ describe("cluster actions", () => {
     expect(await containerState(0)).toBe("running");
   });
 
+  it("recreates the container of a cluster removed outside HallMaster", async () => {
+    await removeContainerOutsideHallMaster(1);
+
+    expect((await call("/clusters/1/start", { method: "POST" })).body).toMatchObject({
+      status: "RUNNING",
+    });
+    expect(await containerState(1)).toBe("running");
+
+    await removeContainerOutsideHallMaster(1);
+
+    expect((await call("/clusters/1/restart", { method: "POST" })).body).toMatchObject({
+      status: "RUNNING",
+    });
+    expect(await containerState(1)).toBe("running");
+  });
+
   it("reports the failures of an action applied to every cluster", async () => {
     await removeContainerOutsideHallMaster(1);
+    await prisma.containerImage.updateMany({ data: { serverName: "localhost:1" } });
 
     const { body } = await call("/clusters/restart", { method: "POST" });
 
     expect(body).toEqual({
       succeeded: [0],
-      failed: [{ id: 1, reason: expect.stringContaining("No such container") }],
+      failed: [{ id: 1, reason: expect.any(String) }],
     });
   });
 

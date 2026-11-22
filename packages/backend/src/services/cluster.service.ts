@@ -87,8 +87,8 @@ export default class ClusterService {
     return cluster;
   }
 
-  private static async create(
-    cluster: Pick<ClusterRow, "id" | "shardIds" | "desiredStatus">,
+  private static async createContainer(
+    cluster: Pick<ClusterRow, "id" | "shardIds">,
     bot: Pick<Bot, "id" | "token" | "totalShards">,
     containerImage: Pick<ContainerImage, "serverName" | "image" | "tag">,
   ) {
@@ -110,15 +110,50 @@ export default class ClusterService {
       `${bot.id}-${cluster.id}`,
     );
 
+    return container.Id;
+  }
+
+  private static async create(
+    cluster: Pick<ClusterRow, "id" | "shardIds" | "desiredStatus">,
+    bot: Pick<Bot, "id" | "token" | "totalShards">,
+    containerImage: Pick<ContainerImage, "serverName" | "image" | "tag">,
+  ) {
+    const containerId = await this.createContainer(cluster, bot, containerImage);
+
     await ClusterRepository.create({
       id: cluster.id,
       botId: bot.id,
-      containerId: container.Id,
+      containerId,
       shardIds: cluster.shardIds,
       desiredStatus: cluster.desiredStatus,
     });
 
-    return container.Id;
+    return containerId;
+  }
+
+  private static async findWithContainerId(id: ClusterId) {
+    const cluster = await ClusterRepository.findFirstWithContainerIdById(id);
+    if (cluster === null) throw new NotFoundException({ message: `Cluster ${id} not found` });
+
+    return cluster;
+  }
+
+  private static async ensureContainer(
+    cluster: Pick<ClusterRow, "id" | "shardIds" | "containerId">,
+  ) {
+    const states = await DockerService.containerStates([cluster.containerId]);
+    if (states.has(cluster.containerId)) return cluster.containerId;
+
+    const bot = await BotRepository.findFirstIdContainerImageTotalShardsAndToken();
+    if (bot === null) throw new NotFoundException({ message: "Bot not found" });
+    if (bot.containerImage === null)
+      throw new NotFoundException({ message: "Container image not found" });
+
+    await DockerService.ensureImage(bot.containerImage);
+    const containerId = await this.createContainer(cluster, bot, bot.containerImage);
+    await ClusterRepository.updateContainerIdById(containerId, cluster.id);
+
+    return containerId;
   }
 
   private static async findRunningContainerId(id: ClusterId) {
@@ -190,12 +225,12 @@ export default class ClusterService {
   }
 
   public static async start(id: ClusterId) {
-    const cluster = await ClusterRepository.findFirstContainerIdById(id);
-    if (cluster === null) throw new NotFoundException({ message: `Cluster ${id} not found` });
+    const cluster = await this.findWithContainerId(id);
 
     await this.track([id], "STARTING", async () => {
+      const containerId = await this.ensureContainer(cluster);
       await ClusterRepository.updateDesiredStatusById("RUNNING", id);
-      await DockerService.startContainer(cluster.containerId);
+      await DockerService.startContainer(containerId);
     });
 
     return this.get(id);
@@ -214,12 +249,12 @@ export default class ClusterService {
   }
 
   public static async restart(id: ClusterId) {
-    const cluster = await ClusterRepository.findFirstContainerIdById(id);
-    if (cluster === null) throw new NotFoundException({ message: `Cluster ${id} not found` });
+    const cluster = await this.findWithContainerId(id);
 
     await this.track([id], "STARTING", async () => {
+      const containerId = await this.ensureContainer(cluster);
       await ClusterRepository.updateDesiredStatusById("RUNNING", id);
-      await DockerService.restartContainer(cluster.containerId);
+      await DockerService.restartContainer(containerId);
     });
 
     return this.get(id);
