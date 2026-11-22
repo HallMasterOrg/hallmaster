@@ -128,7 +128,7 @@ describe("cluster actions", () => {
 
   it("reports the failures of an action applied to every cluster", async () => {
     await removeContainerOutsideHallMaster(1);
-    await prisma.containerImage.updateMany({ data: { serverName: "localhost:1" } });
+    await prisma.containerImage.updateMany({ data: { image: "Not A Valid Reference" } });
 
     const { body } = await call("/clusters/restart", { method: "POST" });
 
