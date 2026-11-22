@@ -24,7 +24,7 @@ async function failed(response: Response) {
     case 424:
       return error(response.status, ((await response.json()) as ApiError).message);
     case 401:
-      return redirect(303, "/login");
+      return error(401, "Unauthorized");
 
     default:
       console.error(await response.text());
@@ -34,6 +34,8 @@ async function failed(response: Response) {
 
 export const getUsers = query<Users>(async () => {
   const response = await fetch(new URL("/api/users", env.API_URL), { headers: authorization() });
+
+  if (response.status === 401) return redirect(303, "/login");
 
   return response.ok ? ((await response.json()) as Users) : await failed(response);
 });

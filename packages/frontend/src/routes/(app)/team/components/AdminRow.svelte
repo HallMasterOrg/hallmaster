@@ -2,6 +2,7 @@
   import ConfirmButton from "$lib/components/ConfirmButton.svelte";
   import { removeAdmin, transferOwnership } from "$lib/remotes/users.remote";
   import toaster from "$lib/utils/toaster";
+  import toastError from "$lib/utils/toastError";
   import type { User } from "@hallmaster/backend/schemas";
   import { CrownIcon, ShieldUserIcon, UserIcon, UserXIcon } from "@lucide/svelte";
   import { Avatar } from "@skeletonlabs/skeleton-svelte";
@@ -17,16 +18,11 @@
 
   const addedOn = new Intl.DateTimeFormat("en", { dateStyle: "medium" });
 
-  const error = (error: unknown) => ({
-    title: "Error",
-    description: JSON.parse(error as string)?.message ?? "An error occurred",
-  });
-
   function makeOwner() {
     toaster.promise(transferOwnership(user.id), {
       loading: { title: `Transferring the ownership to ${name}..` },
       success: { title: `${name} is now the owner` },
-      error,
+      error: toastError,
     });
   }
 
@@ -34,7 +30,7 @@
     toaster.promise(removeAdmin(user.id), {
       loading: { title: `Removing ${name}..` },
       success: { title: `${name} can no longer log in` },
-      error,
+      error: toastError,
     });
   }
 </script>

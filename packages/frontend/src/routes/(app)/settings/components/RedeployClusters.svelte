@@ -3,6 +3,7 @@
   import { updateBotLayout } from "$lib/remotes/bot.remote";
   import { getClusters, getOutdatedClusters } from "$lib/remotes/clusters.remote";
   import toaster from "$lib/utils/toaster";
+  import toastError from "$lib/utils/toastError";
   import { RotateCwIcon, TriangleAlertIcon } from "@lucide/svelte";
   import { fade } from "svelte/transition";
 
@@ -18,10 +19,7 @@
     toaster.promise(updateBotLayout(layout), {
       loading: { title: "Redeploying clusters.." },
       success: { title: "Clusters redeployed" },
-      error: (error) => ({
-        title: "Error",
-        description: JSON.parse(error as string)?.message ?? "An error occurred",
-      }),
+      error: toastError,
     });
   }
 </script>

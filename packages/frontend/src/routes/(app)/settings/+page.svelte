@@ -3,6 +3,7 @@
   import LabeledInput from "$lib/components/LabeledInput.svelte";
   import { getContainerImage, updateBotImage, updateBotToken } from "$lib/remotes/bot.remote";
   import toaster from "$lib/utils/toaster";
+  import toastError from "$lib/utils/toastError";
   import {
     BracesIcon,
     ContainerIcon,
@@ -42,10 +43,7 @@
               description: "Redeploy the clusters to apply it",
             };
           },
-          error: (error) => ({
-            title: "Error",
-            description: JSON.parse(error as string)?.message ?? "An error occurred",
-          }),
+          error: toastError,
         });
       })}
       class="flex flex-col gap-3"
@@ -122,10 +120,7 @@
             description: "Redeploy the clusters to apply it",
           };
         },
-        error: (error) => ({
-          title: "Error",
-          description: JSON.parse(error as string)?.message ?? "An error occurred",
-        }),
+        error: toastError,
       });
     })}
   >
