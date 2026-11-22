@@ -2,6 +2,7 @@
   import { getEnvironment, updateEnvironment } from "$lib/remotes/bot.remote";
   import parseDotenv from "$lib/utils/parseDotenv";
   import toaster from "$lib/utils/toaster";
+  import toastError from "$lib/utils/toastError";
   import { EnvironmentSchema, type EnvironmentVariables } from "@hallmaster/backend/schemas";
   import { EyeIcon, EyeOffIcon, FileUpIcon, PlusIcon, Trash2Icon } from "@lucide/svelte";
   import type { Attachment } from "svelte/attachments";
@@ -96,10 +97,7 @@
         title: "Environment saved",
         description: "Redeploy the clusters to apply it",
       },
-      error: (error) => ({
-        title: "Error",
-        description: JSON.parse(error as string)?.message ?? "An error occurred",
-      }),
+      error: toastError,
     });
   })}
   class="flex flex-col gap-3"
