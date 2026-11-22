@@ -1,25 +1,12 @@
-<script lang="ts" module>
-  const shades = [800, 700, 600, 500, 400, 300, 200, 100] as const;
-  const colors = [
-    "primary",
-    "secondary",
-    "tertiary",
-    "success",
-    "warning",
-    "error",
-    "surface",
-  ] as const;
-</script>
-
 <script lang="ts" generics="T extends Record<string, { date: Date }> = any">
-  import { curveCatmullRom } from "d3-shape";
-  import { merge } from "es-toolkit/object";
-  import { AreaChart, type AreaChartProps } from "layerchart";
+  import type { AreaChartProps } from "layerchart";
   import { untrack } from "svelte";
+
+  import AreaStackChart, { type AreaStackChartColor } from "./AreaStackChart.svelte";
 
   interface Props extends Omit<AreaChartProps<T>, "data" | "xDomain" | "seriesLayout" | "series"> {
     value?: T;
-    color?: (typeof colors)[number];
+    color?: AreaStackChartColor;
   }
 
   let { value, color = "primary", ...props }: Props = $props();
@@ -27,10 +14,6 @@
   type Data = Record<keyof T, T[keyof T][]>;
   let data = $state.raw<Data>();
   let xDomain = $state<AreaChartProps<T>["xDomain"]>();
-
-  let keys = $derived<NonNullable<AreaChartProps<T>["series"]>[number]["key"][]>(
-    Object.keys(data ?? {}),
-  );
 
   $effect(() => {
     if (!value) return;
@@ -64,26 +47,4 @@
   });
 </script>
 
-<AreaChart
-  grid={false}
-  {...props}
-  {xDomain}
-  seriesLayout="stack"
-  series={keys.map((key, index) => ({
-    key,
-    data: data?.[key],
-    color: `var(--color-${color}-${shades[index % (shades.length - 1)]})`,
-  }))}
-  props={merge<NonNullable<AreaChartProps<T>["props"]>, NonNullable<AreaChartProps<T>["props"]>>(
-    {
-      area: { curve: curveCatmullRom },
-      tooltip: {
-        root: { class: "preset-filled-surface-100-900!" },
-        header: {
-          format: (x) => new Date(x).toLocaleTimeString(),
-        },
-      },
-    },
-    props.props ?? {},
-  )}
-/>
+<AreaStackChart {...props} {data} {xDomain} {color} />
