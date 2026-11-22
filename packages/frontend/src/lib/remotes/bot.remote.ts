@@ -283,6 +283,7 @@ export const updateBotLayout = command(UpdateClustersSchema, async (payload) => 
       await getOutdatedClusters().refresh();
       return;
     case 400:
+    case 409:
     case 424:
       return error(response.status, ((await response.json()) as ApiError).message);
     case 401:

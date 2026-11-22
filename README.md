@@ -11,7 +11,7 @@ HallMaster is an open-source platform designed to centralize the orchestration a
 - Logs you in with Discord. The first Discord account to log in to a new instance becomes its owner, who can then give other Discord accounts admin access, remove them, or hand the instance over to one of them.
 - Registers one Discord bot (its token is checked against Discord) and the container image of your bot.
 - Splits the bot's shards into clusters from the dashboard. Each cluster runs as a Docker container that receives `DISCORD_BOT_TOKEN`, `TOTAL_SHARDS` and `SHARD_ID_LIST`, so your bot knows which shards to handle.
-- Starts, stops and restarts one cluster or several at once.
+- Starts, stops and restarts one cluster or several at once. An action is refused while another one runs on the same cluster or while the layout changes.
 - Shows the live status, logs, CPU and memory of each cluster, and the total for the bot.
 - Keeps the CPU and memory of the clusters for 7 days, and shows them over the last hour, 6 hours, 24 hours or 7 days.
 - Raises an alert when a cluster that should run stops, keeps crashing or runs out of memory.

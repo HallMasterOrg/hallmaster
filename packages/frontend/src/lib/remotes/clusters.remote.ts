@@ -34,8 +34,9 @@ async function clusterAction(
       return error(401, "Unauthorized");
     case 404:
       return error(404, "Cluster not found");
+    case 409:
     case 424:
-      return error(424, ((await response.json()) as ApiError).message);
+      return error(response.status, ((await response.json()) as ApiError).message);
 
     default:
       console.error(await response.text());
@@ -68,6 +69,8 @@ async function clustersBatchAction<I = Cluster["id"]>(
         return redirect(303, "/login");
       case 404:
         return error(404, "Cluster not found");
+      case 409:
+        return error(409, "Another operation is running on this cluster, retry once it is done");
 
       default:
         void response.text().then(console.error);

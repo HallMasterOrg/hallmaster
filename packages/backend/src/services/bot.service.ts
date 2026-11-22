@@ -5,6 +5,7 @@ import EnvironmentVariableRepository from "#repositories/environment-variable.re
 import type { Bot, ContainerImage, CreateBot } from "#schemas/bot.schema";
 import type { Environment } from "#schemas/environment.schema";
 
+import ClusterOperationService from "./cluster-operation.service";
 import ClusterService from "./cluster.service";
 import DiscordService from "./discord.service";
 import DockerService from "./docker.service";
@@ -68,10 +69,12 @@ export default class BotService {
     const bot = await BotRepository.findFirstId();
     if (bot === null) throw new NotFoundException({ message: "Bot not found" });
 
-    await ClusterService.stopAll();
-    await ClusterService.removeAll();
+    const deleted = await ClusterOperationService.runOnLayout(async () => {
+      await ClusterService.stopAll();
+      await ClusterService.removeAll();
 
-    const deleted = await BotRepository.delete();
+      return BotRepository.delete();
+    });
     if (deleted === null) throw new NotFoundException({ message: "Bot not found" });
 
     return {

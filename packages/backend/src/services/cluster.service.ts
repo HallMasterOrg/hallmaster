@@ -28,22 +28,32 @@ const DEPLOYMENT_LABEL = "dev.hallmaster.deployment";
 export default class ClusterService {
   private static readonly pendingStatuses = new Map<ClusterId, PendingStatus>();
 
+  private static setPending(ids: ClusterId[], status: PendingStatus) {
+    for (const id of ids) {
+      this.pendingStatuses.set(id, status);
+    }
+  }
+
+  private static clearPending(ids: ClusterId[]) {
+    for (const id of ids) {
+      this.pendingStatuses.delete(id);
+    }
+  }
+
   private static async track<T>(
     ids: ClusterId[],
     status: PendingStatus,
     operation: () => Promise<T>,
   ) {
-    for (const id of ids) {
-      this.pendingStatuses.set(id, status);
-    }
+    return ClusterOperationService.run(ids, async () => {
+      this.setPending(ids, status);
 
-    try {
-      return await ClusterOperationService.run(ids, operation);
-    } finally {
-      for (const id of ids) {
-        this.pendingStatuses.delete(id);
+      try {
+        return await operation();
+      } finally {
+        this.clearPending(ids);
       }
-    }
+    });
   }
 
   private static status(
@@ -362,7 +372,7 @@ export default class ClusterService {
 
     const ids = clusters.map(({ id }) => id);
 
-    return ClusterOperationService.run(ids, async () => {
+    return ClusterOperationService.runOnLayout(async () => {
       await Promise.all(
         clusters.map(({ containerId }) => DockerService.stopContainer(containerId)),
       );
@@ -377,7 +387,7 @@ export default class ClusterService {
 
     const ids = clusters.map(({ id }) => id);
 
-    return ClusterOperationService.run(ids, async () => {
+    return ClusterOperationService.runOnLayout(async () => {
       await Promise.all(
         clusters.map(({ containerId }) => DockerService.removeContainer(containerId)),
       );
@@ -436,31 +446,39 @@ export default class ClusterService {
     const environment = await EnvironmentVariableRepository.findMany();
 
     const affectedIds = [...new Set([...previousIds, ...clusters.map(({ id }) => id!)])];
-    await this.track(affectedIds, "UPDATING", async () => {
-      await this.stopAll();
-      await this.removeAll();
+    await ClusterOperationService.runOnLayout(async () => {
+      this.setPending(affectedIds, "UPDATING");
 
-      const updatedBot = await BotRepository.updateTotalShards({ totalShards: shards.length });
-      if (updatedBot === null) {
-        throw new NotFoundException({ message: "Bot not found" });
+      try {
+        await this.stopAll();
+        await this.removeAll();
+
+        const updatedBot = await BotRepository.updateTotalShards({ totalShards: shards.length });
+        if (updatedBot === null) {
+          throw new NotFoundException({ message: "Bot not found" });
+        }
+
+        const desiredStatuses = new Map(
+          previous.map(({ id, desiredStatus }) => [id, desiredStatus]),
+        );
+        await Promise.all(
+          clusters.map(async (cluster) => {
+            const desiredStatus = desiredStatuses.get(cluster.id!) ?? "RUNNING";
+            const containerId = await this.create(
+              { id: cluster.id!, shardIds: cluster.shardIds, desiredStatus },
+              { ...bot, totalShards: updatedBot.totalShards },
+              containerImage,
+              environment,
+            );
+
+            if (desiredStatus === "RUNNING") {
+              await DockerService.startContainer(containerId);
+            }
+          }),
+        );
+      } finally {
+        this.clearPending(affectedIds);
       }
-
-      const desiredStatuses = new Map(previous.map(({ id, desiredStatus }) => [id, desiredStatus]));
-      await Promise.all(
-        clusters.map(async (cluster) => {
-          const desiredStatus = desiredStatuses.get(cluster.id!) ?? "RUNNING";
-          const containerId = await this.create(
-            { id: cluster.id!, shardIds: cluster.shardIds, desiredStatus },
-            { ...bot, totalShards: updatedBot.totalShards },
-            containerImage,
-            environment,
-          );
-
-          if (desiredStatus === "RUNNING") {
-            await DockerService.startContainer(containerId);
-          }
-        }),
-      );
     });
 
     return this.getAll();

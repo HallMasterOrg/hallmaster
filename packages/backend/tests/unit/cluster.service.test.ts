@@ -4,6 +4,7 @@ import BotRepository from "#repositories/bot.repository";
 import ClusterRepository from "#repositories/cluster.repository";
 import ContainerImageRepository from "#repositories/container-image.repository";
 import EnvironmentVariableRepository from "#repositories/environment-variable.repository";
+import ClusterOperationService from "#services/cluster-operation.service";
 import ClusterService from "#services/cluster.service";
 import DockerService from "#services/docker.service";
 
@@ -445,5 +446,40 @@ describe("cluster layout update", () => {
     );
     expect(DockerService.stopContainer).not.toHaveBeenCalled();
     expect(DockerService.removeContainer).not.toHaveBeenCalled();
+  });
+
+  it("refuses the actions on a cluster while the layout is applied", async () => {
+    let started = () => {};
+    vi.mocked(DockerService.startContainer).mockReturnValueOnce(
+      new Promise((resolve) => (started = () => resolve(undefined))),
+    );
+    givenClusters([{ id: 1, desiredStatus: "RUNNING" }]);
+
+    const applying = ClusterService.updateAll([{ shardIds: [0] }, { shardIds: [1] }]);
+    await vi.waitFor(() => expect(DockerService.startContainer).toHaveBeenCalled());
+    const stop = ClusterService.stop(1);
+    started();
+
+    await expect(stop).rejects.toMatchObject({
+      status: 409,
+      message: "The clusters are being updated, retry once it is done",
+    });
+    await applying;
+  });
+
+  it("refuses a layout while an action runs on a cluster", async () => {
+    let finish = () => {};
+    const action = ClusterOperationService.run(
+      [1],
+      () => new Promise<void>((resolve) => (finish = resolve)),
+    );
+
+    await expect(ClusterService.updateAll([{ shardIds: [0] }])).rejects.toMatchObject({
+      status: 409,
+      message: "Another operation is running on the clusters, retry once it is done",
+    });
+    finish();
+    await action;
+    expect(DockerService.stopContainer).not.toHaveBeenCalled();
   });
 });
