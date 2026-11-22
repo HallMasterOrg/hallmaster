@@ -13,6 +13,7 @@ export const DiscordUserSchema = z.object({
   avatar: z.string().nullable(),
   banner: z.string().nullish(),
   accent_color: z.number().int().nullish(),
+  bot: z.boolean().optional(),
 });
 export type DiscordUser = z.infer<typeof DiscordUserSchema>;
 

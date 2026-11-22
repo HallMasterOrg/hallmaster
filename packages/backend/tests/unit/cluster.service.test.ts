@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import BotRepository from "#repositories/bot.repository";
 import ClusterRepository from "#repositories/cluster.repository";
 import ContainerImageRepository from "#repositories/container-image.repository";
+import EnvironmentVariableRepository from "#repositories/environment-variable.repository";
 import ClusterService from "#services/cluster.service";
 import DockerService from "#services/docker.service";
 
@@ -33,6 +34,12 @@ vi.mock("#repositories/cluster.repository", () => ({
 vi.mock("#repositories/container-image.repository", () => ({
   default: {
     findFirst: vi.fn(),
+  },
+}));
+
+vi.mock("#repositories/environment-variable.repository", () => ({
+  default: {
+    findMany: vi.fn(),
   },
 }));
 
@@ -200,6 +207,9 @@ describe("cluster whose container was removed", () => {
         password: null,
       },
     });
+    vi.mocked(EnvironmentVariableRepository.findMany).mockResolvedValue([
+      { key: "LOG_LEVEL", value: "info" },
+    ]);
     vi.mocked(DockerService.create).mockResolvedValue({ Id: "new-0", Warnings: [] });
   });
 
@@ -212,7 +222,7 @@ describe("cluster whose container was removed", () => {
     expect(DockerService.create).toHaveBeenCalledWith(
       expect.objectContaining({
         Image: "docker.io/library/alpine:latest",
-        Env: ["DISCORD_BOT_TOKEN=token", "TOTAL_SHARDS=2", "SHARD_ID_LIST=0"],
+        Env: ["LOG_LEVEL=info", "DISCORD_BOT_TOKEN=token", "TOTAL_SHARDS=2", "SHARD_ID_LIST=0"],
       }),
       "bot-0",
     );
@@ -320,6 +330,7 @@ describe("cluster layout update", () => {
       username: null,
       password: null,
     });
+    vi.mocked(EnvironmentVariableRepository.findMany).mockResolvedValue([]);
     vi.mocked(DockerService.create).mockImplementation((_body, name) =>
       Promise.resolve({ Id: `container-${name}`, Warnings: [] }),
     );
@@ -371,6 +382,30 @@ describe("cluster layout update", () => {
       expect.objectContaining({ Env: expect.arrayContaining(["TOTAL_SHARDS=3"]) }),
       "bot-0",
     );
+  });
+
+  it("adds the environment variables without overriding HallMaster's", async () => {
+    vi.mocked(EnvironmentVariableRepository.findMany).mockResolvedValue([
+      { key: "DATABASE_URL", value: "postgres://bot" },
+      { key: "GREETING", value: "a=b c" },
+    ]);
+
+    await ClusterService.updateAll([{ shardIds: [0] }, { shardIds: [1] }]);
+
+    for (const name of ["bot-0", "bot-1"]) {
+      expect(DockerService.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          Env: [
+            "DATABASE_URL=postgres://bot",
+            "GREETING=a=b c",
+            "DISCORD_BOT_TOKEN=token",
+            "TOTAL_SHARDS=2",
+            expect.stringMatching(/^SHARD_ID_LIST=/),
+          ],
+        }),
+        name,
+      );
+    }
   });
 
   it("refuses a layout when no bot is registered", async () => {

@@ -21,6 +21,10 @@ export type Cluster = z.infer<typeof ClusterSchema>;
 
 export const ClustersSchema = z.array(ClusterSchema);
 
+export const OutdatedClustersSchema = z.array(ClusterIdSchema).meta({
+  description: "Clusters running an older image, token or environment than the saved ones",
+});
+
 export const UpdateClustersSchema = z
   .array(ClusterSchema.pick({ id: true, shardIds: true }).partial({ id: true }))
   .min(1)
