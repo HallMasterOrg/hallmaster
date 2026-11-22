@@ -11,8 +11,9 @@ import ClusterOperationService from "./cluster-operation.service";
 import DockerService from "./docker.service";
 
 type WatchedCluster = Pick<ClusterRow, "id" | "containerId" | "desiredStatus">;
-type ActiveAlert = Pick<AlertRow, "id" | "kind">;
+type ActiveAlert = Pick<AlertRow, "id" | "kind" | "message">;
 
+const REMOVED_MESSAGE = "Container removed outside HallMaster";
 const CRASH_LOOP_EXITS = 3;
 const CRASH_LOOP_WINDOW = 10 * 60_000;
 const RECONCILE_INTERVAL = 30_000;
@@ -59,10 +60,11 @@ export default class AlertService {
     return exits.length;
   }
 
-  private static exitMessage({ Action, Actor }: DockerEvent) {
-    if (Action === "destroy") return "Container removed outside HallMaster";
-
-    return `Exited with code ${Actor.Attributes.exitCode}`;
+  private static isWatched(cluster: WatchedCluster, at: Date) {
+    return (
+      cluster.desiredStatus === "RUNNING" &&
+      !ClusterOperationService.isBusy(cluster.id, at.getTime())
+    );
   }
 
   private static async onExit(
@@ -71,19 +73,12 @@ export default class AlertService {
     event: DockerEvent,
     at: Date,
   ) {
-    if (cluster.desiredStatus !== "RUNNING") return;
-    if (ClusterOperationService.isBusy(cluster.id, at.getTime())) return;
-
     const active = await AlertRepository.findManyActive(botId, cluster.id);
     const kinds = new Set(active.map(({ kind }) => kind));
     const raise = (kind: AlertKind, message: string) =>
       AlertRepository.create({ botId, clusterId: cluster.id, kind, message, startedAt: at });
 
-    if (
-      event.Action === "die" &&
-      this.recordExit(cluster.id, at.getTime()) >= CRASH_LOOP_EXITS &&
-      !kinds.has("CRASH_LOOP")
-    ) {
+    if (this.recordExit(cluster.id, at.getTime()) >= CRASH_LOOP_EXITS && !kinds.has("CRASH_LOOP")) {
       await raise(
         "CRASH_LOOP",
         `Exited ${CRASH_LOOP_EXITS} times within ${CRASH_LOOP_WINDOW / 60_000} minutes`,
@@ -93,7 +88,30 @@ export default class AlertService {
 
     if (kinds.has("STOPPED") || kinds.has("CRASH_LOOP")) return;
 
-    await raise("STOPPED", this.exitMessage(event));
+    await raise("STOPPED", `Exited with code ${event.Actor.Attributes.exitCode}`);
+  }
+
+  private static async onRemoved(
+    botId: string,
+    cluster: WatchedCluster,
+    active: ActiveAlert[],
+    at: Date,
+  ) {
+    const stopped = active.find(({ kind }) => kind === "STOPPED");
+
+    if (stopped === undefined) {
+      await AlertRepository.create({
+        botId,
+        clusterId: cluster.id,
+        kind: "STOPPED",
+        message: REMOVED_MESSAGE,
+        startedAt: at,
+      });
+    } else if (stopped.message !== REMOVED_MESSAGE) {
+      await AlertRepository.updateMessage(stopped.id, REMOVED_MESSAGE);
+    }
+
+    return active.filter(({ kind }) => kind === "CRASH_LOOP");
   }
 
   public static async handle(event: DockerEvent) {
@@ -128,8 +146,18 @@ export default class AlertService {
           return;
         }
         case "die":
-        case "destroy":
-          await this.onExit(bot.id, cluster, event, at);
+          if (this.isWatched(cluster, at)) await this.onExit(bot.id, cluster, event, at);
+          return;
+        case "destroy": {
+          if (!this.isWatched(cluster, at)) return;
+
+          const active = await AlertRepository.findManyActive(bot.id, cluster.id);
+          const settled = await this.onRemoved(bot.id, cluster, active, at);
+          await AlertRepository.resolve(
+            settled.map(({ id }) => id),
+            at,
+          );
+        }
       }
     });
   }
@@ -157,17 +185,20 @@ export default class AlertService {
       return active.filter(({ kind }) => kind === "STOPPED" || (settled && kind === "CRASH_LOOP"));
     }
 
+    if (ClusterOperationService.isBusy(cluster.id, now.getTime())) return [];
+
+    if (state === undefined) return this.onRemoved(botId, cluster, active, now);
+
     const stopped =
       state !== "restarting" &&
-      !active.some(({ kind }) => kind === "STOPPED" || kind === "CRASH_LOOP") &&
-      !ClusterOperationService.isBusy(cluster.id, now.getTime());
+      !active.some(({ kind }) => kind === "STOPPED" || kind === "CRASH_LOOP");
 
     if (stopped) {
       await AlertRepository.create({
         botId,
         clusterId: cluster.id,
         kind: "STOPPED",
-        message: state === undefined ? "Container not found" : `Container is ${state}`,
+        message: `Container is ${state}`,
         startedAt: now,
       });
     }

@@ -81,7 +81,14 @@ describe("alerts", () => {
 
     await expect
       .poll(() => alerts("?active=true"), { timeout: 10_000 })
-      .toEqual([expect.objectContaining({ clusterId: 0, kind: "STOPPED", active: true })]);
+      .toEqual([
+        {
+          clusterId: 0,
+          kind: "STOPPED",
+          message: "Container removed outside HallMaster",
+          active: true,
+        },
+      ]);
   });
 
   it("stays quiet while HallMaster stops, restarts and recreates the clusters", async () => {

@@ -15,6 +15,7 @@ vi.mock("#repositories/alert.repository", () => ({
     findMany: vi.fn(),
     findManyActive: vi.fn(),
     resolve: vi.fn(),
+    updateMessage: vi.fn(),
   },
 }));
 
@@ -38,6 +39,7 @@ vi.mock("#services/docker.service", () => ({
 }));
 
 const MINUTE = 60_000;
+const REMOVED = "Container removed outside HallMaster";
 
 type GivenCluster = {
   id: number;
@@ -115,6 +117,13 @@ beforeEach(() => {
       ),
     ),
   );
+  vi.mocked(AlertRepository.updateMessage).mockImplementation((id, message) => {
+    for (const alert of alerts) {
+      if (alert.id === id) alert.message = message;
+    }
+
+    return Promise.resolve();
+  });
   vi.mocked(AlertRepository.resolve).mockImplementation((ids, resolvedAt) => {
     for (const alert of alerts) {
       if (ids.includes(alert.id)) alert.resolvedAt = resolvedAt;
@@ -144,15 +153,14 @@ describe("handle", () => {
 
     await AlertService.handle(event("destroy", 0));
 
-    expect(alerts).toEqual([
-      expect.objectContaining({ kind: "STOPPED", message: "Container removed outside HallMaster" }),
-    ]);
+    expect(alerts).toEqual([expect.objectContaining({ kind: "STOPPED", message: REMOVED })]);
   });
 
   it("ignores the exit of a cluster stopped on purpose", async () => {
     givenClusters([{ id: 0, desiredStatus: "STOPPED" }]);
 
     await AlertService.handle(event("die", 0));
+    await AlertService.handle(event("destroy", 0));
 
     expect(alerts).toEqual([]);
   });
@@ -199,9 +207,30 @@ describe("handle", () => {
     givenClusters([{ id: 0 }]);
 
     await AlertService.handle(event("die", 0));
+    await AlertService.handle(event("die", 0));
+
+    expect(active()).toEqual([{ clusterId: 0, kind: "STOPPED" }]);
+  });
+
+  it("says the container was removed when it exited just before", async () => {
+    givenClusters([{ id: 0 }]);
+
+    await AlertService.handle(event("die", 0));
+    await AlertService.handle(event("destroy", 0));
+
+    expect(alerts).toEqual([
+      expect.objectContaining({ kind: "STOPPED", message: REMOVED, resolvedAt: null }),
+    ]);
+  });
+
+  it("replaces a crash loop with a stopped alert once the container is removed", async () => {
+    givenClusters([{ id: 0 }]);
+    givenAlert({ clusterId: 0, kind: "CRASH_LOOP" });
+
     await AlertService.handle(event("destroy", 0));
 
     expect(active()).toEqual([{ clusterId: 0, kind: "STOPPED" }]);
+    expect(alerts[0]?.resolvedAt).toEqual(new Date());
   });
 
   it("resolves the stopped alert once the cluster starts again", async () => {
@@ -273,7 +302,7 @@ describe("reconcile", () => {
 
     expect(alerts).toEqual([
       expect.objectContaining({ clusterId: 0, kind: "STOPPED", message: "Container is exited" }),
-      expect.objectContaining({ clusterId: 1, kind: "STOPPED", message: "Container not found" }),
+      expect.objectContaining({ clusterId: 1, kind: "STOPPED", message: REMOVED }),
     ]);
   });
 
@@ -284,6 +313,23 @@ describe("reconcile", () => {
     await AlertService.reconcile();
 
     expect(active()).toEqual([{ clusterId: 0, kind: "CRASH_LOOP" }]);
+  });
+
+  it("replaces the crash loop of a cluster whose container is gone", async () => {
+    givenClusters([{ id: 0 }, { id: 1 }]);
+    givenAlert({ clusterId: 0, kind: "CRASH_LOOP" });
+    givenAlert({ clusterId: 1, kind: "STOPPED" });
+
+    await AlertService.reconcile();
+
+    expect(active()).toEqual([
+      { clusterId: 1, kind: "STOPPED" },
+      { clusterId: 0, kind: "STOPPED" },
+    ]);
+    expect(alerts.filter(({ kind }) => kind === "STOPPED").map(({ message }) => message)).toEqual([
+      REMOVED,
+      REMOVED,
+    ]);
   });
 
   it("leaves the clusters under a HallMaster operation alone", async () => {

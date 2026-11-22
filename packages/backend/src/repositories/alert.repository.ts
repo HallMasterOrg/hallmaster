@@ -40,6 +40,10 @@ export default class AlertRepository {
     });
   }
 
+  public static async updateMessage(id: Alert["id"], message: Alert["message"]) {
+    await prisma.alert.update({ where: { id }, data: { message } });
+  }
+
   public static async resolve(ids: Alert["id"][], resolvedAt: Date) {
     if (ids.length === 0) return;
 
