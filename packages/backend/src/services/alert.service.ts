@@ -162,6 +162,44 @@ export default class AlertService {
     });
   }
 
+  public static async deploymentFailed(clusterId: ClusterRow["id"], message: string) {
+    return this.exclusive(async () => {
+      const bot = await BotRepository.findFirstId();
+      if (bot === null) return;
+
+      const now = new Date();
+      const active = await AlertRepository.findManyActive(bot.id, clusterId);
+      await AlertRepository.resolve(
+        active.filter(({ kind }) => kind === "DEPLOY_FAILED").map(({ id }) => id),
+        now,
+      );
+      await AlertRepository.create({
+        botId: bot.id,
+        clusterId,
+        kind: "DEPLOY_FAILED",
+        message,
+        startedAt: now,
+      });
+    });
+  }
+
+  public static async deployed(clusterIds: ClusterRow["id"][]) {
+    return this.exclusive(async () => {
+      const bot = await BotRepository.findFirstId();
+      if (bot === null) return;
+
+      const active = await AlertRepository.findManyActive(bot.id);
+      await AlertRepository.resolve(
+        active
+          .filter(
+            ({ kind, clusterId }) => kind === "DEPLOY_FAILED" && clusterIds.includes(clusterId),
+          )
+          .map(({ id }) => id),
+        new Date(),
+      );
+    });
+  }
+
   private static async isSettled(containerId: string, now: Date) {
     const startedAt = await DockerService.containerStartedAt(containerId);
 

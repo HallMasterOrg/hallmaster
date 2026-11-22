@@ -378,3 +378,35 @@ describe("reconcile", () => {
     expect(ClusterRepository.findManyWithContainerId).not.toHaveBeenCalled();
   });
 });
+
+describe("deployment alerts", () => {
+  it("keeps one alert per cluster for the last failed deployment", async () => {
+    await AlertService.deploymentFailed(1, "Did not start: the container exited with code 1");
+    await AlertService.deploymentFailed(1, "Did not start: the container exited with code 2");
+
+    expect(
+      alerts
+        .filter(({ resolvedAt }) => resolvedAt === null)
+        .map(({ clusterId, kind, message }) => ({ clusterId, kind, message })),
+    ).toEqual([
+      {
+        clusterId: 1,
+        kind: "DEPLOY_FAILED",
+        message: "Did not start: the container exited with code 2",
+      },
+    ]);
+  });
+
+  it("resolves the failed deployments of the clusters deployed since", async () => {
+    givenAlert({ clusterId: 0, kind: "DEPLOY_FAILED" });
+    givenAlert({ clusterId: 1, kind: "DEPLOY_FAILED" });
+    givenAlert({ clusterId: 0, kind: "STOPPED" });
+
+    await AlertService.deployed([0]);
+
+    expect(active()).toEqual([
+      { clusterId: 1, kind: "DEPLOY_FAILED" },
+      { clusterId: 0, kind: "STOPPED" },
+    ]);
+  });
+});

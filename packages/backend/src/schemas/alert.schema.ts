@@ -2,10 +2,12 @@ import z from "zod";
 
 import { ClusterIdSchema } from "./cluster.schema";
 
-export const AlertKindSchema = z.enum(["STOPPED", "CRASH_LOOP", "OOM_KILLED"]).meta({
-  description:
-    "STOPPED: the cluster should run but does not, CRASH_LOOP: the cluster keeps exiting, OOM_KILLED: the cluster ran out of memory",
-});
+export const AlertKindSchema = z
+  .enum(["STOPPED", "CRASH_LOOP", "OOM_KILLED", "DEPLOY_FAILED"])
+  .meta({
+    description:
+      "STOPPED: the cluster should run but does not, CRASH_LOOP: the cluster keeps exiting, OOM_KILLED: the cluster ran out of memory, DEPLOY_FAILED: the cluster was not ready after a deployment",
+  });
 export type AlertKind = z.infer<typeof AlertKindSchema>;
 
 export const AlertSchema = z.object({

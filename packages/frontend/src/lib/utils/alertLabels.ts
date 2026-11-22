@@ -4,6 +4,7 @@ const alertLabels: Record<AlertKind, string> = {
   STOPPED: "down",
   CRASH_LOOP: "crash loop",
   OOM_KILLED: "out of memory",
+  DEPLOY_FAILED: "deploy failed",
 };
 
 export default alertLabels;

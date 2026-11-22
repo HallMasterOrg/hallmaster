@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 
 import { BadRequestException, NotFoundException } from "#exceptions/http-exceptions";
+import env from "#lib/env";
 import type { Bot, Cluster as ClusterRow, ContainerImage } from "#prisma/client";
 import BotRepository from "#repositories/bot.repository";
 import ClusterRepository from "#repositories/cluster.repository";
@@ -17,13 +18,23 @@ import type {
 } from "#schemas/cluster.schema";
 import type { EnvironmentVariables } from "#schemas/environment.schema";
 
+import AlertService from "./alert.service";
 import ClusterOperationService from "./cluster-operation.service";
 import DockerService from "./docker.service";
 
-type PendingStatus = Extract<ClusterStatus, "STARTING" | "UPDATING">;
+type PendingStatus = Extract<ClusterStatus, "STARTING" | "UPDATING" | "WAITING">;
 type ContainerImageReference = Pick<ContainerImage, "serverName" | "image" | "tag">;
+type DeployedCluster = Pick<ClusterRow, "id" | "shardIds" | "desiredStatus" | "containerId">;
+type Deployment = {
+  bot: Pick<Bot, "id" | "token" | "totalShards">;
+  containerImage: ContainerImageReference;
+  environment: EnvironmentVariables;
+};
+
+export type RolloutOutcome = { failure: string | null };
 
 const DEPLOYMENT_LABEL = "dev.hallmaster.deployment";
+const PREVIOUS_SUFFIX = "-previous";
 
 export default class ClusterService {
   private static readonly pendingStatuses = new Map<ClusterId, PendingStatus>();
@@ -54,6 +65,21 @@ export default class ClusterService {
         this.clearPending(ids);
       }
     });
+  }
+
+  private static readiness() {
+    return {
+      delayMs: env.CLUSTER_READY_DELAY_SECONDS * 1_000,
+      timeoutMs: env.CLUSTER_READY_TIMEOUT_SECONDS * 1_000,
+    };
+  }
+
+  private static reason(error: unknown) {
+    return error instanceof Error ? error.message : String(error);
+  }
+
+  private static async alert(task: Promise<unknown>) {
+    await task.catch((error: unknown) => console.error("Could not update the alerts", error));
   }
 
   private static status(
@@ -108,6 +134,10 @@ export default class ClusterService {
     return `${serverName}/${image}:${tag}`;
   }
 
+  private static containerName(botId: Bot["id"], id: ClusterId) {
+    return `${botId}-${id}`;
+  }
+
   private static deployment(
     token: Bot["token"],
     containerImage: ContainerImageReference,
@@ -116,6 +146,21 @@ export default class ClusterService {
     return createHash("sha256")
       .update(JSON.stringify([token, this.imageReference(containerImage), environment]))
       .digest("hex");
+  }
+
+  private static async loadDeployment(): Promise<Deployment> {
+    const [bot, containerImage, environment] = await Promise.all([
+      BotRepository.findFirstIdTokenAndTotalShards(),
+      ContainerImageRepository.findFirst(),
+      EnvironmentVariableRepository.findMany(),
+    ]);
+    if (bot === null) throw new NotFoundException({ message: "Bot not found" });
+    if (containerImage === null)
+      throw new NotFoundException({ message: "Container image not found" });
+
+    await DockerService.ensureImage(containerImage);
+
+    return { bot, containerImage, environment };
   }
 
   private static async createContainer(
@@ -141,7 +186,7 @@ export default class ClusterService {
           [DEPLOYMENT_LABEL]: this.deployment(bot.token, containerImage, environment),
         },
       },
-      `${bot.id}-${cluster.id}`,
+      this.containerName(bot.id, cluster.id),
     );
 
     return container.Id;
@@ -396,10 +441,7 @@ export default class ClusterService {
     });
   }
 
-  public static async updateAll(clusters: UpdateClusters) {
-    const bot = await BotRepository.findFirstIdAndToken();
-    if (bot === null) throw new NotFoundException({ message: "Bot not found" });
-
+  private static async applyLayout(clusters: UpdateClusters) {
     const ids = new Set<UpdateClusters[number]["id"]>();
     const previous = await ClusterRepository.findMany();
     const previousIds = new Set(previous.map(({ id }) => id));
@@ -438,49 +480,209 @@ export default class ClusterService {
       cluster.id = nextId++;
     }
 
-    const containerImage = await ContainerImageRepository.findFirst();
-    if (containerImage === null)
-      throw new NotFoundException({ message: "Container image not found" });
-
-    await DockerService.ensureImage(containerImage);
-    const environment = await EnvironmentVariableRepository.findMany();
-
+    const { bot, containerImage, environment } = await this.loadDeployment();
     const affectedIds = [...new Set([...previousIds, ...clusters.map(({ id }) => id!)])];
-    await ClusterOperationService.runOnLayout(async () => {
-      this.setPending(affectedIds, "UPDATING");
+    this.setPending(affectedIds, "UPDATING");
+
+    try {
+      await this.stopAll();
+      await this.removeAll();
+
+      const updatedBot = await BotRepository.updateTotalShards({ totalShards: shards.length });
+      if (updatedBot === null) {
+        throw new NotFoundException({ message: "Bot not found" });
+      }
+
+      const desiredStatuses = new Map(previous.map(({ id, desiredStatus }) => [id, desiredStatus]));
+      const created = await Promise.all(
+        clusters.map(async (cluster) => {
+          const desiredStatus = desiredStatuses.get(cluster.id!) ?? "RUNNING";
+          const containerId = await this.create(
+            { id: cluster.id!, shardIds: cluster.shardIds, desiredStatus },
+            { ...bot, totalShards: updatedBot.totalShards },
+            containerImage,
+            environment,
+          );
+
+          return { id: cluster.id!, containerId, desiredStatus };
+        }),
+      );
+
+      const started = created
+        .filter(({ desiredStatus }) => desiredStatus === "RUNNING")
+        .sort((a, b) => a.id - b.id);
+      this.setPending(
+        started.map(({ id }) => id),
+        "WAITING",
+      );
+
+      return started;
+    } finally {
+      this.clearPending(affectedIds.filter((id) => this.pendingStatuses.get(id) === "UPDATING"));
+    }
+  }
+
+  private static async startOneByOne(clusters: Pick<ClusterRow, "id" | "containerId">[]) {
+    for (const { id, containerId } of clusters) {
+      this.pendingStatuses.set(id, "STARTING");
 
       try {
-        await this.stopAll();
-        await this.removeAll();
-
-        const updatedBot = await BotRepository.updateTotalShards({ totalShards: shards.length });
-        if (updatedBot === null) {
-          throw new NotFoundException({ message: "Bot not found" });
-        }
-
-        const desiredStatuses = new Map(
-          previous.map(({ id, desiredStatus }) => [id, desiredStatus]),
-        );
-        await Promise.all(
-          clusters.map(async (cluster) => {
-            const desiredStatus = desiredStatuses.get(cluster.id!) ?? "RUNNING";
-            const containerId = await this.create(
-              { id: cluster.id!, shardIds: cluster.shardIds, desiredStatus },
-              { ...bot, totalShards: updatedBot.totalShards },
-              containerImage,
-              environment,
-            );
-
-            if (desiredStatus === "RUNNING") {
-              await DockerService.startContainer(containerId);
-            }
-          }),
-        );
+        await DockerService.startContainer(containerId);
+        await DockerService.waitUntilReady(containerId, this.readiness());
+        await this.alert(AlertService.deployed([id]));
+      } catch (error) {
+        await this.alert(AlertService.deploymentFailed(id, `Did not start: ${this.reason(error)}`));
       } finally {
-        this.clearPending(affectedIds);
+        this.pendingStatuses.delete(id);
       }
-    });
+    }
+  }
+
+  public static async updateAll(clusters: UpdateClusters) {
+    await ClusterOperationService.startOnLayout(
+      () => this.applyLayout(clusters),
+      (started) => this.startOneByOne(started),
+    );
 
     return this.getAll();
+  }
+
+  private static async replaceContainer(cluster: DeployedCluster, deployment: Deployment) {
+    const name = this.containerName(deployment.bot.id, cluster.id);
+    const previousName = `${name}${PREVIOUS_SUFFIX}`;
+
+    const stale = await DockerService.findContainerId(previousName);
+    if (stale !== undefined && stale !== cluster.containerId) {
+      await DockerService.stopContainer(stale);
+      await DockerService.removeContainer(stale);
+    }
+
+    if ((await DockerService.findContainerId(cluster.containerId)) !== undefined) {
+      await DockerService.stopContainer(cluster.containerId);
+      await DockerService.renameContainer(cluster.containerId, previousName);
+    }
+
+    const containerId = await this.createContainer(
+      cluster,
+      deployment.bot,
+      deployment.containerImage,
+      deployment.environment,
+    );
+    await ClusterRepository.updateContainerIdById(containerId, cluster.id);
+
+    return containerId;
+  }
+
+  private static async restore(cluster: DeployedCluster, botId: Bot["id"]) {
+    const name = this.containerName(botId, cluster.id);
+    const [current, previous] = await Promise.all([
+      DockerService.findContainerId(name),
+      DockerService.findContainerId(cluster.containerId),
+    ]);
+
+    if (current !== undefined && current !== previous) {
+      await DockerService.stopContainer(current);
+      await DockerService.removeContainer(current);
+    }
+
+    await ClusterRepository.updateContainerIdById(cluster.containerId, cluster.id);
+    if (previous === undefined) return;
+
+    if (current !== previous) await DockerService.renameContainer(previous, name);
+    if (cluster.desiredStatus === "RUNNING") await DockerService.startContainer(previous);
+  }
+
+  private static async rollBack(clusters: DeployedCluster[], botId: Bot["id"]) {
+    for (const cluster of clusters.toReversed()) {
+      this.pendingStatuses.set(cluster.id, "UPDATING");
+      await this.restore(cluster, botId).catch((error: unknown) => {
+        console.error(`Could not roll cluster ${cluster.id} back`, error);
+      });
+    }
+  }
+
+  private static async rollOut(
+    clusters: DeployedCluster[],
+    deployment: Deployment,
+  ): Promise<RolloutOutcome> {
+    const image = this.imageReference(deployment.containerImage);
+    const replaced: DeployedCluster[] = [];
+
+    for (const cluster of clusters) {
+      replaced.push(cluster);
+      this.pendingStatuses.set(cluster.id, "UPDATING");
+
+      try {
+        const containerId = await this.replaceContainer(cluster, deployment);
+        if (cluster.desiredStatus === "RUNNING") {
+          await DockerService.startContainer(containerId);
+          await DockerService.waitUntilReady(containerId, this.readiness());
+        }
+        this.pendingStatuses.delete(cluster.id);
+      } catch (error) {
+        await this.rollBack(replaced, deployment.bot.id);
+
+        const reason = this.reason(error);
+        await this.alert(
+          AlertService.deploymentFailed(
+            cluster.id,
+            `Could not run ${image}: ${reason}. Every cluster went back to the previous version`,
+          ),
+        );
+
+        return {
+          failure: `Cluster ${cluster.id} could not run ${image}, ${reason}. Every cluster went back to the previous version`,
+        };
+      }
+    }
+
+    await Promise.all(
+      replaced.map(({ containerId }) => DockerService.removeContainer(containerId)),
+    );
+    await this.alert(AlertService.deployed(clusters.map(({ id }) => id)));
+
+    return { failure: null };
+  }
+
+  public static async redeploy() {
+    const { finished } = await ClusterOperationService.startOnLayout(
+      async () => {
+        const deployment = await this.loadDeployment();
+        const clusters = await ClusterRepository.findManyWithContainerId();
+        this.setPending(
+          clusters.map(({ id }) => id),
+          "WAITING",
+        );
+
+        return { deployment, clusters };
+      },
+      async ({ deployment, clusters }) => {
+        try {
+          return await this.rollOut(clusters, deployment);
+        } finally {
+          this.clearPending(clusters.map(({ id }) => id));
+        }
+      },
+    );
+
+    return { clusters: await this.getAll(), finished };
+  }
+
+  public static async recover() {
+    await ClusterOperationService.runOnLayout(async () => {
+      const bot = await BotRepository.findFirstId();
+      if (bot === null) return;
+
+      const clusters = await ClusterRepository.findManyWithContainerId();
+      const interrupted: DeployedCluster[] = [];
+      for (const cluster of clusters) {
+        const previous = await DockerService.findContainerId(
+          `${this.containerName(bot.id, cluster.id)}${PREVIOUS_SUFFIX}`,
+        );
+        if (previous !== undefined) interrupted.push({ ...cluster, containerId: previous });
+      }
+
+      await this.rollBack(interrupted, bot.id);
+    });
   }
 }

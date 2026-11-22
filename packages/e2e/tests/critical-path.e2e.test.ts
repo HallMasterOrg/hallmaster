@@ -281,7 +281,7 @@ describe("redeploy", () => {
     await page.goto("/settings");
     await page.getByRole("button", { name: "Redeploy clusters" }).click();
     await page.getByRole("button", { name: "Confirm action" }).click();
-    await visible(page.getByText("Clusters redeployed"));
+    await visible(page.getByText("Redeploying the clusters"));
     await page.getByText("Changes not deployed").waitFor({ state: "hidden" });
 
     expect(containerEnvironment(0)).toContain("LOG_LEVEL=info");

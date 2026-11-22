@@ -41,9 +41,13 @@
       "preset-filled-success-400-600": cluster.status === "RUNNING",
       "animate-pulse preset-filled-primary-500":
         cluster.status === "STARTING" || cluster.status === "UPDATING",
+      "preset-tonal-primary": cluster.status === "WAITING",
       "preset-filled-surface-500": cluster.status === "STOPPED",
       "preset-filled-error-500": cluster.status === "ERROR",
     }}
+    title={cluster.status === "WAITING"
+      ? "Waits for the clusters before it to be ready"
+      : undefined}
   >
     {cluster.status.toLowerCase()}
   </div>

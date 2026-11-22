@@ -1,6 +1,6 @@
 <script lang="ts">
   import ConfirmButton from "$lib/components/ConfirmButton.svelte";
-  import { updateBotLayout } from "$lib/remotes/bot.remote";
+  import { redeployClusters } from "$lib/remotes/bot.remote";
   import { getClusters, getOutdatedClusters } from "$lib/remotes/clusters.remote";
   import toaster from "$lib/utils/toaster";
   import toastError from "$lib/utils/toastError";
@@ -12,13 +12,29 @@
 
   let deployed = $derived((await clusters).length > 0);
   let behind = $derived((await outdated).length);
+  let updating = $derived(
+    (await clusters).some(({ status }) => ["STARTING", "UPDATING", "WAITING"].includes(status)),
+  );
 
-  async function redeploy() {
-    const layout = (await clusters).map(({ id, shardIds }) => ({ id, shardIds }));
+  $effect(() => {
+    if (!updating) return;
 
-    toaster.promise(updateBotLayout(layout), {
-      loading: { title: "Redeploying clusters.." },
-      success: { title: "Clusters redeployed" },
+    const interval = setInterval(async () => {
+      await clusters.refresh();
+      await outdated.refresh();
+    }, 2_000);
+
+    return () => clearInterval(interval);
+  });
+
+  function redeploy() {
+    toaster.promise(redeployClusters(), {
+      loading: { title: "Starting the redeploy.." },
+      success: {
+        title: "Redeploying the clusters",
+        description:
+          "One by one, each once the previous one is ready. A failure brings every cluster back",
+      },
       error: toastError,
     });
   }
@@ -39,10 +55,12 @@
     label="Redeploy clusters"
     icon={{ icon: RotateCwIcon, size: 16 }}
     class="preset-tonal btn-sm"
-    title={deployed
-      ? "Recreate the clusters with the saved image, token and environment"
-      : "No cluster is deployed yet"}
-    disabled={!deployed || !!updateBotLayout.pending}
+    title={!deployed
+      ? "No cluster is deployed yet"
+      : updating
+        ? "The clusters are being deployed"
+        : "Replace the clusters one by one with the saved image, token and environment"}
+    disabled={!deployed || updating || !!redeployClusters.pending}
     onclick={redeploy}
   />
 </div>

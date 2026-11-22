@@ -4,6 +4,7 @@ import { vi } from "vitest";
 import prisma from "#lib/database";
 import socket from "#lib/docker";
 import type { DiscordUser } from "#schemas/discord.schema";
+import ClusterOperationService from "#services/cluster-operation.service";
 import DiscordService from "#services/discord.service";
 
 import app from "../../src/app";
@@ -22,8 +23,8 @@ export const OWNER: DiscordUser = {
 
 const containers = new DockerContainersAPI(socket);
 
-async function findContainer(clusterId: number) {
-  const name = `${BOT_ID}-${clusterId}`;
+async function findContainer(clusterId: number, suffix = "") {
+  const name = `${BOT_ID}-${clusterId}${suffix}`;
   const matches = await containers.list({ all: true, filters: { name: [name] } });
 
   return matches.find(({ Names }) => Names.includes(`/${name}`));
@@ -31,6 +32,18 @@ async function findContainer(clusterId: number) {
 
 export async function containerState(clusterId: number) {
   return (await findContainer(clusterId))?.State;
+}
+
+export async function containerId(clusterId: number) {
+  return (await findContainer(clusterId))?.Id;
+}
+
+export async function previousContainerState(clusterId: number) {
+  return (await findContainer(clusterId, "-previous"))?.State;
+}
+
+export function settled() {
+  return ClusterOperationService.idle();
 }
 
 export async function containerEnvironment(clusterId: number) {
@@ -56,6 +69,7 @@ export async function removeContainerOutsideHallMaster(clusterId: number) {
 }
 
 export async function resetState() {
+  await settled();
   await prisma.$executeRawUnsafe('TRUNCATE "User", "bot" CASCADE');
 
   const leftovers = await containers.list({ all: true, filters: { name: [`${BOT_ID}-`] } });

@@ -14,7 +14,8 @@ HallMaster is an open-source platform designed to centralize the orchestration a
 - Starts, stops and restarts one cluster or several at once. An action is refused while another one runs on the same cluster or while the layout changes.
 - Shows the live status, logs, CPU and memory of each cluster, and the total for the bot.
 - Keeps the CPU and memory of the clusters for 7 days, and shows them over the last hour, 6 hours, 24 hours or 7 days.
-- Raises an alert when a cluster that should run stops, keeps crashing or runs out of memory.
+- Raises an alert when a cluster that should run stops, keeps crashing, runs out of memory or fails a deployment.
+- Starts and redeploys the clusters one by one, each once the previous one is ready, and brings every cluster back to the previous version when a redeploy fails (see [Deployments](#deployments)).
 
 ## What it does not do
 
@@ -22,7 +23,8 @@ HallMaster is an open-source platform designed to centralize the orchestration a
 - It only runs containers on the machine where the backend runs (through the local Docker socket). There is no multi-machine setup yet.
 - It does not build your bot: push its image to a registry first, then give HallMaster the image URL.
 - It does not scale or reshard on its own: you change the cluster layout by hand.
-- Changing the bot token or the image in the settings does not restart the running clusters. The new values are used the next time you apply a layout.
+- Changing the bot token, the image or the environment variables in the settings does not restart the running clusters. Redeploy them from the settings to apply the new values.
+- Deployments are not free of downtime: each cluster is stopped while its new container starts and connects its shards. The other clusters keep running.
 
 ## Features
 
@@ -129,6 +131,26 @@ A `docker-compose.yml` is provided at the root of the repository to run the full
 ```sh
 docker compose up -d
 ```
+
+## Deployments
+
+HallMaster never restarts every cluster at once. Saving a layout starts the clusters one by one, and a redeploy from the settings replaces them one by one: it stops a cluster, starts its new container, waits until it is ready, then moves on to the next one. Each cluster is down while its new container starts, but the bot never runs two containers for the same shards, so it never receives an event twice.
+
+A container is ready once it is healthy when the image declares a [`HEALTHCHECK`](https://docs.docker.com/reference/dockerfile/#healthcheck), or once it has run for `CLUSTER_READY_DELAY_SECONDS` (10 by default) otherwise. Declare a health check that passes once the shards of the cluster are connected, so that the next cluster only starts once they are:
+
+```dockerfile
+# the bot creates /tmp/ready once its client is ready
+HEALTHCHECK --interval=5s --start-period=5m --start-interval=1s CMD test -f /tmp/ready
+```
+
+When a container exits, turns unhealthy or is not ready after `CLUSTER_READY_TIMEOUT_SECONDS` (300 by default):
+
+- during a redeploy, every cluster already replaced goes back to its previous container and the saved image does not change;
+- while a layout starts, HallMaster goes on with the next cluster.
+
+Either way, the cluster gets a "deploy failed" alert with the reason. Each deployment reconnects every shard to Discord, which counts against the daily session start limit of the bot.
+
+While a deployment runs, the clusters show as updating and the other actions on them answer `409 Conflict`. If the backend stops in the middle of a redeploy, it brings the clusters back to their previous containers when it starts again.
 
 ## Contributing
 

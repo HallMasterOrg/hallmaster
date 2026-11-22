@@ -222,6 +222,7 @@ export default async function setup(project: TestProject) {
     DISCORD_URL: discordURL,
     DISCORD_CLIENT_ID: DISCORD_CLIENT.id,
     DISCORD_CLIENT_SECRET: DISCORD_CLIENT.secret,
+    CLUSTER_READY_DELAY_SECONDS: "1",
   });
   await waitUntilUp("backend", `http://127.0.0.1:${backendPort}/openapi.json`, backend);
 

@@ -24,7 +24,10 @@
     onclick={() => {
       toaster.promise(updateBotLayout(layout!.export()), {
         loading: { title: "Updating layout.." },
-        success: { title: "Successfully applied layout" },
+        success: {
+          title: "Successfully applied layout",
+          description: "The clusters start one by one, each once the previous one is ready",
+        },
         error: toastError,
       });
     }}
