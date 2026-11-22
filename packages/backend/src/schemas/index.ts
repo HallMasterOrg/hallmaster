@@ -1,3 +1,4 @@
+export * from "./alert.schema";
 export * from "./auth.schema";
 export * from "./bot.schema";
 export * from "./cluster.schema";

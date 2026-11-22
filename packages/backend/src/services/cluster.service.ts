@@ -17,6 +17,7 @@ import type {
 } from "#schemas/cluster.schema";
 import type { EnvironmentVariables } from "#schemas/environment.schema";
 
+import ClusterOperationService from "./cluster-operation.service";
 import DockerService from "./docker.service";
 
 type PendingStatus = Extract<ClusterStatus, "STARTING" | "UPDATING">;
@@ -37,7 +38,7 @@ export default class ClusterService {
     }
 
     try {
-      return await operation();
+      return await ClusterOperationService.run(ids, operation);
     } finally {
       for (const id of ids) {
         this.pendingStatuses.delete(id);
@@ -228,8 +229,10 @@ export default class ClusterService {
     const cluster = await ClusterRepository.findFirstContainerIdById(id);
     if (cluster === null) throw new NotFoundException({ message: `Cluster ${id} not found` });
 
-    await ClusterRepository.updateDesiredStatusById("STOPPED", id);
-    await DockerService.stopContainer(cluster.containerId);
+    await ClusterOperationService.run([id], async () => {
+      await ClusterRepository.updateDesiredStatusById("STOPPED", id);
+      await DockerService.stopContainer(cluster.containerId);
+    });
 
     return this.get(id);
   }
@@ -279,9 +282,11 @@ export default class ClusterService {
   public static async remove(id: ClusterId): Promise<Cluster> {
     const { shardIds, status, containerId } = await this.findObserved(id);
 
-    await DockerService.stopContainer(containerId);
-    await DockerService.removeContainer(containerId);
-    await ClusterRepository.deleteById(id);
+    await ClusterOperationService.run([id], async () => {
+      await DockerService.stopContainer(containerId);
+      await DockerService.removeContainer(containerId);
+      await ClusterRepository.deleteById(id);
+    });
 
     return { id, shardIds, status };
   }
@@ -318,23 +323,30 @@ export default class ClusterService {
       return;
     }
 
-    await Promise.all(clusters.map(({ containerId }) => DockerService.stopContainer(containerId)));
+    const ids = clusters.map(({ id }) => id);
 
-    return ClusterRepository.updateManyDesiredStatusById(
-      "STOPPED",
-      clusters.map(({ id }) => id),
-    );
+    return ClusterOperationService.run(ids, async () => {
+      await Promise.all(
+        clusters.map(({ containerId }) => DockerService.stopContainer(containerId)),
+      );
+
+      return ClusterRepository.updateManyDesiredStatusById("STOPPED", ids);
+    });
   }
 
   public static async removeAll() {
     const clusters = await ClusterRepository.findManyIdAndContainerId();
     if (clusters.length === 0) return;
 
-    await Promise.all(
-      clusters.map(({ containerId }) => DockerService.removeContainer(containerId)),
-    );
+    const ids = clusters.map(({ id }) => id);
 
-    return ClusterRepository.deleteManyById(clusters.map(({ id }) => id));
+    return ClusterOperationService.run(ids, async () => {
+      await Promise.all(
+        clusters.map(({ containerId }) => DockerService.removeContainer(containerId)),
+      );
+
+      return ClusterRepository.deleteManyById(ids);
+    });
   }
 
   public static async updateAll(clusters: UpdateClusters) {

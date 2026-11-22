@@ -4,6 +4,7 @@
 
 <script lang="ts">
   import {
+    BellIcon,
     ChartAreaIcon,
     ChevronRightIcon,
     ContainerIcon,
@@ -22,6 +23,7 @@
     "": [
       { label: "Clusters", icon: ContainerIcon, path: "/clusters" },
       { label: "Statistics", icon: ChartAreaIcon, path: "/stats" },
+      { label: "Alerts", icon: BellIcon, path: "/alerts" },
     ],
     administration: [
       { label: "Layout", icon: LayoutDashboardIcon, path: "/layout" },

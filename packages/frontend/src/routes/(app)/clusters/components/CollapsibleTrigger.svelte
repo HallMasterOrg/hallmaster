@@ -1,20 +1,29 @@
 <script lang="ts">
-  import type { Cluster } from "@hallmaster/backend/schemas";
-  import { ChevronRightIcon, TriangleAlertIcon } from "@lucide/svelte";
+  import alertLabels from "$lib/utils/alertLabels";
+  import type { Alert, Cluster } from "@hallmaster/backend/schemas";
+  import { BellRingIcon, ChevronRightIcon, TriangleAlertIcon } from "@lucide/svelte";
   import { Collapsible } from "@skeletonlabs/skeleton-svelte";
 
   interface Props {
     cluster: Cluster;
+    alerts: Alert[];
     outdated: boolean;
   }
 
-  let { cluster, outdated }: Props = $props();
+  let { cluster, alerts, outdated }: Props = $props();
 </script>
 
 <Collapsible.Trigger class="btn grow justify-start">
   <Collapsible.Indicator class="group">
     <ChevronRightIcon class="transition-transform group-data-[state=open]:rotate-90" />
   </Collapsible.Indicator>
+
+  {#each alerts as alert (alert.id)}
+    <span class="badge preset-tonal-error" title={alert.message}>
+      <BellRingIcon size={14} />
+      {alertLabels[alert.kind]}
+    </span>
+  {/each}
 
   {#if outdated}
     <span

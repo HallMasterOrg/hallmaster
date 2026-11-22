@@ -238,6 +238,28 @@ describe("cluster actions", () => {
   });
 });
 
+describe("alerts", () => {
+  it("flags a cluster stopped outside HallMaster until it starts again", async () => {
+    await page.waitForTimeout(1_500);
+    execFileSync("docker", ["stop", `${BOT_ID}-1`]);
+
+    await visible(clusterRow(page, 1).getByText("down"));
+
+    await page.goto("/alerts");
+    await visible(page.getByRole("region", { name: "Active" }).getByText("Cluster 01"));
+
+    await page.goto("/clusters");
+    await page.getByRole("button", { name: "start cluster 01" }).click();
+    await visible(clusterRow(page, 1).getByText("running", { exact: true }));
+    await expect
+      .poll(() => clusterRow(page, 1).getByText("down").count(), { timeout: 10_000 })
+      .toBe(0);
+
+    await page.goto("/alerts");
+    await visible(page.getByRole("region", { name: "History" }).getByText("Cluster 01"));
+  });
+});
+
 describe("redeploy", () => {
   it("gives the saved variables to the running clusters", async () => {
     await page.goto("/settings");

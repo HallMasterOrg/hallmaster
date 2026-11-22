@@ -24,3 +24,28 @@ export const DockerContainerStatsSchema = z.object({
     .default({}),
 });
 export type DockerContainerStats = z.infer<typeof DockerContainerStatsSchema>;
+
+export const DockerEventActionSchema = z.enum(["die", "start", "restart", "oom", "destroy"]);
+export type DockerEventAction = z.infer<typeof DockerEventActionSchema>;
+
+export const DockerEventSchema = z.object({
+  Action: DockerEventActionSchema,
+  Actor: z.object({
+    ID: z.string(),
+    Attributes: z.object({ exitCode: z.string().default("unknown") }).prefault({}),
+  }),
+  timeNano: z.number(),
+});
+export type DockerEvent = z.infer<typeof DockerEventSchema>;
+
+export const DockerEventLineSchema = z
+  .string()
+  .transform((line, context) => {
+    try {
+      return JSON.parse(line) as unknown;
+    } catch {
+      context.issues.push({ code: "custom", message: "Invalid JSON", input: line });
+      return z.NEVER;
+    }
+  })
+  .pipe(DockerEventSchema);

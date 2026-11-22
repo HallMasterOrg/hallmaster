@@ -6,7 +6,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import DockerService from "#services/docker.service";
 
-const { containers, images } = vi.hoisted(() => ({
+const { containers, images, streamAPICall } = vi.hoisted(() => ({
   containers: {
     create: vi.fn(),
     list: vi.fn(),
@@ -18,6 +18,7 @@ const { containers, images } = vi.hoisted(() => ({
     create: vi.fn(),
     list: vi.fn(),
   },
+  streamAPICall: vi.fn(),
 }));
 
 vi.mock("@hallmaster/docker.js", () => ({
@@ -31,6 +32,7 @@ vi.mock("@hallmaster/docker.js", () => ({
   },
   DockerSocket: class {
     async init() {}
+    streamAPICall = streamAPICall;
   },
   DockerContainersAPI: class {
     constructor() {
@@ -230,5 +232,57 @@ describe("image availability", () => {
       tag: "1.0",
       auth: { serveraddress: "registry.example.com", username: "deployer", password: "secret" },
     });
+  });
+});
+
+describe("cluster events", () => {
+  it("streams the valid events of the HallMaster containers", async () => {
+    const lines = [
+      JSON.stringify({
+        Action: "die",
+        Actor: { ID: "a", Attributes: { exitCode: "1" } },
+        timeNano: 1,
+      }),
+      "not json",
+      JSON.stringify({ Action: "exec_start", Actor: { ID: "a" }, timeNano: 2 }),
+      JSON.stringify({ Action: "start", Actor: { ID: "a", Attributes: {} }, timeNano: 3 }),
+    ];
+    streamAPICall.mockResolvedValue(Readable.from([`${lines.join("\n")}\n`]));
+
+    const events = [];
+    for await (const event of await DockerService.streamClusterEvents(
+      new AbortController().signal,
+    )) {
+      events.push(event);
+    }
+
+    expect(events).toEqual([
+      { Action: "die", Actor: { ID: "a", Attributes: { exitCode: "1" } }, timeNano: 1 },
+      { Action: "start", Actor: { ID: "a", Attributes: { exitCode: "unknown" } }, timeNano: 3 },
+    ]);
+    expect(streamAPICall).toHaveBeenCalledWith("GET", "/events", {
+      query: {
+        filters: JSON.stringify({
+          type: ["container"],
+          label: ["dev.hallmaster.cluster"],
+          event: ["die", "start", "restart", "oom", "destroy"],
+        }),
+      },
+    });
+  });
+
+  it("closes the events stream once aborted", async () => {
+    const response = new PassThrough();
+    streamAPICall.mockResolvedValue(response);
+    const controller = new AbortController();
+
+    const events = (await DockerService.streamClusterEvents(controller.signal))[
+      Symbol.asyncIterator
+    ]();
+    const next = events.next();
+    controller.abort();
+
+    await expect(next).resolves.toEqual({ done: true, value: undefined });
+    expect(response.destroyed).toBe(true);
   });
 });
