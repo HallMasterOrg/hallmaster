@@ -33,6 +33,7 @@ model Bot {
   environmentVariables EnvironmentVariable[]
   clusterSamples       ClusterSample[]
   alerts               Alert[]
+  alertWebhook         AlertWebhook?
 
   @@map("bot")
 }
@@ -110,4 +111,19 @@ model Alert {
   @@index([botId, resolvedAt])
   @@index([botId, startedAt])
   @@map("alert")
+}
+
+model AlertWebhook {
+  botId           String      @id @map("bot_id")
+  webhookId       String      @map("webhook_id")
+  webhookToken    String      @map("webhook_token")
+  enabled         Boolean
+  content         String
+  kinds           AlertKind[]
+  notifyResolved  Boolean     @map("notify_resolved")
+  lastDeliveredAt DateTime?   @map("last_delivered_at")
+  lastError       String?     @map("last_error")
+  bot             Bot         @relation(fields: [botId], references: [id], onDelete: Cascade)
+
+  @@map("alert_webhook")
 }

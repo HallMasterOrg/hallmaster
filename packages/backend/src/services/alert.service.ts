@@ -7,11 +7,14 @@ import ClusterRepository from "#repositories/cluster.repository";
 import type { Alert, AlertKind, AlertsQuery } from "#schemas/alert.schema";
 import type { DockerEvent } from "#schemas/docker.schema";
 
+import AlertWebhookService from "./alert-webhook.service";
 import ClusterOperationService from "./cluster-operation.service";
 import DockerService from "./docker.service";
 
 type WatchedCluster = Pick<ClusterRow, "id" | "containerId" | "desiredStatus">;
-type ActiveAlert = Pick<AlertRow, "id" | "kind" | "message">;
+type ActiveAlert = Pick<AlertRow, "id" | "clusterId" | "kind" | "message" | "startedAt">;
+type NewAlert = Pick<AlertRow, "botId" | "clusterId" | "kind" | "message" | "startedAt"> &
+  Partial<Pick<AlertRow, "resolvedAt">>;
 
 const REMOVED_MESSAGE = "Container removed outside HallMaster";
 const CRASH_LOOP_EXITS = 3;
@@ -32,6 +35,22 @@ export default class AlertService {
 
   private static report(error: unknown) {
     console.error("Alert monitoring failed", error);
+  }
+
+  private static async raise(alert: NewAlert) {
+    const created = await AlertRepository.create(alert);
+    AlertWebhookService.alertRaised(alert.botId, created);
+  }
+
+  private static async settle(botId: string, alerts: ActiveAlert[], resolvedAt: Date) {
+    await AlertRepository.resolve(
+      alerts.map(({ id }) => id),
+      resolvedAt,
+    );
+
+    for (const alert of alerts) {
+      AlertWebhookService.alertResolved(botId, { ...alert, resolvedAt });
+    }
   }
 
   private static toAlert({ startedAt, resolvedAt, ...alert }: Omit<AlertRow, "botId">): Alert {
@@ -76,7 +95,7 @@ export default class AlertService {
     const active = await AlertRepository.findManyActive(botId, cluster.id);
     const kinds = new Set(active.map(({ kind }) => kind));
     const raise = (kind: AlertKind, message: string) =>
-      AlertRepository.create({ botId, clusterId: cluster.id, kind, message, startedAt: at });
+      this.raise({ botId, clusterId: cluster.id, kind, message, startedAt: at });
 
     if (this.recordExit(cluster.id, at.getTime()) >= CRASH_LOOP_EXITS && !kinds.has("CRASH_LOOP")) {
       await raise(
@@ -100,7 +119,7 @@ export default class AlertService {
     const stopped = active.find(({ kind }) => kind === "STOPPED");
 
     if (stopped === undefined) {
-      await AlertRepository.create({
+      await this.raise({
         botId,
         clusterId: cluster.id,
         kind: "STOPPED",
@@ -127,7 +146,7 @@ export default class AlertService {
 
       switch (event.Action) {
         case "oom":
-          await AlertRepository.create({
+          await this.raise({
             botId: bot.id,
             clusterId: cluster.id,
             kind: "OOM_KILLED",
@@ -139,8 +158,9 @@ export default class AlertService {
         case "start":
         case "restart": {
           const active = await AlertRepository.findManyActive(bot.id, cluster.id);
-          await AlertRepository.resolve(
-            active.filter(({ kind }) => kind === "STOPPED").map(({ id }) => id),
+          await this.settle(
+            bot.id,
+            active.filter(({ kind }) => kind === "STOPPED"),
             at,
           );
           return;
@@ -153,10 +173,7 @@ export default class AlertService {
 
           const active = await AlertRepository.findManyActive(bot.id, cluster.id);
           const settled = await this.onRemoved(bot.id, cluster, active, at);
-          await AlertRepository.resolve(
-            settled.map(({ id }) => id),
-            at,
-          );
+          await this.settle(bot.id, settled, at);
         }
       }
     });
@@ -194,7 +211,7 @@ export default class AlertService {
       !active.some(({ kind }) => kind === "STOPPED" || kind === "CRASH_LOOP");
 
     if (stopped) {
-      await AlertRepository.create({
+      await this.raise({
         botId,
         clusterId: cluster.id,
         kind: "STOPPED",
@@ -235,10 +252,7 @@ export default class AlertService {
         ),
       );
 
-      await AlertRepository.resolve(
-        [...orphans, ...settled.flat()].map(({ id }) => id),
-        now,
-      );
+      await this.settle(bot.id, [...orphans, ...settled.flat()], now);
     });
   }
 

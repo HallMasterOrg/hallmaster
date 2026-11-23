@@ -1,7 +1,7 @@
 import { execFileSync } from "node:child_process";
 
 import type { Browser, Page } from "playwright";
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, beforeEach, describe, expect, inject, it } from "vitest";
 
 import {
   BOT_ID,
@@ -11,6 +11,7 @@ import {
   OWNER,
   RECOMMENDED_SHARDS,
   STRANGER,
+  WEBHOOK_URL,
 } from "../setup/fixtures";
 import {
   adminRow,
@@ -57,6 +58,16 @@ async function expectNoRequestLoop(page: Page) {
 
 const names = (inputs: HTMLInputElement[]) => inputs.map((input) => input.value);
 const focusedElement = (element: Element) => element === document.activeElement;
+
+type WebhookMessage = { content?: string; embeds: { title: string }[] };
+
+async function webhookMessages() {
+  const response = await fetch(`${inject("discordURL")}/test/webhook-messages`);
+
+  return (await response.json()) as WebhookMessage[];
+}
+
+const titles = async () => (await webhookMessages()).map(({ embeds }) => embeds[0].title);
 
 function containerEnvironment(clusterId: number) {
   const output = execFileSync("docker", [
@@ -239,6 +250,27 @@ describe("cluster actions", () => {
 });
 
 describe("alerts", () => {
+  it("posts the alerts to a Discord webhook with the chosen mentions", async () => {
+    await page.goto("/alerts");
+    await page.getByRole("link", { name: "Discord notifications" }).click();
+
+    await page.getByLabel("Webhook URL").fill(WEBHOOK_URL);
+    await page.getByRole("button", { name: "@everyone" }).click();
+    await page.getByRole("button", { name: "Save" }).click();
+    await visible(page.getByText("Discord notifications saved"));
+
+    await page.getByRole("button", { name: "Send a test" }).click();
+    await visible(page.getByText("Test message posted"));
+    expect(await webhookMessages()).toEqual([
+      expect.objectContaining({
+        content: "@everyone",
+        embeds: [expect.objectContaining({ title: "HallMaster alerts will be posted here" })],
+      }),
+    ]);
+
+    await page.goto("/clusters");
+  });
+
   it("flags a cluster stopped outside HallMaster until it starts again", async () => {
     await page.waitForTimeout(1_500);
     execFileSync("docker", ["stop", `${BOT_ID}-1`]);
@@ -257,6 +289,11 @@ describe("alerts", () => {
 
     await page.goto("/alerts");
     await visible(page.getByRole("region", { name: "History" }).getByText("Cluster 01"));
+
+    await expect
+      .poll(titles, { timeout: 10_000 })
+      .toEqual(["HallMaster alerts will be posted here", "Cluster 01 is down"]);
+    expect((await webhookMessages())[1].content).toBe("@everyone");
   });
 });
 

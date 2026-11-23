@@ -215,3 +215,61 @@ describe("user by id", () => {
     });
   });
 });
+
+describe("webhook", () => {
+  const webhook = { id: "1234567890123456789", token: "webhook-token" };
+  const message = { embeds: [], allowed_mentions: { parse: [] } };
+
+  it("posts the message to the webhook", async () => {
+    fetchMock.mockResolvedValue(new Response(null, { status: 204 }));
+
+    expect(await DiscordService.executeWebhook(webhook, message)).toEqual({ status: "SENT" });
+    expect(fetchMock).toHaveBeenCalledWith(
+      "https://discord.com/api/v10/webhooks/1234567890123456789/webhook-token",
+      expect.objectContaining({ method: "POST", body: JSON.stringify(message) }),
+    );
+  });
+
+  it("says how long to wait when Discord rate limits it", async () => {
+    respond(429, { message: "You are being rate limited.", retry_after: 1.25 });
+
+    expect(await DiscordService.executeWebhook(webhook, message)).toEqual({
+      status: "RATE_LIMITED",
+      reason: "Discord is rate limiting the webhook",
+      retryAfterMs: 1250,
+    });
+  });
+
+  it.each([401, 404])("reports a deleted webhook on %i", async (status) => {
+    respond(status, { message: "Unknown Webhook" });
+
+    expect(await DiscordService.executeWebhook(webhook, message)).toEqual({
+      status: "REFUSED",
+      reason: "Discord does not know this webhook anymore, paste a new URL",
+    });
+  });
+
+  it("reports why Discord refused the message", async () => {
+    respond(400, { message: "Invalid Form Body" });
+
+    expect(await DiscordService.executeWebhook(webhook, message)).toEqual({
+      status: "REFUSED",
+      reason: "Discord refused the message: Invalid Form Body",
+    });
+  });
+
+  it("reports an unavailable Discord API as worth a retry", async () => {
+    respond(502);
+
+    expect(await DiscordService.executeWebhook(webhook, message)).toMatchObject({
+      status: "UNAVAILABLE",
+    });
+
+    fetchMock.mockRejectedValue(new TypeError("fetch failed"));
+
+    expect(await DiscordService.executeWebhook(webhook, message)).toEqual({
+      status: "UNAVAILABLE",
+      reason: "Discord API is unreachable or timed out",
+    });
+  });
+});

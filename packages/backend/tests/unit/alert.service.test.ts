@@ -5,6 +5,7 @@ import AlertRepository from "#repositories/alert.repository";
 import BotRepository from "#repositories/bot.repository";
 import ClusterRepository from "#repositories/cluster.repository";
 import type { DockerEvent, DockerEventAction } from "#schemas/docker.schema";
+import AlertWebhookService from "#services/alert-webhook.service";
 import AlertService from "#services/alert.service";
 import ClusterOperationService from "#services/cluster-operation.service";
 import DockerService from "#services/docker.service";
@@ -28,6 +29,13 @@ vi.mock("#repositories/bot.repository", () => ({
 vi.mock("#repositories/cluster.repository", () => ({
   default: {
     findManyWithContainerId: vi.fn(),
+  },
+}));
+
+vi.mock("#services/alert-webhook.service", () => ({
+  default: {
+    alertRaised: vi.fn(),
+    alertResolved: vi.fn(),
   },
 }));
 
@@ -376,5 +384,45 @@ describe("reconcile", () => {
     await AlertService.reconcile();
 
     expect(ClusterRepository.findManyWithContainerId).not.toHaveBeenCalled();
+  });
+});
+
+describe("discord notifications", () => {
+  it("passes every raised alert on", async () => {
+    givenClusters([{ id: 0 }]);
+
+    await AlertService.handle(event("die", 0));
+
+    expect(AlertWebhookService.alertRaised).toHaveBeenCalledWith(
+      "bot",
+      expect.objectContaining({ clusterId: 0, kind: "STOPPED", message: "Exited with code 1" }),
+    );
+    expect(AlertWebhookService.alertResolved).not.toHaveBeenCalled();
+  });
+
+  it("passes the resolved alerts on with when they were resolved", async () => {
+    givenClusters([{ id: 0 }]);
+    await AlertService.handle(event("die", 0));
+
+    const startedAgain = Date.now() + 5 * MINUTE;
+    await AlertService.handle(event("start", 0, startedAgain));
+
+    expect(AlertWebhookService.alertResolved).toHaveBeenCalledWith(
+      "bot",
+      expect.objectContaining({
+        clusterId: 0,
+        kind: "STOPPED",
+        resolvedAt: new Date(startedAgain),
+      }),
+    );
+  });
+
+  it("passes nothing on when no alert changes", async () => {
+    givenClusters([{ id: 0, state: "running" }]);
+
+    await AlertService.reconcile();
+
+    expect(AlertWebhookService.alertRaised).not.toHaveBeenCalled();
+    expect(AlertWebhookService.alertResolved).not.toHaveBeenCalled();
   });
 });
