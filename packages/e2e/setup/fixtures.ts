@@ -33,3 +33,6 @@ export const STRANGER = {
   discriminator: "0",
   avatar: null,
 };
+
+export const WEBHOOK = { id: "333333333333333333", token: "e2e-webhook-token" };
+export const WEBHOOK_URL = `https://discord.com/api/webhooks/${WEBHOOK.id}/${WEBHOOK.token}`;

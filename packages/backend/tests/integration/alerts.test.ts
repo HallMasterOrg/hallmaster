@@ -1,6 +1,7 @@
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 import AlertService from "#services/alert.service";
+import DiscordService from "#services/discord.service";
 
 import {
   createBot,
@@ -47,6 +48,7 @@ afterAll(async () => {
 });
 
 beforeEach(async () => {
+  vi.restoreAllMocks();
   await resetState();
   token = await register();
   await createBot();
@@ -118,5 +120,31 @@ describe("alerts", () => {
     const response = await request("/alerts");
 
     expect(response.status).toBe(401);
+  });
+
+  it("posts the alerts to the Discord webhook", async () => {
+    const execute = vi
+      .spyOn(DiscordService, "executeWebhook")
+      .mockResolvedValue({ status: "SENT" });
+    await call("/alerts/webhook", {
+      method: "PUT",
+      body: {
+        url: "https://discord.com/api/webhooks/1234567890123456789/token",
+        enabled: true,
+        content: "<@111111111111111111>",
+        kinds: ["STOPPED"],
+        notifyResolved: true,
+      },
+    });
+    const titles = () => execute.mock.calls.map(([, message]) => message.embeds[0].title);
+
+    await stopContainerOutsideHallMaster(1);
+    await expect.poll(titles, { timeout: 10_000 }).toEqual(["Cluster 01 is down"]);
+    expect(execute.mock.calls[0][1]).toMatchObject({ content: "<@111111111111111111>" });
+
+    await call("/clusters/1/start", { method: "POST" });
+    await expect
+      .poll(titles, { timeout: 10_000 })
+      .toEqual(["Cluster 01 is down", "Cluster 01: down alert resolved"]);
   });
 });

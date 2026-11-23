@@ -20,3 +20,30 @@ export type DiscordUser = z.infer<typeof DiscordUserSchema>;
 export const DiscordAccessTokenSchema = z.object({
   access_token: z.string(),
 });
+
+export const DiscordErrorSchema = z.object({
+  message: z.string().optional(),
+  retry_after: z.number().optional(),
+});
+
+export type DiscordEmbed = {
+  title: string;
+  description?: string;
+  color: number;
+  timestamp?: string;
+  footer?: { text: string };
+};
+
+export type DiscordWebhookMessage = {
+  content?: string;
+  embeds: DiscordEmbed[];
+  allowed_mentions: { parse: ("everyone" | "users" | "roles")[] };
+};
+
+export type DiscordWebhook = { id: string; token: string };
+
+export type DiscordWebhookDelivery =
+  | { status: "SENT" }
+  | { status: "RATE_LIMITED"; reason: string; retryAfterMs: number }
+  | { status: "UNAVAILABLE"; reason: string }
+  | { status: "REFUSED"; reason: string };

@@ -10,10 +10,14 @@ import env from "#lib/env";
 import type { BotDiscordProfile } from "#schemas/bot.schema";
 import {
   DiscordAccessTokenSchema,
+  DiscordErrorSchema,
   DiscordGatewayBotSchema,
   DiscordUserSchema,
   type DiscordGatewayBot,
   type DiscordUser,
+  type DiscordWebhook,
+  type DiscordWebhookDelivery,
+  type DiscordWebhookMessage,
 } from "#schemas/discord.schema";
 
 type DiscordRequestInit = RequestInit & {
@@ -140,5 +144,59 @@ export default class DiscordService {
     return await this.request("/users/@me", DiscordUserSchema, {
       headers: { Authorization: `Bearer ${accessToken}` },
     });
+  }
+
+  private static async readError(response: Response) {
+    const body: unknown = await response.json().catch(() => ({}));
+    const parsed = DiscordErrorSchema.safeParse(body);
+
+    return parsed.success ? parsed.data : {};
+  }
+
+  public static async executeWebhook(
+    { id, token }: DiscordWebhook,
+    message: DiscordWebhookMessage,
+  ): Promise<DiscordWebhookDelivery> {
+    const response = await fetch(`${this.DISCORD_API_BASE_URL}/webhooks/${id}/${token}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(message),
+      signal: AbortSignal.timeout(10_000),
+    }).catch(() => undefined);
+
+    if (response === undefined) {
+      return { status: "UNAVAILABLE", reason: "Discord API is unreachable or timed out" };
+    }
+
+    if (response.ok) return { status: "SENT" };
+
+    const error = await this.readError(response);
+
+    if (response.status === 429) {
+      return {
+        status: "RATE_LIMITED",
+        reason: "Discord is rate limiting the webhook",
+        retryAfterMs: Math.ceil((error.retry_after ?? 1) * 1_000),
+      };
+    }
+
+    if (response.status >= 500) {
+      return {
+        status: "UNAVAILABLE",
+        reason: `Discord API returned a ${response.status} ${response.statusText}`,
+      };
+    }
+
+    if (response.status === 401 || response.status === 404) {
+      return {
+        status: "REFUSED",
+        reason: "Discord does not know this webhook anymore, paste a new URL",
+      };
+    }
+
+    return {
+      status: "REFUSED",
+      reason: `Discord refused the message: ${error.message ?? `${response.status} ${response.statusText}`}`,
+    };
   }
 }

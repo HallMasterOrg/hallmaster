@@ -1,3 +1,4 @@
+export * from "./alert-webhook.schema";
 export * from "./alert.schema";
 export * from "./auth.schema";
 export * from "./bot.schema";

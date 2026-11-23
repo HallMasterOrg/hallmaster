@@ -15,6 +15,7 @@ import {
   OWNER,
   RECOMMENDED_SHARDS,
   STRANGER,
+  WEBHOOK,
 } from "./fixtures";
 
 declare module "vitest" {
@@ -76,12 +77,18 @@ async function waitUntilUp(name: string, url: string, child: ChildProcess) {
 const DISCORD_USERS = new Map([OWNER, STRANGER].map((user) => [user.id, user]));
 const CLIENT_CREDENTIALS = Buffer.from(`${DISCORD_CLIENT.id}:${DISCORD_CLIENT.secret}`);
 
-function readBody(request: IncomingMessage) {
-  return new Promise<URLSearchParams>((resolve) => {
+const webhookMessages: unknown[] = [];
+
+function readText(request: IncomingMessage) {
+  return new Promise<string>((resolve) => {
     let body = "";
     request.on("data", (chunk: Buffer) => (body += chunk.toString()));
-    request.on("end", () => resolve(new URLSearchParams(body)));
+    request.on("end", () => resolve(body));
   });
+}
+
+async function readBody(request: IncomingMessage) {
+  return new URLSearchParams(await readText(request));
 }
 
 function discordUser(request: IncomingMessage) {
@@ -104,6 +111,18 @@ async function answerDiscord(request: IncomingMessage, response: ServerResponse)
 
   const userId = url.pathname.match(/^\/api\/v10\/users\/(\d+)$/)?.[1];
   const route = userId === undefined ? url.pathname : "/api/v10/users/:id";
+
+  if (request.method === "POST" && url.pathname.startsWith("/api/v10/webhooks/")) {
+    if (url.pathname !== `/api/v10/webhooks/${WEBHOOK.id}/${WEBHOOK.token}`) {
+      reply(404, { message: "Unknown Webhook", code: 10015 });
+      return;
+    }
+
+    webhookMessages.push(JSON.parse(await readText(request)));
+    response.writeHead(204);
+    response.end();
+    return;
+  }
 
   switch (`${request.method} ${route}`) {
     case "GET /oauth2/authorize": {
@@ -154,6 +173,9 @@ async function answerDiscord(request: IncomingMessage, response: ServerResponse)
       reply(200, user);
       return;
     }
+    case "GET /test/webhook-messages":
+      reply(200, webhookMessages);
+      return;
     case "GET /api/v10/gateway/bot":
       if (authorization !== `Bot ${BOT_TOKEN}`) {
         reply(401, { message: "401: Unauthorized", code: 0 });
